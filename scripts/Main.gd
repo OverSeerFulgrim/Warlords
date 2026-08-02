@@ -1436,8 +1436,16 @@ func _log(msg: String, category: String = "events") -> void:
 	entry.visible = _entry_matches_filters(entry)
 	# Trim the oldest entry once the log grows past the cap, so a long session
 	# can't grow this list unbounded.
+	#
+	# MUST be remove_child() before queue_free(). queue_free() is DEFERRED to
+	# the end of the frame -- the node stays a child until then, so a
+	# `while get_child_count() > CAP: get_child(0).queue_free()` loop never
+	# sees the count drop and spins forever, hard-freezing the game. That bug
+	# shipped here and in _alert() below; see the header note in _alert().
 	while history_log_list.get_child_count() > MAX_HISTORY_ENTRIES:
-		history_log_list.get_child(0).queue_free()
+		var oldest := history_log_list.get_child(0)
+		history_log_list.remove_child(oldest)
+		oldest.queue_free()
 
 ## A small rolling stack of up to MAX_ALERTS notable-event pins, top-right --
 ## only called from the handful of _connect_signals() handlers for events
@@ -1463,8 +1471,15 @@ func _alert(msg: String, kind: String = "info") -> void:
 			b.text = "?"
 	alert_stack.add_child(b)
 	alert_stack.move_child(b, 0)  # newest on top
+	# Same deferred-free trap as _log() -- see the comment there. This one was
+	# the one that actually bit: MAX_ALERTS is 3 and every accepted recruit
+	# raises an alert, so the *fourth* recruit you took in a session locked the
+	# game up solid. remove_child() is immediate, which is what lets the loop
+	# terminate; queue_free() then disposes of it safely at end of frame.
 	while alert_stack.get_child_count() > MAX_ALERTS:
-		alert_stack.get_child(alert_stack.get_child_count() - 1).queue_free()
+		var oldest := alert_stack.get_child(alert_stack.get_child_count() - 1)
+		alert_stack.remove_child(oldest)
+		oldest.queue_free()
 
 # ---------------- History log filtering ----------------
 
