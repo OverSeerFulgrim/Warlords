@@ -55,6 +55,7 @@ var town_tab_btn: Button
 var history_tab_btn: Button
 var research_tab_btn: Button
 var cmd_town: VBoxContainer
+var cmd_town_scroll: ScrollContainer   # wraps cmd_town so it can never overflow the band
 var cmd_history: VBoxContainer
 var cmd_research: Control
 var bar_panel: PanelContainer      # the command bar body -- hidden/shown by the collapse arrow
@@ -67,7 +68,6 @@ var bounty_row: HBoxContainer
 var economy_row: VBoxContainer
 var workers_row: VBoxContainer     # holds the priority list + workforce summary
 var workforce_label: Label
-var map_stock_label: Label
 var priority_status_labels: Dictionary = {}  # kind String -> Label
 
 # ---------------- Build menu / click-to-place ----------------
@@ -140,6 +140,23 @@ const FALLBACK_SPECIES_SPRITE := "res://Characters/Character - 128 x 128/charact
 
 const INFO_PANEL_WIDTH := 170.0
 const MINIMAP_SIZE := 78.0
+
+## Height of the whole bottom command bar (folder tabs + panel body).
+##
+## Was 190, which was not enough once the Economy tab grew a four-row priority
+## list: the rows ran off the bottom of a 1400x760 window and Food/Bones were
+## simply unreachable, because nothing scrolled. Raised to fit the tallest tab
+## content at the default window size. The ScrollContainer around the Town tab
+## (see _build_cmd_town) is the belt-and-braces for smaller windows -- this
+## constant is what keeps scrolling from being *needed* at the default one.
+const BOTTOM_BAR_HEIGHT := 250
+
+## Compact metrics for the priority rows. Godot's default Button/SpinBox
+## minimum height is ~31px; four rows of that plus a header and two summary
+## lines is 180px, which does not fit. These bring a row to ~24px.
+const PRIORITY_ROW_HEIGHT := 24.0
+const PRIORITY_FONT_SIZE := 10
+const PRIORITY_ARROW_WIDTH := 22.0
 const MAX_ALERTS := 3            # oldest alert pin is dropped once a 4th arrives
 const MAX_HISTORY_ENTRIES := 200 # oldest history-log row is dropped past this cap
 
@@ -519,7 +536,7 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	# generous enough for the folder tabs row plus the tallest command-bar
 	# content (Economy's two stacked action rows); a few px of slack if the
 	# real content ends up shorter is harmless.
-	bottom_shell.offset_top = -190
+	bottom_shell.offset_top = -BOTTOM_BAR_HEIGHT
 	bottom_shell.offset_bottom = 0
 	bottom_shell.offset_left = 0
 	bottom_shell.offset_right = 0
@@ -617,8 +634,26 @@ func _build_bottom_shell(hud_root: Control) -> void:
 ## plus Dispatch Mission back out of the UI -- see the comments inline below
 ## and CLAUDE.md's "Foundation reset" section; the code behind them is intact.
 func _build_cmd_town(command_area: VBoxContainer) -> void:
+	# Scroll wrapper. Two jobs: (1) nothing in this tab can ever be rendered
+	# below the window edge and be unreachable -- which is exactly what
+	# happened to the Food and Bones priority rows -- and (2) it stops
+	# cmd_town's content minimum height propagating up to bar_panel, which is
+	# what let the panel grow taller than the band it lives in. A
+	# ScrollContainer reports ~0 minimum on any axis it can scroll.
+	#
+	# Only the Town tab is wrapped: the History tab already owns an inner
+	# ScrollContainer for its log, and nesting two would make the log fight
+	# the outer scroll. Research is a one-line placeholder.
+	cmd_town_scroll = ScrollContainer.new()
+	cmd_town_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	cmd_town_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	cmd_town_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cmd_town_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	command_area.add_child(cmd_town_scroll)
+
 	cmd_town = VBoxContainer.new()
-	command_area.add_child(cmd_town)
+	cmd_town.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cmd_town_scroll.add_child(cmd_town)
 
 	var category_row := HBoxContainer.new()
 	category_row.add_theme_constant_override("separation", 4)
@@ -741,7 +776,10 @@ func _restyle_folder_tab(btn: Button, active: bool) -> void:
 	btn.add_theme_color_override("font_color", Color(0.9, 0.85, 0.75) if active else Color(0.55, 0.57, 0.63))
 
 func _select_folder_tab(tab: String) -> void:
-	cmd_town.visible = tab == "town"
+	# Toggle the scroll wrapper, not cmd_town itself -- hiding the inner VBox
+	# while leaving the ScrollContainer visible would leave an empty scrolling
+	# hole where the tab used to be.
+	cmd_town_scroll.visible = tab == "town"
 	cmd_history.visible = tab == "history"
 	cmd_research.visible = tab == "research"
 	_restyle_folder_tab(town_tab_btn, tab == "town")
@@ -802,8 +840,8 @@ func _build_priority_rows() -> void:
 	priority_status_labels.clear()
 
 	var header := Label.new()
-	header.text = "Gathering priorities  (workers serve the top resource still under its threshold)"
-	header.add_theme_font_size_override("font_size", 10)
+	header.text = "Gathering priorities — workers serve the top resource still under its threshold"
+	_compact(header)
 	header.modulate = Color(1, 1, 1, 0.6)
 	workers_row.add_child(header)
 
@@ -817,6 +855,8 @@ func _build_priority_rows() -> void:
 		up.text = "^"
 		up.tooltip_text = "Raise %s priority" % kind
 		up.disabled = i == 0
+		_compact(up)
+		up.custom_minimum_size = Vector2(PRIORITY_ARROW_WIDTH, PRIORITY_ROW_HEIGHT)
 		up.pressed.connect(func(): worker_system.move_priority(kind, -1))
 		row.add_child(up)
 
@@ -824,17 +864,20 @@ func _build_priority_rows() -> void:
 		down.text = "v"
 		down.tooltip_text = "Lower %s priority" % kind
 		down.disabled = i == worker_system.priorities.size() - 1
+		_compact(down)
+		down.custom_minimum_size = Vector2(PRIORITY_ARROW_WIDTH, PRIORITY_ROW_HEIGHT)
 		down.pressed.connect(func(): worker_system.move_priority(kind, 1))
 		row.add_child(down)
 
 		var name_label := Label.new()
 		name_label.text = "%d. %s" % [i + 1, kind.capitalize()]
-		name_label.custom_minimum_size = Vector2(78, 0)
+		name_label.custom_minimum_size = Vector2(70, 0)
+		_compact(name_label)
 		row.add_child(name_label)
 
 		var stop_label := Label.new()
 		stop_label.text = "stop at"
-		stop_label.add_theme_font_size_override("font_size", 11)
+		_compact(stop_label)
 		stop_label.modulate = Color(1, 1, 1, 0.6)
 		row.add_child(stop_label)
 
@@ -842,30 +885,35 @@ func _build_priority_rows() -> void:
 		# thresholds are an arbitrary number the player types, not a small
 		# fixed choice set, which is exactly the case the button-pair
 		# convention doesn't cover.
+		# The SpinBox is what actually set the old 31px row height -- its
+		# default minimum is the tallest thing in the row. Capping it here is
+		# most of the compaction; its internal LineEdit needs the font
+		# override too or it forces the height back up.
 		var spin := SpinBox.new()
 		spin.min_value = 0
 		spin.max_value = 999
 		spin.step = 5
 		spin.value = entry["threshold"]
-		spin.custom_minimum_size = Vector2(72, 0)
+		spin.custom_minimum_size = Vector2(66, PRIORITY_ROW_HEIGHT)
+		spin.add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
+		spin.get_line_edit().add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
 		spin.value_changed.connect(func(v: float): worker_system.set_threshold(kind, int(v)))
 		row.add_child(spin)
 
 		var status := Label.new()
-		status.add_theme_font_size_override("font_size", 11)
+		_compact(status)
 		priority_status_labels[kind] = status
 		row.add_child(status)
 
 		workers_row.add_child(row)
 
+	# Workforce census and map stock share one line. They used to be two
+	# labels, which cost ~16px of a band that had none to spare, and they read
+	# fine together -- "who is working" next to "what is left to work on".
 	workforce_label = Label.new()
-	workforce_label.add_theme_font_size_override("font_size", 11)
+	_compact(workforce_label)
+	workforce_label.modulate = Color(1, 1, 1, 0.75)
 	workers_row.add_child(workforce_label)
-
-	map_stock_label = Label.new()
-	map_stock_label.add_theme_font_size_override("font_size", 10)
-	map_stock_label.modulate = Color(1, 1, 1, 0.55)
-	workers_row.add_child(map_stock_label)
 
 	_refresh_priority_status()
 
@@ -888,9 +936,25 @@ func _refresh_priority_status() -> void:
 			_:
 				lbl.modulate = Color(1, 1, 1)
 	if workforce_label:
-		workforce_label.text = worker_system.workforce_summary()
-	if map_stock_label and resource_field:
-		map_stock_label.text = resource_field.stock_summary()
+		var stock: String = resource_field.stock_summary() if resource_field else ""
+		workforce_label.text = "%s   —   %s" % [worker_system.workforce_summary(), stock]
+
+## Shrinks a Control to the priority list's compact metrics. Godot's default
+## theme gives Buttons and SpinBoxes a ~31px minimum height, which is fine for
+## the main action buttons but far too tall for a four-row list crammed into
+## the bottom band.
+func _compact(c: Control) -> void:
+	c.add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
+	if c is Button:
+		# Trim the vertical padding too -- the font override alone doesn't
+		# shrink a Button, its StyleBox content margins set the floor.
+		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+			var sb := StyleBoxEmpty.new()
+			sb.content_margin_top = 2
+			sb.content_margin_bottom = 2
+			sb.content_margin_left = 4
+			sb.content_margin_right = 4
+			c.add_theme_stylebox_override(state, sb)
 
 func _add_button(parent: Control, text: String, callback: Callable) -> void:
 	var b := Button.new()
