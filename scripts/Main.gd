@@ -29,6 +29,7 @@ var worker_system: WorkerSystem
 var resource_field: ResourceField
 var day_night: DayNightCycle
 var morale_system: MoraleSystem
+var necromancer: NecromancerToken
 var camera: GameCamera
 
 var current_event: Dictionary = {}
@@ -88,6 +89,9 @@ var keep_menu_panel: PanelContainer
 
 # ---------------- Barracks panel (click the Barracks) ----------------
 var barracks_panel: PanelContainer
+
+# ---------------- Necromancer panel (click the avatar) ----------------
+var necromancer_panel: PanelContainer
 
 # ---------------- Follower tokens (on-screen presence, see FollowerToken.gd) ----------------
 var followers_layer: Node2D
@@ -169,7 +173,54 @@ func _ready() -> void:
 	_connect_signals()
 	_sync_follower_tokens()
 	_sync_worker_tokens()
+	_place_necromancer()
+	_frame_camera_on_throne()          # best effort now...
+	_settle_initial_camera_framing()   # ...and again once the HUD has laid out
+	get_viewport().size_changed.connect(_on_viewport_resized)
 	_log("Undead Empire prototype started. Frozen Wastes climate (placeholder).")
+
+# ---------------- Camera framing ----------------
+
+## The Throne is at grid cell (0,0) -- a corner of the map, not its middle --
+## so the old "centre on the grid's midpoint" left the player's own keep tucked
+## up in the top-left. Centre on the Throne itself instead.
+func _throne_world_centre() -> Vector2:
+	var main_building: Building = settlement.get_main_building()
+	var cell: Vector2i = main_building.cell if main_building else Vector2i.ZERO
+	var half: float = float(SettlementGrid.CELL_SIZE) * 0.5
+	return Vector2(cell.x * SettlementGrid.CELL_SIZE + half, cell.y * SettlementGrid.CELL_SIZE + half)
+
+## Tells the camera how much of the window the HUD eats, so it can centre on
+## the visible map band rather than the raw window. Measured from the real
+## panels where possible: the bottom bar is a known constant, the top strip is
+## whatever it laid out to.
+func _sync_camera_insets() -> void:
+	camera.ui_top_inset = top_panel.size.y if top_panel else 0.0
+	camera.ui_bottom_inset = float(BOTTOM_BAR_HEIGHT)
+
+func _frame_camera_on_throne() -> void:
+	_sync_camera_insets()
+	camera.center_on(_throne_world_centre())
+
+## Control sizes aren't final on the frame they're created, so the first
+## framing uses a top_panel height of 0 and is a few pixels out. Re-running it
+## after two frames -- once layout has settled -- gets it exact. Deliberately
+## not awaited by _ready(): this runs to its first await, lets _ready finish,
+## then resumes.
+func _settle_initial_camera_framing() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_frame_camera_on_throne()
+
+## Re-frame on resize, but only while the player hasn't taken the camera
+## somewhere themselves -- yanking the view back to the Throne because someone
+## dragged a window corner would be worse than a slightly-off centre.
+func _on_viewport_resized() -> void:
+	if camera and not camera.player_has_moved_camera:
+		_frame_camera_on_throne()
+
+func _place_necromancer() -> void:
+	necromancer.setup(_throne_world_centre())
 
 ## Worker states change continuously now that gathering is a real trip loop,
 ## so the priority rows' Working/Satisfied labels and the workforce summary
@@ -217,6 +268,12 @@ func _build_systems() -> void:
 	# Small ring around the main building's cell (0,0) -- where workers idle
 	# between trips and where every load gets deposited.
 	worker_keep_zone = Rect2(Vector2(-16, -16), Vector2(SettlementGrid.CELL_SIZE + 32, SettlementGrid.CELL_SIZE + 32))
+
+	# The player's avatar. Parented to `settlement` so he shares the same
+	# coordinate space as the grid and every other token.
+	necromancer = NecromancerToken.new()
+	necromancer.name = "NecromancerToken"
+	settlement.add_child(necromancer)
 
 	bounty_board = BountyBoard.new()
 	bounty_board.name = "BountyBoard"
@@ -475,7 +532,10 @@ func _build_necro_badge(hud_root: Control) -> void:
 		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		necro_badge.add_child(icon)
-	necro_badge.pressed.connect(func(): _select_info("The Necromancer", "Necromancer", "Idle"))
+	# The HUD badge and the on-map avatar open the same panel -- two doors to
+	# one room, same as the Keep menu having a top-bar and a click-the-building
+	# entry point.
+	necro_badge.pressed.connect(_open_necromancer_panel)
 	hud_root.add_child(necro_badge)
 
 ## Rolling stack of up to MAX_ALERTS recent notable events, top-right,
@@ -519,6 +579,13 @@ func _build_keep_menu(hud_root: Control) -> void:
 	barracks_panel.add_theme_stylebox_override("panel", _panel_style())
 	barracks_panel.visible = false
 	hud_root.add_child(barracks_panel)
+
+	necromancer_panel = PanelContainer.new()
+	necromancer_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	necromancer_panel.position = Vector2(360, 96)
+	necromancer_panel.add_theme_stylebox_override("panel", _panel_style())
+	necromancer_panel.visible = false
+	hud_root.add_child(necromancer_panel)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -1099,6 +1166,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		# proximity to their current on-screen position rather than a grid
 		# cell -- see _closest_token_hit(). Checked before the main-building
 		# cell check below since a token can wander over any part of the grid.
+		# The Necromancer is checked first: he paces right on top of the
+		# Throne, so a click that lands on both should get the person, not the
+		# building. (Placement and demolish modes already returned above, so
+		# this can't steal a build click.)
+		if necromancer and world_pos.distance_to(necromancer.position) <= necromancer.hit_radius():
+			_open_necromancer_panel()
+			get_viewport().set_input_as_handled()
+			return
+
 		var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos, 20.0)
 		if hit_follower:
 			_select_info(hit_follower.label(), "%s — %s" % [hit_follower.species, hit_follower.category],
@@ -1183,9 +1259,66 @@ func _populate_keep_menu() -> void:
 	upgrades_label.modulate = Color(1, 1, 1, 0.5)
 	box.add_child(upgrades_label)
 
+	box.add_child(HSeparator.new())
+	var surrender := Button.new()
+	surrender.text = "Surrender"
+	surrender.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
+	surrender.tooltip_text = "Abandon this run and start over."
+	surrender.pressed.connect(_surrender_and_restart)
+	box.add_child(surrender)
+
 	_add_button(box, "Close", func(): keep_menu_panel.visible = false)
 
-# ---------------- Barracks panel (click the Barracks) ----------------
+func _surrender_and_restart() -> void:
+	keep_menu_panel.visible = false
+	GameState.reset()
+	get_tree().reload_current_scene()
+
+# ---------------- Necromancer panel (click the avatar, or the HUD badge) ----
+
+## Deliberately the same shape as the Keep and Barracks panels rather than
+## anything cleverer: CORE_POLISH_PROMPTS Prompt B introduces one reusable
+## InspectionPanel for everything clickable, and when it lands this should be
+## folded into it and deleted, not extended.
+func _open_necromancer_panel() -> void:
+	_select_info("The Necromancer", "Master of the Settlement", "Surveying his domain")
+	necromancer_panel.visible = true
+	necromancer_panel.position.y = _menu_open_y()
+	_populate_necromancer_panel()
+
+func _populate_necromancer_panel() -> void:
+	for child in necromancer_panel.get_children():
+		child.queue_free()
+	var box := VBoxContainer.new()
+	necromancer_panel.add_child(box)
+
+	var title := Label.new()
+	title.text = "The Necromancer"
+	title.add_theme_font_size_override("font_size", 15)
+	box.add_child(title)
+
+	var subtitle := Label.new()
+	subtitle.text = "Master of the Settlement"
+	subtitle.add_theme_font_size_override("font_size", 11)
+	subtitle.modulate = Color(0.85, 0.80, 0.95)
+	box.add_child(subtitle)
+
+	var flavor := Label.new()
+	flavor.text = "He walks the bone-strewn yard at all hours, counting what the\nliving owe him. The dead do not need counting. They simply obey."
+	flavor.add_theme_font_size_override("font_size", 11)
+	flavor.modulate = Color(1, 1, 1, 0.7)
+	box.add_child(flavor)
+
+	box.add_child(HSeparator.new())
+
+	# Same "visible promise" treatment as the Barracks Upgrade button: a real
+	# disabled Button, so the shape of the future feature is legible.
+	var spells := Button.new()
+	spells.text = "Spells — coming soon"
+	spells.disabled = true
+	box.add_child(spells)
+
+	_add_button(box, "Close", func(): necromancer_panel.visible = false)
 
 func _refresh_barracks_if_open() -> void:
 	if barracks_panel and barracks_panel.visible:

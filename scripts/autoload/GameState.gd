@@ -204,6 +204,28 @@ func _check_win_condition() -> void:
 func lose_game(reason: String) -> void:
 	game_lost.emit(reason)
 
+# ---------------- Reset ----------------
+
+## Returns every var back to its Stage-0 starting value so
+## reload_current_scene() produces a fresh run rather than
+## picking up where the old one left off. Called by the
+## Surrender button and the future game-over restart panel.
+func reset() -> void:
+	dark_essence = 0
+	bones = 10
+	wood = 8
+	stone = 5
+	food = 5
+	reputation = 0
+	threat = 0
+	threat_tier = ThreatTier.LOW
+	power = 0
+	survived_high_threat_crusade = false
+	_last_building_power = 0
+	_has_won = false
+	followers.clear()
+	departed.clear()
+
 # ---------------- Followers ----------------
 
 func add_follower(follower) -> void:

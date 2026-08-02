@@ -268,6 +268,41 @@ Flat 6 wood / 4 stone per FOUNDATION_SPEC §9, charged by `SettlementGrid.fund_h
 
 **Housing frees the Barracks slot.** `barracks_residents()` now counts only unhoused followers (it used to return the whole roster, correct only while this feature didn't exist). Housed recruits idle at their own doorstep via `Laborer.idle_anchor`, but still deposit loads at the keep.
 
+### Camera framing and the Necromancer avatar (Core Feel pass, Prompt A)
+
+#### The camera starts on the Throne
+
+It used to centre on the *grid's* midpoint. The Throne sits at cell (0,0) — a corner of the map, not its middle — so the player's own keep started tucked into the top-left with empty ground filling the screen.
+
+`GameCamera.center_on()` now frames a world point in the **visible map band**, not the raw window. A `Camera2D` draws its own `position` at the window centre, so centring on the band between the top resource strip and the bottom command bar means deliberately offsetting away from that:
+
+```
+screen_y = window_h/2 + (world_y - camera_y) * zoom
+```
+
+Solve for the camera position that puts the target at the band's centre, and divide the screen-space inset by `zoom` to convert it to world units — which is what makes the framing survive zooming. `Main._sync_camera_insets()` feeds it the real panel heights (`top_panel.size.y` and `BOTTOM_BAR_HEIGHT`).
+
+Two timing details worth keeping:
+
+- **Control sizes aren't final on the frame they're created**, so the first framing runs with a top inset of 0 and is a few pixels out. `_settle_initial_camera_framing()` re-runs it after two frames. It's deliberately *not* awaited by `_ready()` — it runs to its first `await`, lets `_ready` finish, then resumes.
+- **Resize re-frames only while `camera.player_has_moved_camera` is false.** Any pan or zoom sets that flag. Snapping the view back to the Throne because someone dragged a window corner would be worse than a slightly-off centre.
+
+Verified at 1400×760, 1024×600, 1920×1080 and 900×500: the Throne lands dead centre of the visible band every time (dx and dy both 0.0px).
+
+#### The Necromancer walks his domain (`NecromancerToken.gd`)
+
+The player now has an avatar on the map — a token that paces slowly within ~2 cells of the Throne so the settlement reads as having someone in charge of it, rather than being an unattended machine.
+
+**He is not a `Laborer`, and the exclusion is structural rather than a flag.** `WorkerSystem.laborers()` is the union of `workers` and `GameState.followers`; he is in neither, so there is no path by which he can be handed a gathering trip or counted in the workforce summary. Keep it that way — if he ever needs to act on the world, give him his own system rather than slotting him into the labor pool. (Smoke-tested: labor pool size 1, `is Laborer` false, summary still reads "1 worker".)
+
+**Where his position lives — a documented exception.** It's on the node, not on a separate data object, which is the opposite of the convention above about simulation state belonging on a RefCounted with the token as a pure view. That convention exists because `WorkerToken` once animated on a clock that disagreed with the economy driving it. There's no such risk here: nothing reads his position, there's no simulation counterpart to drift from, and a `Necromancer` RefCounted whose position only its own token writes and reads would be ceremony with no beneficiary.
+
+**The migration trigger is explicit:** the moment any *other* system needs to know where he is — spells cast from his location, a raider targeting him, him walking somewhere on command — split it exactly like `Laborer`/`WorkerToken`, data object owning `position` and the node becoming a pure view.
+
+Clicking him (or the HUD badge — two doors, one room) opens a small panel with his title and a "Spells — coming soon" disabled button, the same visible-promise treatment as the Barracks Upgrade. **That panel is deliberately the same shape as the Keep and Barracks panels rather than anything cleverer**, because Prompt B introduces one reusable `InspectionPanel` for everything clickable; when it lands this should be folded into it and deleted, not extended.
+
+His art is the 128px HUD *portrait* scaled down to token size — a stand-in until ART_BRIEF's proper Necromancer sprite exists, same documented spirit as the generated deer.
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -294,6 +329,7 @@ scripts/Main.gd              Wires all systems together + debug UI + build menu
 scripts/autoload/           GameState.gd, EventBus.gd, BuildingCatalog.gd, RaceCatalog.gd (singletons)
 scripts/settlement/         SettlementGrid.gd, Building.gd, FollowerToken.gd, WorkerSystem.gd, WorkerToken.gd,
                             MoraleSystem.gd -- meals, morale, theft, desertion
+                            NecromancerToken.gd -- player avatar; NOT a Laborer
                             HousePlanner.gd -- WHERE a recruit builds (race housing_style)
                             HouseStyle.gd   -- WHAT it looks like (sprite + tint per race)
                             Laborer.gd -- base class: the trip loop + labor stats
