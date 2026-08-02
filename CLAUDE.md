@@ -24,7 +24,10 @@ Multi-settlement, trade, alliances, and climate are explicitly **out of scope** 
 - **Godot 4.7.1**, GDScript, GL Compatibility renderer (safest for a wide range of hardware during prototyping) -- `project.godot`'s `config/features` is the source of truth if this ever drifts again
 - Everything runs **local-only** — no cloud services, no account requirements, no external dependencies beyond the Godot editor itself
 - The [GDAI-alternative] **godot-mcp** plugin (`addons/godot_mcp/`, MIT, by mkdevkit) is installed and enabled, connecting this project to a Claude Code session over MCP for live editor introspection/control -- see the three `MCP*Bridge` autoloads in `project.godot`. Requires Godot open with the plugin enabled for the connection to work.
-- Project currently lives under an app-managed cache path (`AppData\Local\Packages\...\LocalCache\...`), **no git repo yet** — move it somewhere durable and `git init` before investing much more time
+- **The project now lives at `C:\Users\sjodz\Warlords`, under git, pushed to https://github.com/OverSeerFulgrim/Warlords** (branch `main`). It used to sit in an app-managed cache path (`AppData\Local\Packages\...\LocalCache\...`); that copy still exists but is **stale — do not edit it**.
+  - The move wasn't optional. The old path was 249 characters, so `.git/config` landed at 261 and blew past Windows' 260-char `MAX_PATH`: `git init` created `.git/` but every subsequent command reported "not a git repository" because it couldn't read the config. `core.longpaths` doesn't rescue this — git reads that config *before* it can apply the setting. If the project ever moves again, keep the path short.
+  - **`addons/ziva_agent/` is gitignored**: ~1.4 GB of prebuilt per-platform CEF/`zivacode` binaries, seven of them over GitHub's hard 100 MB file limit, so the repo cannot be pushed with them tracked. It is also not listed in `project.godot`'s `editor_plugins/enabled`, so nothing in the game depends on it — reinstall locally if needed. `addons/godot_mcp/` (255 KB, enabled) *is* committed. The tracked tree is ~28 MB.
+  - `.godot/` is ignored (editor cache, regenerates). `*.import` files are **deliberately committed** — they carry each asset's import settings and stable resource UID, and dropping them breaks scene/script references on a fresh clone.
 
 ## Known constraint (important)
 
