@@ -1,0 +1,126 @@
+{
+  "_comment": "Building catalog for the settlement build menu. category: 'resource' (ticks a resource), 'housing' (hard-gates recruitment of a species until built), 'functional' (unlocks an action button), or 'main' (the player's home -- auto-placed at game start, not buildable, not removable, has hp and is the Crusade's target). 'requires' is another building_id that must already exist in the settlement before this one appears in the build menu (empty string = always available). Costs: Bone Pile/Dark Altar cost the resource they themselves refine (Bones/Dark Essence); everything else is ordinary construction and costs Wood/Stone, the resources Workers gather (see WorkerSystem.gd) -- Dark Essence stays a separate ritual/magic resource, not a construction material.",
+
+  "_comment_barracks": "The Barracks is category 'housing_intake' -- a category of exactly one, and deliberately not 'housing' (that category means the old per-species hard gate, now locked). It is the recruit intake building per FOUNDATION_SPEC section 9: 'capacity' residents, 'unique': true so only one can ever exist (BuildingCatalog.buildable_ids drops it from the menu once placed), and no 'requires' -- GAME_OUTLINE Stage 2 puts the Barracks *first*, before the Workshop tech line, so gating it behind the Workshop would invert the intended build order. Its Upgrade button exists in the Barracks panel but is hard-locked, per the same section.",
+
+  "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (see CLAUDE.md) for the Dark Altar (its Dark Essence loop is Stage 4) and the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: EventSystem's housing gate and ThreatSystem still reference the same data shape, and these entries are the reference for whatever replaces them.",
+
+  "bone_pile": {
+    "display_name": "Bone Pile",
+    "category": "resource",
+    "cost": { "bones": 5 },
+    "resource_kind": "bones",
+    "resource_per_tick": 2,
+    "tick_interval": 5.0,
+    "power_value": 3,
+    "requires": "",
+    "sprite_path": "res://art/building_bone_pile_kenney.png"
+  },
+
+  "dark_altar": {
+    "display_name": "Dark Altar",
+    "category": "resource",
+    "cost": { "dark_essence": 8 },
+    "resource_kind": "dark_essence",
+    "resource_per_tick": 1,
+    "tick_interval": 6.0,
+    "power_value": 6,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://art/building_dark_altar_kenney.png"
+  },
+
+  "bone_crypt": {
+    "display_name": "Bone Crypt",
+    "category": "housing",
+    "housing_species": "Skeleton",
+    "cost": { "wood": 6, "stone": 4 },
+    "power_value": 4,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://Buildings/House/house_1_blue.png"
+  },
+
+  "charnel_pit": {
+    "display_name": "Charnel Pit",
+    "category": "housing",
+    "housing_species": "Ghoul",
+    "cost": { "wood": 6, "stone": 4 },
+    "power_value": 4,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://Buildings/House/house_2_green.png"
+  },
+
+  "haunted_spire": {
+    "display_name": "Haunted Spire",
+    "category": "housing",
+    "housing_species": "Wraith",
+    "cost": { "wood": 6, "stone": 4 },
+    "power_value": 4,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://art/building_crypt_kenney.png"
+  },
+
+  "war_camp": {
+    "display_name": "War Camp",
+    "category": "housing",
+    "housing_species": "Orc",
+    "cost": { "wood": 6, "stone": 4 },
+    "power_value": 4,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://Buildings/House/house_1_red.png"
+  },
+
+  "burrow_warren": {
+    "display_name": "Burrow Warren",
+    "category": "housing",
+    "housing_species": "Goblin",
+    "cost": { "wood": 6, "stone": 4 },
+    "power_value": 4,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://Buildings/House/house_2_yellow.png"
+  },
+
+  "workshop": {
+    "display_name": "Workshop",
+    "category": "functional",
+    "cost": { "wood": 10, "stone": 10 },
+    "power_value": 5,
+    "requires": "",
+    "sprite_path": "res://Buildings/Tower/tower_yellow.png"
+  },
+
+  "blacksmith": {
+    "display_name": "Blacksmith",
+    "category": "functional",
+    "cost": { "wood": 6, "stone": 12 },
+    "power_value": 7,
+    "requires": "workshop",
+    "sprite_path": "res://Buildings/Tower/tower_red.png"
+  },
+
+  "barracks": {
+    "display_name": "Barracks",
+    "category": "housing_intake",
+    "cost": { "wood": 8, "stone": 6 },
+    "capacity": 5,
+    "unique": true,
+    "power_value": 4,
+    "requires": "",
+    "sprite_path": "res://Buildings/Tower/tower_blue.png"
+  },
+
+  "throne_of_bones": {
+    "display_name": "Throne of Bones",
+    "category": "main",
+    "cost": {},
+    "power_value": 10,
+    "max_hp": 40,
+    "requires": "",
+    "sprite_path": "res://Buildings/Castle/castle_blue.png"
+  }
+}

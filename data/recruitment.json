@@ -1,0 +1,31 @@
+{
+  "_comment": "Recruitment tuning, kept separate from data/races.json (which is the roster itself) because these are the knobs you retune during playtesting, not facts about a race. Loaded by RaceCatalog alongside races.json; read by RecruitGenerator. Implements FOUNDATION_SPEC section 3 (recruit generation) and RACES.md's 'power attracts power' rule.",
+
+  "_comment_power_tiers": "The 'power attracts power' ladder from RACES.md: as settlement Power grows, recruit offers weight toward Uncommon/Rare. This is a TABLE, not a chain of if-statements in GDScript, so adding a fourth tier or retuning a weight is a JSON edit. Evaluated by picking the LAST entry whose min_power is <= current Power, so entries must stay sorted ascending by min_power. Weight keys must match the 'rarity' values in races.json exactly.",
+  "power_rarity_tiers": [
+    { "min_power": 0,  "weights": { "Common": 60, "Uncommon": 30, "Rare": 10 } },
+    { "min_power": 25, "weights": { "Common": 50, "Uncommon": 35, "Rare": 15 } },
+    { "min_power": 40, "weights": { "Common": 40, "Uncommon": 40, "Rare": 20 } }
+  ],
+
+  "_comment_roll": "FOUNDATION_SPEC section 3: value = clamp(baseline + d3 - d3, 1, 10). Two dice give a centre-weighted spread -- most recruits sit at baseline and +/-2 is rare, so 'some ogres are just stronger than others' without wild outliers.",
+  "stat_roll": {
+    "dice_sides": 3,
+    "min_value": 1,
+    "max_value": 10
+  },
+
+  "_comment_exceptional": "5% chance per recruit of +1 to their category-defining stat after the roll. 'best_labor' means whichever of woodcutting/mining/foraging rolled highest for that individual -- an Economy race's defining trait is that it is good at *its* speciality, which varies by race (Gray Dwarf mines, Minotaur does both). 'none' means the category has no defining stat and never rolls exceptional: Versatile is the flat-5 jack-of-all-trades by definition, and Labor is the interchangeable-by-design Skeleton Worker.",
+  "exceptional_chance_percent": 5,
+  "category_defining_stat": {
+    "Warrior": "might",
+    "Economy": "best_labor",
+    "Research": "guile",
+    "Foraging": "foraging",
+    "Versatile": "none",
+    "Labor": "none"
+  },
+
+  "_comment_first_run": "GAME_OUTLINE Stage 3: a first-time run is guaranteed offers spanning the categories so new players see the full scope. These three categories are dealt, in order, as the first three offers; after that offers are pure weighted-random. 'Versatile' is deliberately absent -- RACES.md says Human Outcast 'counts as nothing for the first-run category guarantee'.",
+  "first_run_categories": ["Warrior", "Economy", "Research"]
+}

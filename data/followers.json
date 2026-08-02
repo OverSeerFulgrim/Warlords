@@ -1,0 +1,82 @@
+{
+  "_comment": "Recruitment templates keyed by the 'recruit' / 'recruit_chance' id used in events.json. EventSystem rolls a name + traits + stats from here whenever a choice recruits a follower, instead of the old print-only stub.",
+
+  "orc_warband": {
+    "species": "Orc",
+    "names": ["Grosh", "Uzgar", "Thokk", "Mogrim", "Vraka", "Durgash"],
+    "traits_pool": ["Bloodthirsty", "Loyal", "Greedy", "Fanatic"],
+    "trait_count": 1,
+    "might": [3, 6],
+    "guile": [1, 3],
+    "influence": [1, 2],
+    "loyalty": [3, 7]
+  },
+
+  "defector": {
+    "species": "Dark Elf",
+    "names": ["Ilyndra", "Vexis", "Thalorin", "Nyssara", "Corvenn"],
+    "traits_pool": ["Cowardly", "Greedy", "Loyal"],
+    "trait_count": 1,
+    "might": [1, 3],
+    "guile": [3, 6],
+    "influence": [2, 5],
+    "loyalty": [1, 4],
+    "chance": 60
+  },
+
+  "corrupted_orphan": {
+    "species": "Wraith",
+    "names": ["Wren", "Alder", "Pip", "Tamsin", "Oswin"],
+    "traits_pool": ["Fanatic", "Loyal"],
+    "trait_count": 1,
+    "might": [1, 2],
+    "guile": [2, 4],
+    "influence": [1, 3],
+    "loyalty": [6, 10]
+  },
+
+  "bonded_refugee": {
+    "species": "Goblin",
+    "names": ["Snik", "Rattle", "Miri", "Dregg", "Wisp"],
+    "traits_pool": ["Cowardly", "Greedy"],
+    "trait_count": 1,
+    "might": [1, 3],
+    "guile": [2, 4],
+    "influence": [1, 2],
+    "loyalty": [1, 3]
+  },
+
+  "loyal_refugee": {
+    "species": "Goblin",
+    "names": ["Kell", "Tobin", "Nessa", "Bram", "Fenn"],
+    "traits_pool": ["Loyal"],
+    "trait_count": 1,
+    "might": [1, 3],
+    "guile": [2, 4],
+    "influence": [1, 3],
+    "loyalty": [6, 9]
+  },
+
+  "feral_monster": {
+    "species": "Ghoul",
+    "names": ["Gnash", "Marrow", "Husk", "Rott", "Gristle"],
+    "traits_pool": ["Bloodthirsty", "Cowardly"],
+    "trait_count": 1,
+    "might": [3, 5],
+    "guile": [1, 2],
+    "influence": [1, 1],
+    "loyalty": [1, 4]
+  },
+
+  "fallen_paladin": {
+    "species": "Wraith",
+    "names": ["Ser Aldric", "Ser Branwen", "Ser Corin", "Dame Isolde"],
+    "traits_pool": ["Fanatic", "Loyal"],
+    "trait_count": 2,
+    "might": [4, 7],
+    "guile": [2, 4],
+    "influence": [3, 6],
+    "loyalty": [4, 8],
+    "chance": 40
+  }
+}

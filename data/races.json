@@ -1,0 +1,258 @@
+{
+  "_comment": "Race roster, transcribed from RACES.md (which stays the human-readable source of truth for the design rationale). All stats and labor skills run 1-10 on the Human Peasant = 5 scale; walk_speed and food_per_meal are racial constants with no per-recruit variance (FOUNDATION_SPEC section 3). 'category' is what the race offers (Warrior/Economy/Research/Foraging/Versatile/Labor) and drives the first-run category-spread guarantee plus which stat gets the 5% exceptional roll. 'alignment' is data, not a moral system -- it drives recruit-event weighting and later good/evil friction. 'rarity' is the base recruit-offer weight (Common 60 / Uncommon 30 / Rare 10, shifting toward Uncommon/Rare as settlement Power grows); 'player-made' and 'not recruitable' never appear in recruit offers. 'housing_style' is the fund-a-house placement rule the recruit picks their own spot by. 'rivalries' lists specific race ids with a starting-relationship penalty; on top of these there is a mild blanket penalty between any Good-aligned and any Evil-aligned pair, which is derived from 'alignment' rather than listed per race. Non-'_' keys are races; human_peasant is the 1-10 measuring stick and is deliberately not recruitable.",
+
+  "human_peasant": {
+    "display_name": "Human Peasant",
+    "category": "reference",
+    "alignment": "Neutral",
+    "rarity": "not recruitable",
+    "recruitable": false,
+    "stats": { "might": 5, "guile": 5, "influence": 5, "loyalty": 5 },
+    "labor": { "woodcutting": 5, "mining": 5, "foraging": 5 },
+    "walk_speed": 1.00,
+    "food_per_meal": 1.0,
+    "housing_style": "none",
+    "housing_note": "Reference entry only -- the measuring stick for the 1-10 scale, and later the good nations' commoner NPC.",
+    "rivalries": []
+  },
+
+  "skeleton_worker": {
+    "display_name": "Skeleton Worker",
+    "category": "Labor",
+    "alignment": "Undead",
+    "rarity": "player-made",
+    "recruitable": false,
+    "stats": { "might": 4, "guile": 2, "influence": 1, "loyalty": 10 },
+    "labor": { "woodcutting": 3, "mining": 3, "foraging": 2 },
+    "walk_speed": 0.90,
+    "food_per_meal": 0.0,
+    "housing_style": "none",
+    "housing_note": "Workers don't take houses.",
+    "rivalries": []
+  },
+
+  "orc": {
+    "display_name": "Orc",
+    "category": "Warrior",
+    "alignment": "Evil",
+    "rarity": "Common",
+    "recruitable": true,
+    "stats": { "might": 7, "guile": 4, "influence": 4, "loyalty": 5 },
+    "labor": { "woodcutting": 5, "mining": 4, "foraging": 4 },
+    "walk_speed": 1.00,
+    "food_per_meal": 1.5,
+    "housing_style": "communal",
+    "housing_note": "Loose warband circles.",
+    "rivalries": ["ogre"]
+  },
+
+  "hobgoblin": {
+    "display_name": "Hobgoblin",
+    "category": "Warrior",
+    "alignment": "Evil",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 6, "guile": 5, "influence": 5, "loyalty": 6 },
+    "labor": { "woodcutting": 4, "mining": 4, "foraging": 3 },
+    "walk_speed": 1.00,
+    "food_per_meal": 1.25,
+    "housing_style": "communal",
+    "housing_note": "Orderly rows near the Barracks.",
+    "rivalries": []
+  },
+
+  "ogre": {
+    "display_name": "Ogre",
+    "category": "Warrior",
+    "alignment": "Chaotic",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 9, "guile": 2, "influence": 2, "loyalty": 4 },
+    "labor": { "woodcutting": 6, "mining": 6, "foraging": 3 },
+    "walk_speed": 0.80,
+    "food_per_meal": 3.0,
+    "housing_style": "spaced",
+    "housing_note": "Wants room, builds far from neighbors.",
+    "rivalries": ["orc"]
+  },
+
+  "troll": {
+    "display_name": "Troll",
+    "category": "Warrior",
+    "alignment": "Chaotic",
+    "rarity": "Rare",
+    "recruitable": true,
+    "stats": { "might": 9, "guile": 3, "influence": 1, "loyalty": 3 },
+    "labor": { "woodcutting": 5, "mining": 4, "foraging": 5 },
+    "walk_speed": 0.85,
+    "food_per_meal": 3.5,
+    "housing_style": "spaced",
+    "housing_note": "Near water if any.",
+    "rivalries": []
+  },
+
+  "gray_dwarf": {
+    "display_name": "Gray Dwarf",
+    "category": "Economy",
+    "alignment": "Evil",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 6, "guile": 4, "influence": 4, "loyalty": 6 },
+    "labor": { "woodcutting": 4, "mining": 9, "foraging": 2 },
+    "walk_speed": 0.85,
+    "food_per_meal": 1.0,
+    "housing_style": "near_feature",
+    "housing_note": "Digs in by the Stone Deposit.",
+    "rivalries": ["mountain_dwarf"]
+  },
+
+  "kobold": {
+    "display_name": "Kobold",
+    "category": "Economy",
+    "alignment": "Chaotic",
+    "rarity": "Common",
+    "recruitable": true,
+    "stats": { "might": 2, "guile": 5, "influence": 2, "loyalty": 4 },
+    "labor": { "woodcutting": 3, "mining": 6, "foraging": 4 },
+    "walk_speed": 1.05,
+    "food_per_meal": 0.5,
+    "housing_style": "clustered",
+    "housing_note": "Burrow warrens near the mine.",
+    "rivalries": ["gnome"]
+  },
+
+  "minotaur": {
+    "display_name": "Minotaur",
+    "category": "Economy",
+    "alignment": "Neutral",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 8, "guile": 3, "influence": 3, "loyalty": 5 },
+    "labor": { "woodcutting": 7, "mining": 7, "foraging": 3 },
+    "walk_speed": 1.10,
+    "food_per_meal": 2.5,
+    "housing_style": "spaced",
+    "housing_note": "Likes space, no adjacent houses.",
+    "rivalries": []
+  },
+
+  "mountain_dwarf": {
+    "display_name": "Mountain Dwarf",
+    "category": "Economy",
+    "alignment": "Good",
+    "rarity": "Rare",
+    "recruitable": true,
+    "stats": { "might": 6, "guile": 3, "influence": 5, "loyalty": 7 },
+    "labor": { "woodcutting": 5, "mining": 8, "foraging": 3 },
+    "walk_speed": 0.85,
+    "food_per_meal": 1.25,
+    "housing_style": "near_feature",
+    "housing_note": "Stone, but apart from Gray Dwarves.",
+    "rivalries": ["gray_dwarf"]
+  },
+
+  "gnome": {
+    "display_name": "Gnome",
+    "category": "Research",
+    "alignment": "Neutral",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 2, "guile": 7, "influence": 5, "loyalty": 5 },
+    "labor": { "woodcutting": 2, "mining": 3, "foraging": 4 },
+    "walk_speed": 0.90,
+    "food_per_meal": 0.75,
+    "housing_style": "near_feature",
+    "housing_note": "Beside Workshop/Laboratory.",
+    "rivalries": ["kobold"]
+  },
+
+  "dark_elf": {
+    "display_name": "Dark Elf",
+    "category": "Research",
+    "alignment": "Evil",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 4, "guile": 8, "influence": 6, "loyalty": 4 },
+    "labor": { "woodcutting": 3, "mining": 2, "foraging": 5 },
+    "walk_speed": 1.05,
+    "food_per_meal": 0.75,
+    "housing_style": "edge",
+    "housing_note": "Secluded, rim of the settlement.",
+    "rivalries": ["high_elf"]
+  },
+
+  "high_elf": {
+    "display_name": "High Elf",
+    "category": "Research",
+    "alignment": "Good",
+    "rarity": "Rare",
+    "recruitable": true,
+    "stats": { "might": 4, "guile": 7, "influence": 7, "loyalty": 5 },
+    "labor": { "woodcutting": 3, "mining": 2, "foraging": 6 },
+    "walk_speed": 1.05,
+    "food_per_meal": 0.75,
+    "housing_style": "spaced",
+    "housing_note": "Apart, and never beside a Dark Elf.",
+    "rivalries": ["dark_elf"]
+  },
+
+  "goblin": {
+    "display_name": "Goblin",
+    "category": "Foraging",
+    "alignment": "Chaotic",
+    "rarity": "Common",
+    "recruitable": true,
+    "stats": { "might": 3, "guile": 6, "influence": 2, "loyalty": 3 },
+    "labor": { "woodcutting": 3, "mining": 3, "foraging": 8 },
+    "walk_speed": 1.15,
+    "food_per_meal": 0.75,
+    "housing_style": "clustered",
+    "housing_note": "Social, pile in next to each other.",
+    "rivalries": ["gnoll"]
+  },
+
+  "gnoll": {
+    "display_name": "Gnoll",
+    "category": "Foraging",
+    "alignment": "Chaotic",
+    "rarity": "Common",
+    "recruitable": true,
+    "stats": { "might": 5, "guile": 5, "influence": 2, "loyalty": 4 },
+    "labor": { "woodcutting": 3, "mining": 2, "foraging": 9 },
+    "walk_speed": 1.20,
+    "food_per_meal": 1.5,
+    "housing_style": "clustered",
+    "housing_note": "With their own pack, away from all other races -- preference, not an enforced minimum distance.",
+    "rivalries": ["goblin"]
+  },
+
+  "halfling": {
+    "display_name": "Halfling",
+    "category": "Foraging",
+    "alignment": "Good",
+    "rarity": "Rare",
+    "recruitable": true,
+    "stats": { "might": 3, "guile": 6, "influence": 6, "loyalty": 6 },
+    "labor": { "woodcutting": 3, "mining": 2, "foraging": 8 },
+    "walk_speed": 0.95,
+    "food_per_meal": 1.5,
+    "housing_style": "clustered",
+    "housing_note": "Social, plants little gardens.",
+    "rivalries": []
+  },
+
+  "human_outcast": {
+    "display_name": "Human Outcast",
+    "category": "Versatile",
+    "alignment": "Neutral",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "stats": { "might": 5, "guile": 5, "influence": 5, "loyalty": 5 },
+    "labor": { "woodcutting": 5, "mining": 5, "foraging": 5 },
+    "walk_speed": 1.00,
+    "food_per_meal": 1.0,
+    "housing_style": "communal",
+    "housing_note": "Anywhere near town.",
+    "rivalries": []
+  }
+}

@@ -1,0 +1,48 @@
+# ---- Godot 4 ----
+# Editor/import cache. Regenerated on first open; never commit.
+.godot/
+
+# NOTE: *.import files are deliberately NOT ignored. In Godot 4 they carry the
+# import settings for every asset and the stable resource UID -- without them a
+# fresh clone re-imports with new UIDs and scene/script references break. Same
+# reason art/, data/, Buildings/, Characters/, Icons/ etc. are all committed:
+# this is a game project, the assets are the project.
+
+# Android export scaffold, if one is ever generated.
+/android/
+
+# Export presets can carry keystore paths and passwords. None exists yet, but
+# ignore it before one does rather than after.
+export_presets.cfg
+
+# ---- Third-party addon binaries ----
+# addons/ziva_agent is ~1.4 GB of prebuilt CEF libraries and per-platform
+# `zivacode` binaries (linux x86_64/arm64, macos, windows x86_64/arm64). Seven
+# of its files are over GitHub's 100 MB hard limit, so the repo physically
+# cannot be pushed with them tracked. It is also NOT enabled in project.godot
+# (`editor_plugins/enabled` lists only godot_mcp), so nothing in the game
+# depends on it -- reinstall the addon locally if you need it.
+#
+# addons/godot_mcp IS committed: 255 KB, enabled, and documented in CLAUDE.md
+# as part of the project's tooling.
+addons/ziva_agent/
+
+# ---- Scratch / throwaway ----
+# Temporary smoke-test harnesses and image-inspection output. These get created
+# in the project root so Godot can load them as autoloads/scripts, and deleted
+# after each run -- ignored so a crash mid-run can't leak one into a commit.
+_smoke*
+_imgtmp*
+_zoom.gd
+_imgtool.gd
+*.bak
+
+# ---- OS junk ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes

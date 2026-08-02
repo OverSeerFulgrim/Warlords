@@ -1,0 +1,153 @@
+[
+  {
+    "id": "blizzard",
+    "category": "hazard",
+    "title": "Blizzard",
+    "description": "A howling blizzard rolls in off the Frozen Wastes. Followers work slower until it passes.",
+    "choices": [
+      { "label": "Weather it out", "effects": { "bones": -3 } }
+    ]
+  },
+  {
+    "id": "cracked_ice",
+    "category": "hazard",
+    "title": "Cracked Ice",
+    "description": "The ice over an old grave site has cracked open, exposing frozen remains.",
+    "choices": [
+      { "label": "Harvest the remains", "effects": { "bones": 6, "threat": 1 } },
+      { "label": "Leave it be", "effects": {} }
+    ]
+  },
+  {
+    "id": "lost_trader",
+    "category": "visitor",
+    "title": "A Lost Trader",
+    "description": "A trader has lost his way and stumbled into your territory.",
+    "choices": [
+      { "label": "Rob him", "effects": { "dark_essence": 8, "reputation": -2, "threat": 2 } },
+      { "label": "Extort him for future tribute", "effects": { "dark_essence": 3, "reputation": -1, "threat": 1 } },
+      { "label": "Let him pass, quietly", "effects": {} }
+    ]
+  },
+  {
+    "id": "orcs_seeking_home",
+    "category": "visitor",
+    "title": "Orcs Seeking a Home",
+    "description": "A band of orcs, driven from their lands, ask to settle here.",
+    "choices": [
+      { "label": "Welcome them", "effects": { "recruit": "orc_warband", "reputation": 1 } },
+      { "label": "Turn them away", "effects": { "threat": 1 } }
+    ]
+  },
+  {
+    "id": "wandering_bard",
+    "category": "visitor",
+    "title": "A Wandering Bard",
+    "description": "A bard wants to write songs about your growing infamy.",
+    "choices": [
+      { "label": "Let him", "effects": { "reputation": 4, "threat": 3 } },
+      { "label": "Silence him", "effects": { "threat": 1, "reputation": -1 } }
+    ]
+  },
+  {
+    "id": "defector",
+    "category": "visitor",
+    "title": "A Defector",
+    "description": "Someone claiming to have fled a 'good' kingdom asks for asylum. They might be exactly what they say. They might be a spy.",
+    "choices": [
+      { "label": "Take them in", "effects": { "recruit": "defector", "threat": 1 } },
+      { "label": "Turn them away", "effects": {} }
+    ]
+  },
+  {
+    "id": "orphan_in_woods",
+    "category": "moral",
+    "title": "An Orphan in the Woods",
+    "description": "A child, lost and alone, wanders near your settlement.",
+    "choices": [
+      { "label": "Adopt and corrupt him", "effects": { "recruit": "corrupted_orphan", "reputation": -3 } },
+      { "label": "Turn him away", "effects": {} }
+    ]
+  },
+  {
+    "id": "captured_paladin",
+    "category": "moral",
+    "title": "A Captured Paladin",
+    "description": "One of your followers has dragged in a wounded paladin.",
+    "choices": [
+      { "label": "Execute", "effects": { "reputation": -2, "threat": 2, "bones": 4 } },
+      { "label": "Imprison", "effects": { "threat": 1 } },
+      { "label": "Attempt to corrupt", "effects": { "dark_essence": -5, "recruit_chance": "fallen_paladin" } }
+    ]
+  },
+  {
+    "id": "noble_deal",
+    "category": "moral",
+    "title": "A Noble's Secret Offer",
+    "description": "A minor noble, deep in debt, offers you a quiet arrangement.",
+    "choices": [
+      { "label": "Take the deal", "effects": { "dark_essence": 6, "threat": 1 } },
+      { "label": "Refuse", "effects": {} }
+    ]
+  },
+  {
+    "id": "refugees",
+    "category": "moral",
+    "title": "Refugees",
+    "description": "War refugees arrive, exhausted and desperate for shelter.",
+    "choices": [
+      { "label": "Forced labor", "effects": { "recruit": "bonded_refugee", "reputation": -2 } },
+      { "label": "Shelter them honestly", "effects": { "recruit": "loyal_refugee", "reputation": 1, "dark_essence": -4 } }
+    ]
+  },
+  {
+    "id": "ancient_ruin",
+    "category": "opportunity",
+    "title": "An Ancient Ruin",
+    "description": "Scouts report ruins nearby, radiating old power -- and old wards.",
+    "choices": [
+      { "label": "Excavate", "effects": { "dark_essence": 10, "threat": 2 }, "risk_effects": { "bones": -6 } },
+      { "label": "Leave it sealed", "effects": {} }
+    ]
+  },
+  {
+    "id": "rival_villain",
+    "category": "opportunity",
+    "title": "A Rival's Proposal",
+    "description": "Another warlord in the region proposes an alliance -- or issues a turf-war ultimatum, depending on your answer.",
+    "choices": [
+      { "label": "Propose alliance", "effects": { "reputation": 1 } },
+      { "label": "Reject and hold your ground", "effects": { "threat": 2 } }
+    ]
+  },
+  {
+    "id": "plague_outbreak",
+    "category": "opportunity",
+    "title": "Plague Outbreak",
+    "description": "Sickness spreads through a nearby village.",
+    "choices": [
+      { "label": "Weaponize it", "effects": { "threat": 3, "dark_essence": 5 } },
+      { "label": "Ignore it", "effects": {} }
+    ]
+  },
+  {
+    "id": "monster_horde",
+    "category": "opportunity",
+    "title": "A Migrating Horde",
+    "description": "A horde of monsters passes through your territory.",
+    "choices": [
+      { "label": "Recruit stragglers", "effects": { "recruit": "feral_monster" } },
+      { "label": "Fight them off", "effects": { "bones": 4, "threat": 1 } }
+    ]
+  },
+  {
+    "id": "hero_scout",
+    "category": "opportunity",
+    "title": "A Hero's Scout",
+    "description": "A lone scout was spotted mapping your defenses. Word will reach someone.",
+    "choices": [
+      { "label": "Capture the scout", "effects": { "threat": -1 } },
+      { "label": "Let them report back", "effects": { "threat": 2 } }
+    ]
+  }
+]

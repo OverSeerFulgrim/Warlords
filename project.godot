@@ -1,0 +1,45 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
+[application]
+
+config/name="Undead Empire Prototype"
+config/description="Villain settlement-builder roguelite prototype (Phase 1: Undead Empire class, Frozen Wastes climate)."
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://art/icon_settlement.png"
+
+[autoload]
+
+GameState="*res://scripts/autoload/GameState.gd"
+EventBus="*res://scripts/autoload/EventBus.gd"
+BuildingCatalog="*res://scripts/autoload/BuildingCatalog.gd"
+RaceCatalog="*res://scripts/autoload/RaceCatalog.gd"
+MCPRuntimeBridge="*res://addons/godot_mcp/services/mcp_runtime_bridge.gd"
+MCPInputBridge="*res://addons/godot_mcp/services/mcp_input_bridge.gd"
+MCPScreenshotBridge="*res://addons/godot_mcp/services/mcp_screenshot_bridge.gd"
+
+[display]
+
+window/size/viewport_width=1400
+window/size/viewport_height=760
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
