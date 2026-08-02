@@ -25,6 +25,19 @@ signal follower_count_changed(count: int)
 ## (GAME_OUTLINE gap #6) can eventually remember who was sent away and how.
 signal recruit_turned_away(follower, reason: String)
 
+# Meals / morale (see MoraleSystem.gd, FOUNDATION_SPEC section 8)
+## One meal tick resolved. (phase: "Dawn"/"Dusk", fed count, shorted count)
+signal meal_served(phase: String, fed: int, shorted: int)
+signal morale_changed(follower, new_morale: int)
+## Low-morale mischief: a small resource loss with flavor text.
+signal recruit_misbehaved(follower, text: String, kind: String, amount: int)
+## Morale bottomed out -- they leave on the next missed meal unless fed.
+signal recruit_departure_warning(follower)
+signal recruit_departed(follower, reason: String)
+
+# Housing (fund-a-house, FOUNDATION_SPEC section 9)
+signal recruit_housed(follower, cell: Vector2i)
+
 # Workers (resource gathering -- see Worker.gd / WorkerSystem.gd)
 signal worker_count_changed(count: int)
 ## Currently unemitted: assignment moved from per-worker to the global

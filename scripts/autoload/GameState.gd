@@ -52,6 +52,25 @@ var _last_building_power: int = 0  # cached so follower-only changes can also tr
 # --- Followers ---
 var followers: Array = []  # Array[Follower]
 
+## Everyone who has left, with how they felt about it. **Data only** -- nothing
+## reads this yet. It exists so the departure-memory system (GAME_OUTLINE gap
+## #6: sent-away recruits "return later with a gift" or "hate you and ambush
+## your villagers") has a history to work from when it's built, rather than
+## starting from nothing. Each entry:
+##   {name, species, race_id, disposition, reason, day}
+## `disposition` is Follower.departure_disposition() -- negative = resentful.
+var departed: Array = []  # Array[Dictionary]
+
+func record_departure(follower, reason: String, day: int) -> void:
+	departed.append({
+		"name": follower.follower_name,
+		"species": follower.species,
+		"race_id": follower.race_id,
+		"disposition": follower.departure_disposition(),
+		"reason": reason,
+		"day": day,
+	})
+
 func _ready() -> void:
 	print("[GameState] ready. dark_essence=%d bones=%d wood=%d stone=%d food=%d" % [dark_essence, bones, wood, stone, food])
 

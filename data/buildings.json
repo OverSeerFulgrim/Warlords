@@ -3,6 +3,8 @@
 
   "_comment_barracks": "The Barracks is category 'housing_intake' -- a category of exactly one, and deliberately not 'housing' (that category means the old per-species hard gate, now locked). It is the recruit intake building per FOUNDATION_SPEC section 9: 'capacity' residents, 'unique': true so only one can ever exist (BuildingCatalog.buildable_ids drops it from the menu once placed), and no 'requires' -- GAME_OUTLINE Stage 2 puts the Barracks *first*, before the Workshop tech line, so gating it behind the Workshop would invert the intended build order. Its Upgrade button exists in the Barracks panel but is hard-locked, per the same section.",
 
+  "_comment_house": "'recruit_house' (category 'housing_home') is the home a recruit builds for themselves once you fund it -- flat 6 wood / 4 stone, charged by the fund-a-house action rather than by this entry, which is why 'cost' is empty. It is 'locked' because the player never places one from the build menu: the RECRUIT picks the cell, by their race's housing_style (see HousePlanner.gd and RACES.md). Its sprite_path is the default; the actual sprite and tint are overridden per race at placement time so a goblin warren and a minotaur's lodge don't look identical.",
+
   "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (see CLAUDE.md) for the Dark Altar (its Dark Essence loop is Stage 4) and the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: EventSystem's housing gate and ThreatSystem still reference the same data shape, and these entries are the reference for whatever replaces them.",
 
   "bone_pile": {
@@ -112,6 +114,16 @@
     "power_value": 4,
     "requires": "",
     "sprite_path": "res://Buildings/Tower/tower_blue.png"
+  },
+
+  "recruit_house": {
+    "display_name": "House",
+    "category": "housing_home",
+    "cost": {},
+    "power_value": 2,
+    "requires": "",
+    "locked": true,
+    "sprite_path": "res://Buildings/House/house_1_blue.png"
   },
 
   "throne_of_bones": {

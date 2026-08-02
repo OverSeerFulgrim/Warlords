@@ -38,6 +38,50 @@ var loyalty: int = 5  # 0-10. Low loyalty = betrayal/defection risk.
 
 var is_busy: bool = false
 
+# ---------------- Morale & meals (FOUNDATION_SPEC section 8) ----------------
+
+## 1-10, starts at 7. Per-recruit rather than one settlement-wide meter --
+## FOUNDATION_SPEC section 8 calls that out explicitly ("cheap now, enables
+## 'the hungry ogre riots first' later"), and it is what lets the feeding order
+## actually matter: the faithful get fed, malcontents starve.
+var morale: int = 7
+
+## Meal bookkeeping for the current dawn->dawn cycle (2 meals: dawn + dusk).
+## Reset at each dawn, after the previous cycle has been scored for the
+## fed-all-day morale bonus.
+var meals_eaten_this_cycle: int = 0
+var meals_missed_this_cycle: int = 0
+
+## Set when morale first bottoms out at 1 and the departure warning fires.
+## They then leave on the *next* missed meal, not immediately -- the warning is
+## a chance to recover, not a formality.
+var departure_warned: bool = false
+
+# ---------------- Housing (FOUNDATION_SPEC section 9, fund-a-house) ----------
+
+## False while they're still living in the Barracks and occupying a slot.
+var is_housed: bool = false
+## Grid cell of their own house once funded. (-1,-1) while unhoused.
+var house_cell: Vector2i = Vector2i(-1, -1)
+
+const MORALE_MIN: int = 1
+const MORALE_MAX: int = 10
+const MORALE_START: int = 7
+
+func adjust_morale(delta: int) -> void:
+	morale = clampi(morale + delta, MORALE_MIN, MORALE_MAX)
+
+## How they feel about you on the way out, for the departure-memory system
+## (GAME_OUTLINE gap #6) -- stored, never read yet.
+##
+## Loyalty is the anchor because it is the stat that already means "how much
+## slack do they cut you": a Loyalty-10 fanatic who starved out still half
+## understands (+2), a Loyalty-3 goblin leaves bitter (-5). Morale at the
+## moment of leaving nudges it, though in practice that's almost always 1,
+## since starvation is currently the only way anyone departs.
+func departure_disposition() -> int:
+	return clampi(loyalty - 8 + (morale - MORALE_MIN), -10, 10)
+
 func _init(p_name: String, p_species: String, p_traits: Array[String] = [],
 		p_might: int = 1, p_guile: int = 1, p_influence: int = 1, p_loyalty: int = 5) -> void:
 	follower_name = p_name

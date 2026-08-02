@@ -28,6 +28,7 @@ var mission_system: MissionSystem
 var worker_system: WorkerSystem
 var resource_field: ResourceField
 var day_night: DayNightCycle
+var morale_system: MoraleSystem
 var camera: GameCamera
 
 var current_event: Dictionary = {}
@@ -231,6 +232,12 @@ func _build_systems() -> void:
 	day_night = DayNightCycle.new()
 	day_night.name = "DayNightCycle"
 	add_child(day_night)
+
+	# Meals hang off day_night's dawn/dusk signals, so it has to exist first.
+	morale_system = MoraleSystem.new()
+	morale_system.name = "MoraleSystem"
+	morale_system.day_night = day_night
+	add_child(morale_system)
 
 func _build_camera() -> void:
 	camera = GameCamera.new()
@@ -1116,6 +1123,10 @@ func _populate_keep_menu() -> void:
 
 # ---------------- Barracks panel (click the Barracks) ----------------
 
+func _refresh_barracks_if_open() -> void:
+	if barracks_panel and barracks_panel.visible:
+		_populate_barracks_panel()
+
 func _toggle_barracks_panel() -> void:
 	barracks_panel.visible = not barracks_panel.visible
 	if barracks_panel.visible:
@@ -1141,18 +1152,12 @@ func _populate_barracks_panel() -> void:
 		empty.text = "No residents yet. Recruits will arrive."
 		empty.modulate = Color(1, 1, 1, 0.6)
 		box.add_child(empty)
-	for f in GameState.followers:
-		var row := Label.new()
-		row.add_theme_font_size_override("font_size", 11)
-		row.text = "%s — %s (%s)   M%d G%d I%d L%d   W%d M%d F%d   [%s]" % [
-			f.label(), f.species, f.category,
-			f.might, f.guile, f.influence, f.loyalty,
-			f.woodcutting, f.mining, f.foraging,
-			f.status_label(),
-		]
-		if f.is_exceptional:
-			row.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-		box.add_child(row)
+
+	# Two sections: people still occupying a slot, and people who've moved out.
+	# The settled list stays visible because morale keeps mattering after
+	# they're housed -- a housed recruit still eats and can still desert.
+	_add_roster_section(box, "In the Barracks", false, true)
+	_add_roster_section(box, "Settled in town", true, false)
 
 	# FOUNDATION_SPEC section 9: "Upgrade button: present, hard-locked --
 	# greyed 'Locked' state, no tooltip cost. Unlock is a roadmap milestone,
@@ -1166,6 +1171,67 @@ func _populate_barracks_panel() -> void:
 	box.add_child(upgrade)
 
 	_add_button(box, "Close", func(): barracks_panel.visible = false)
+
+## One roster block. `housed` selects which half of the roster to list;
+## `with_fund_button` adds the fund-a-house action, which only makes sense for
+## people who haven't got one yet.
+func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with_fund_button: bool) -> void:
+	var members: Array = GameState.followers.filter(func(f): return f.is_housed == housed)
+	if members.is_empty():
+		return
+	var head := Label.new()
+	head.text = heading
+	head.add_theme_font_size_override("font_size", 11)
+	head.modulate = Color(1, 1, 1, 0.55)
+	box.add_child(head)
+
+	for f in members:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+
+		var info := Label.new()
+		info.add_theme_font_size_override("font_size", 11)
+		info.text = "%s — %s (%s)  M%d G%d I%d L%d  W%d M%d F%d  morale %d/10  [%s]" % [
+			f.label(), f.species, f.category,
+			f.might, f.guile, f.influence, f.loyalty,
+			f.woodcutting, f.mining, f.foraging,
+			f.morale, f.status_label(),
+		]
+		# Morale colour beats the exceptional gold when someone is in trouble --
+		# a starving star recruit is news, and the star is still in their name.
+		if f.morale <= MoraleSystem.DEPARTURE_MORALE:
+			info.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+		elif f.morale <= MoraleSystem.MISCHIEF_MORALE:
+			info.add_theme_color_override("font_color", Color(0.95, 0.70, 0.40))
+		elif f.is_exceptional:
+			info.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
+		row.add_child(info)
+
+		if with_fund_button:
+			var target: Follower = f  # explicit re-bind for the closure
+			var fund := Button.new()
+			var cost := SettlementGrid.HOUSE_COST
+			fund.text = "Fund house (%d wood, %d stone)" % [cost["wood"], cost["stone"]]
+			fund.tooltip_text = "They pick the spot themselves, by race. Frees a Barracks slot."
+			fund.disabled = not GameState.can_afford_cost(cost)
+			fund.pressed.connect(func(): _fund_house(target))
+			row.add_child(fund)
+
+		box.add_child(row)
+
+## Pays for a recruit's house. Where it lands is the recruit's call, not the
+## player's -- see HousePlanner.
+func _fund_house(follower) -> void:
+	var cell: Vector2i = settlement.fund_house(follower, resource_field)
+	if cell == Vector2i(-1, -1):
+		_log("[color=orange]Can't fund a house for %s right now.[/color]" % follower.follower_name, "alerts")
+		return
+	var style: String = RaceCatalog.get_race(follower.race_id).get("housing_style", "communal")
+	_log("[color=lightgreen]%s built a house at %s (%s).[/color] Barracks now %d/%d." % [
+		follower.follower_name, cell, style,
+		settlement.barracks_residents(), settlement.barracks_capacity()], "characters events")
+	if barracks_panel.visible:
+		_populate_barracks_panel()
 
 func _try_place_pending(cell: Vector2i) -> void:
 	var id := _pending_building_id
@@ -1308,6 +1374,33 @@ func _connect_signals() -> void:
 	)
 	# Fires on Dawn/Daylight/Dusk/Night word changes only, not per frame.
 	EventBus.day_phase_changed.connect(func(_label: String): _update_stats_label())
+
+	# ---- Meals / morale (MoraleSystem) ----
+	EventBus.meal_served.connect(func(phase: String, fed: int, shorted: int):
+		if shorted > 0:
+			_log("[color=orange]%s meal: %d fed, %d went hungry.[/color]" % [phase, fed, shorted], "events alerts")
+			_alert("%d went hungry at %s." % [shorted, phase.to_lower()], "warn")
+		elif fed > 0:
+			_log("%s meal: %d fed." % [phase, fed], "events")
+		_refresh_barracks_if_open()
+	)
+	EventBus.recruit_misbehaved.connect(func(_f, text: String, _kind: String, _amount: int):
+		_log("[color=orange]%s[/color]" % text, "characters alerts")
+		_alert(text, "bad")
+	)
+	EventBus.recruit_departure_warning.connect(func(f):
+		_log("[color=red]%s is at breaking point and will leave if they miss another meal.[/color]"
+			% f.follower_name, "characters alerts events")
+		_alert("%s is about to desert." % f.follower_name, "bad")
+		_refresh_barracks_if_open()
+	)
+	EventBus.recruit_departed.connect(func(f, reason: String):
+		_log("[color=red]%s the %s has left your service (%s).[/color]" % [f.follower_name, f.species, reason],
+			"characters alerts events")
+		_alert("%s has deserted." % f.follower_name, "bad")
+		_refresh_barracks_if_open()
+	)
+	EventBus.recruit_housed.connect(func(_f, _cell): _populate_build_row())
 	EventBus.follower_recruited.connect(func(f):
 		var star := " [color=gold](exceptional)[/color]" if f.is_exceptional else ""
 		_log("[color=lightgreen]%s the %s (%s %s) has joined you.[/color]%s" % [

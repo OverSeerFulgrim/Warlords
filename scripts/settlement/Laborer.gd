@@ -49,6 +49,14 @@ var gather_action_target: float = 0.0
 var idle_target: Vector2 = Vector2.ZERO
 var idle_wait: float = 0.0
 
+## Where they mill about with nothing to do. Defaults to the keep for Workers
+## and for recruits still in the Barracks; once a recruit's house is funded it
+## moves to their own doorstep, which is what makes a settled town look
+## settled. Note this is *only* the idle anchor -- loads are still deposited at
+## the keep, so a housed dwarf still walks their stone back to the Throne.
+var idle_anchor: Vector2 = Vector2.ZERO
+const IDLE_WANDER_RADIUS: float = 34.0
+
 ## Name for logs and the HUD. Overridden by both subclasses, which keep their
 ## own `worker_name` / `follower_name` fields rather than sharing one -- those
 ## names are load-bearing at a lot of call sites and mean subtly different

@@ -23,6 +23,14 @@ class_name Building
 ## the Barracks). 0 for everything else. See SettlementGrid.barracks_capacity().
 @export var capacity: int = 0
 
+## For category == "housing_home": which race lives here. Drives the clustered
+## housing style ("build next to an existing same-race house") and the
+## per-race sprite/tint. "" for every other building.
+@export var house_race_id: String = ""
+## Per-race colour wash applied to the sprite, so a street of goblin burrows
+## reads differently from a minotaur's lodge without needing distinct art.
+@export var sprite_tint: Color = Color.WHITE
+
 ## Main building only (category == "main"): the Crusade's actual target. See
 ## ThreatSystem._resolve_crusade(). Unused (0) for every other building.
 @export var is_main_building: bool = false
@@ -58,6 +66,7 @@ func _setup_sprite() -> void:
 	if largest_side > SettlementGrid.CELL_SIZE:
 		var scale_factor: float = SettlementGrid.CELL_SIZE / largest_side
 		sprite.scale = Vector2.ONE * scale_factor
+	sprite.modulate = sprite_tint
 	add_child(sprite)
 
 func _process(delta: float) -> void:

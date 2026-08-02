@@ -84,7 +84,14 @@ func _ready() -> void:
 	# position before the trip loop touches them, or they'd walk to their first
 	# node from the world origin.
 	EventBus.follower_recruited.connect(_place_at_home)
+	# Once housed, a recruit idles at their own door instead of the keep.
+	EventBus.recruit_housed.connect(_on_recruit_housed)
 	set_process(true)
+
+func _on_recruit_housed(follower, cell: Vector2i) -> void:
+	var half: float = float(SettlementGrid.CELL_SIZE) * 0.5
+	follower.idle_anchor = Vector2(cell.x * SettlementGrid.CELL_SIZE + half,
+		cell.y * SettlementGrid.CELL_SIZE + half)
 
 func _process(delta: float) -> void:
 	for l in laborers():
@@ -112,6 +119,7 @@ func laborers() -> Array:
 func _place_at_home(l) -> void:
 	l.position = home_position
 	l.idle_target = home_position
+	l.idle_anchor = home_position
 
 # ---------------- The trip loop ----------------
 
@@ -129,7 +137,9 @@ func _advance_laborer(w: Laborer, delta: float) -> void:
 ## Idle workers re-check the priority list every frame -- cheap (four
 ## comparisons against GameState) and it means a threshold edit or a bit of
 ## spending puts them back to work immediately rather than on some poll timer.
-## While there's genuinely nothing to do they wander the keep zone.
+## While there's genuinely nothing to do they wander around their idle anchor
+## -- the keep for Workers and Barracks residents, their own doorstep once a
+## recruit's house is funded.
 func _tick_idle(w: Laborer, delta: float) -> void:
 	var node := _pick_target_for(w)
 	if node:
@@ -139,11 +149,10 @@ func _tick_idle(w: Laborer, delta: float) -> void:
 		return
 	# Nothing worth doing: amble.
 	w.idle_wait -= delta
-	if w.idle_wait <= 0.0 and keep_zone.size != Vector2.ZERO:
-		w.idle_target = Vector2(
-			randf_range(keep_zone.position.x, keep_zone.position.x + keep_zone.size.x),
-			randf_range(keep_zone.position.y, keep_zone.position.y + keep_zone.size.y)
-		)
+	if w.idle_wait <= 0.0:
+		var anchor: Vector2 = w.idle_anchor if w.idle_anchor != Vector2.ZERO else keep_zone.get_center()
+		var r: float = Laborer.IDLE_WANDER_RADIUS
+		w.idle_target = anchor + Vector2(randf_range(-r, r), randf_range(-r, r))
 		w.idle_wait = randf_range(2.0, 5.0)
 	if w.position.distance_to(w.idle_target) > ARRIVE_EPSILON:
 		_step_toward(w, w.idle_target, delta, IDLE_SHUFFLE_SCALE)  # a shuffle, not a march

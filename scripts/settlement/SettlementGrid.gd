@@ -105,12 +105,66 @@ func barracks_capacity() -> int:
 	var b := get_barracks()
 	return b.capacity if b else 0
 
-## Residents are simply every follower on the roster. That's exact *for now*
-## because fund-a-house isn't built yet, so nobody has ever moved out of the
-## Barracks -- once it is (GAME_OUTLINE gap #4), this needs to count only
-## followers still resident rather than the whole roster.
+## Only followers who haven't moved into their own house yet. Funding a house
+## is what frees the slot -- which is the entire intake loop: recruits arrive,
+## occupy the Barracks, and you pay to move them out so the next one can come.
+##
+## (This used to return the whole roster size, correct only while fund-a-house
+## didn't exist.)
 func barracks_residents() -> int:
-	return GameState.followers.size()
+	var n: int = 0
+	for f in GameState.followers:
+		if not f.is_housed:
+			n += 1
+	return n
 
 func barracks_free_slots() -> int:
 	return max(0, barracks_capacity() - barracks_residents())
+
+# ---------------- Fund-a-house (FOUNDATION_SPEC section 9) ----------------
+
+## Flat cost for the foundation build. Per-race costs are a later refinement,
+## per the spec.
+const HOUSE_COST := {"wood": 6, "stone": 4}
+
+## Builds `follower` a home and moves them out of the Barracks. Returns the
+## cell used, or (-1,-1) if it couldn't happen (unaffordable, already housed,
+## or -- in principle -- no free cell anywhere on the grid).
+##
+## The *recruit* picks the cell, by race (see HousePlanner); the player only
+## pays. Cost is charged here rather than on the catalog entry because
+## recruit_house is never placed through the build menu.
+func fund_house(follower, resource_field) -> Vector2i:
+	if follower.is_housed:
+		return Vector2i(-1, -1)
+	if not GameState.can_afford_cost(HOUSE_COST):
+		return Vector2i(-1, -1)
+	var cell: Vector2i = HousePlanner.find_cell(self, follower.race_id, resource_field)
+	if cell == Vector2i(-1, -1):
+		return cell
+
+	var data: Dictionary = BuildingCatalog.get_building("recruit_house")
+	if data.is_empty():
+		push_warning("SettlementGrid: no 'recruit_house' entry in buildings.json")
+		return Vector2i(-1, -1)
+
+	for kind in HOUSE_COST.keys():
+		if not GameState.spend_resource(kind, HOUSE_COST[kind]):
+			push_warning("SettlementGrid.fund_house: spend failed after can_afford_cost passed")
+			return Vector2i(-1, -1)
+
+	var house := Building.make_from_data("recruit_house", data)
+	house.house_race_id = follower.race_id
+	house.display_name = "%s's House" % follower.follower_name
+	# Sprite/tint are set before place_building() because Building._setup_sprite
+	# runs from _ready(), which fires on add_child() inside place_building.
+	house.sprite_path = HouseStyle.sprite_for(follower.race_id)
+	house.sprite_tint = HouseStyle.tint_for(follower.race_id)
+	if not place_building(house, cell):
+		push_warning("SettlementGrid.fund_house: place_building refused %s" % cell)
+		return Vector2i(-1, -1)
+
+	follower.is_housed = true
+	follower.house_cell = cell
+	EventBus.recruit_housed.emit(follower, cell)
+	return cell

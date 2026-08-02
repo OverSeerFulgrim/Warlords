@@ -225,6 +225,66 @@ The boundary to hold: **`Laborer` is the job, not the person.** Traits, Loyalty,
 
 `WorkerSystem._process` now iterates `laborers()` (workers + non-busy followers) rather than `workers`, and every trip-loop function is typed `Laborer` instead of `Worker`. `FollowerToken` became a pure position-mirroring view exactly like `WorkerToken` — it used to run its own Tween idle wander, which was fine while followers only stood around, but their position is real simulation state now. Bounty/mission `send_away()`/`return_home()` survive as visibility toggles, since those genuinely take a follower off the map.
 
+### Meals, morale, desertion, and fund-a-house
+
+Closes the last three gaps in the Stage 1–3 loop. Food finally has a consumer, morale finally has consequences, and the Barracks finally has an exit.
+
+#### Meals (`MoraleSystem.gd`)
+
+Hangs off `EventBus.dawn_started` / `dusk_started` — exactly what those signals were emitted for two passes ago, when `DayNightCycle` deliberately signalled rather than calling `ResourceField` directly. Two meals per 50-minute cycle.
+
+- **Skeletons eat nothing.** They aren't even on the roster (`Worker`, not `Follower`), and any follower whose race has `food_per_meal: 0` is skipped. This is the undead perk that makes Stage 1 survivable with no food economy at all.
+- **Highest Loyalty eats first** when food is short (FOUNDATION_SPEC §8). Deliberate villain flavor: the faithful get fed, malcontents starve — which makes a low-Loyalty recruit a liability precisely when you can least afford one.
+- **Fractional appetites vs an integer resource.** Races eat 0.5–3.5 food/meal but `GameState.food` is a whole-unit resource that Workers deposit into. Rather than making the resource a float and rippling that through every deposit and the HUD, `MoraleSystem` feeds from a pooled float and carries the sub-unit remainder in `_food_remainder`. Without that carry a Kobold (0.5) and a Gray Dwarf (1.0) would cost the same, erasing the cheap-swarm-vs-elite-specialist tradeoff the whole roster is built on.
+
+#### Morale
+
+Per-recruit `Follower.morale`, 1–10, starts 7 — per-recruit rather than a settlement meter because §8 asks for it explicitly and it's what makes the feeding order meaningful. Shown per-resident in the Barracks panel and colour-coded (amber ≤3, red at 1).
+
+- Miss a meal → −1. Clear a whole dawn→dawn cycle without missing one → +1, capped at 10. The cycle is scored at dawn *before* that meal is served. Note the one-cycle lag when recovering: the cycle during which food arrives still contains the earlier missed meal, so the bonus lands a cycle later. That's correct, not a bug — verified 7→4 starving, then 4→5→6 once fed.
+- **Morale ≤ 3** → 25% chance per meal tick of theft/rule-breaking: 1–3 units of a random resource vanish with flavor text. Clamped to what actually exists, because a negative stockpile is a far worse bug than a theft that comes up short. Dark Essence is deliberately not stealable — it's the locked Stage-4 resource and losing it would be unreplaceable.
+- **Morale 1** → one departure warning, then they leave on the *next* missed meal. The warning is a chance to recover, not a formality.
+- **These are logged and alerted, not raised as modal popups.** The event panel is the recruit-offer channel; a blocking dialog every time a hungry goblin skims the stores would be exhausting. They still can't be missed — alert pin plus a coloured History entry.
+
+Departures write to `GameState.departed` with a `disposition` int: **data only, nothing reads it yet.** It exists so departure-memory (GAME_OUTLINE gap #6 — leavers who return with a gift or ambush your villagers) has a history to work from. Disposition anchors on Loyalty (`loyalty - 8 + (morale - 1)`), so a Loyalty-10 fanatic who starved out still half understands while a Loyalty-3 goblin leaves bitter.
+
+#### Fund-a-house (`HousePlanner.gd`, `HouseStyle.gd`)
+
+Flat 6 wood / 4 stone per FOUNDATION_SPEC §9, charged by `SettlementGrid.fund_house()` rather than by the catalog entry, because `recruit_house` is never placed from the build menu.
+
+**The recruit picks the cell, not the player** — GAME_OUTLINE pillar 4. `HousePlanner` implements RACES.md's five styles:
+
+| Style | Rule | Races |
+|---|---|---|
+| clustered | adjacent to a same-race house, else communal | Goblin, Kobold, Gnoll, Halfling |
+| communal | within 2 cells of any house, else the Throne | Orc, Hobgoblin, Human Outcast |
+| spaced | Chebyshev ≥ 3 from every house, most isolated first | Ogre, Troll, Minotaur, High Elf |
+| near_feature | nearest cell to the Stone Deposit (dwarves) or Workshop (Gnome) | Gray/Mountain Dwarf, Gnome |
+| edge | grid rim, furthest from the Throne | Dark Elf |
+
+**Nothing here may ever block.** Every style degrades preferred → communal → any free cell. RACES.md says that of Gnolls specifically ("preference-not-guarantee"), but it has to hold for all of them: the player has already paid, so an awkward grid must never eat the cost. Distances are Chebyshev (king-move) since diagonals are neighbours on this grid. "Town centre" means the Throne at (0,0) — a corner, not a literal middle, but it *is* where the settlement grew from, which is the sense the styles want.
+
+`HouseStyle` picks sprite + tint per race from the 8-variant Kenney House pack — a placeholder in the same spirit as the generated deer, wanting only that a goblin warren doesn't read as a minotaur's lodge.
+
+**Housing frees the Barracks slot.** `barracks_residents()` now counts only unhoused followers (it used to return the whole roster, correct only while this feature didn't exist). Housed recruits idle at their own doorstep via `Laborer.idle_anchor`, but still deposit loads at the keep.
+
+### Foundation exit criteria (manual playtest checklist)
+
+Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
+
+- [ ] **1. Priority list drives 3 workers** across Wood/Stone/Bones with thresholds, and trees visibly deplete.
+- [ ] **2. Barracks gets built from gathered** (not starting) resources.
+- [ ] **3. At least 3 recruits arrive via events** spanning ≥2 categories, get fed every meal tick, and none desert from a bug rather than a real shortage.
+- [ ] **4. One recruit gets a funded house**; Barracks slot frees; town visibly grows.
+- [ ] **5. One food shortage is survivable and legible** — morale drops, player recovers by reassigning priorities.
+- [ ] **6. No soft-locks** — node exhaustion, full Barracks, and zero-food states all have clear UI messaging and a way out.
+
+Known gaps against this list, as of now:
+
+- **#5's "recovers by reassigning priorities"** is untested end-to-end. Food is gatherable (berry grove + deer) and the priority list has a Food row, but no session has yet gone shortage → reprioritise → recovery in one unbroken run.
+- **#6's zero-food state** has messaging (hungry-meal log line, alert pin, morale colour) but no explicit "you have no food source left" warning if the grove is picked clean and the deer are gone.
+- **#3's "spanning ≥2 categories"** is guaranteed by construction for the first three offers, but the *arrive via events, get fed every tick* half is only verified in isolation.
+
 ## File map
 
 ```
@@ -233,6 +293,9 @@ scenes/Main.tscn            Root scene (minimal — logic lives in Main.gd)
 scripts/Main.gd              Wires all systems together + debug UI + build menu
 scripts/autoload/           GameState.gd, EventBus.gd, BuildingCatalog.gd, RaceCatalog.gd (singletons)
 scripts/settlement/         SettlementGrid.gd, Building.gd, FollowerToken.gd, WorkerSystem.gd, WorkerToken.gd,
+                            MoraleSystem.gd -- meals, morale, theft, desertion
+                            HousePlanner.gd -- WHERE a recruit builds (race housing_style)
+                            HouseStyle.gd   -- WHAT it looks like (sprite + tint per race)
                             Laborer.gd -- base class: the trip loop + labor stats
                             Worker.gd  -- extends Laborer (so does Follower, in scripts/bounty/)
 							  ResourceNode.gd, ResourceField.gd
