@@ -15,6 +15,11 @@ class_name Building
 @export var power_value: int = 0
 @export var sprite_path: String = ""  # res:// path to a texture; empty = no visual yet
 
+## One line of "what is this for", shown by the inspection panel. Data, not
+## code -- it comes straight from the buildings.json row, so adding a building
+## never means adding a branch to a description function somewhere.
+@export var description: String = ""
+
 ## Housing: which Follower.species this building's presence unlocks
 ## recruitment for. "" for buildings that aren't housing.
 @export var housing_species: String = ""
@@ -27,6 +32,11 @@ class_name Building
 ## housing style ("build next to an existing same-race house") and the
 ## per-race sprite/tint. "" for every other building.
 @export var house_race_id: String = ""
+## For category == "housing_home": whose house this is. Set by
+## SettlementGrid.fund_house() at the same time as display_name, so the
+## inspection panel can name the resident without going hunting through the
+## roster for whoever happens to live at this cell.
+@export var house_owner_name: String = ""
 ## Per-race colour wash applied to the sprite, so a street of goblin burrows
 ## reads differently from a minotaur's lodge without needing distinct art.
 @export var sprite_tint: Color = Color.WHITE
@@ -75,6 +85,84 @@ func _process(delta: float) -> void:
 		_tick_timer = 0.0
 		GameState.add_resource(resource_kind, resource_per_tick)
 
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+
+## Human-readable category, for the panel subtitle. Not derived from the raw
+## category string because "housing_intake" and "housing_home" are internal
+## routing names that mean nothing to a player.
+const CATEGORY_LABEL := {
+	"main": "Your seat of power",
+	"resource": "Production",
+	"functional": "Workshop building",
+	"housing_intake": "Recruit intake",
+	"housing_home": "Home",
+	"housing": "Housing",
+}
+
+func get_inspect_data() -> Dictionary:
+	var rows: Array = []
+
+	if is_main_building and max_hp > 0:
+		# The Crusade targets this and losing it is the fail state, so its
+		# condition is the first thing worth reading.
+		var hp_colour := Color(0.95, 0.6, 0.5) if hp < max_hp else Color(0.75, 0.9, 0.75)
+		rows.append({"label": "Condition", "value": "%d / %d hp" % [hp, max_hp], "color": hp_colour})
+
+	if resource_kind != "":
+		rows.append({"label": "Produces", "value": "+%d %s every %ss" % [
+			resource_per_tick, resource_kind, String.num(tick_interval, 0)]})
+
+	if power_value > 0:
+		rows.append({"label": "Power", "value": "+%d" % power_value})
+
+	rows.append_array(_intake_rows())
+	rows.append_array(_home_rows())
+
+	if housing_species != "":
+		rows.append({"label": "Houses", "value": housing_species})
+
+	return {
+		"title": display_name,
+		"subtitle": CATEGORY_LABEL.get(category, category.capitalize()),
+		"sprite": sprite_path,
+		"description": description,
+		"details": rows,
+	}
+
+## Barracks occupancy. Asks the SettlementGrid it is parented to rather than
+## recounting the roster here, so "who counts as a resident" stays defined in
+## exactly one place (it changed once already, when fund-a-house landed).
+func _intake_rows() -> Array:
+	if category != "housing_intake":
+		return []
+	var grid := get_parent()
+	if grid == null or not grid.has_method("barracks_residents"):
+		return [{"label": "Capacity", "value": "%d" % capacity}]
+	var used: int = grid.barracks_residents()
+	var row := {"label": "Residents", "value": "%d / %d" % [used, capacity]}
+	if used >= capacity:
+		row["color"] = Color(0.95, 0.70, 0.40)
+		return [row, {"label": "", "value": "Full. New recruits can only be turned away until someone is given a house.", "muted": true}]
+	return [row]
+
+## A funded recruit house: who lives here, and the housing_style flavor that
+## explains why they built it *there* -- the placement is the recruit's choice,
+## not the player's, so the panel is where that choice gets explained.
+func _home_rows() -> Array:
+	if category != "housing_home":
+		return []
+	var race: Dictionary = RaceCatalog.get_race(house_race_id)
+	var species: String = race.get("display_name", house_race_id)
+	var rows: Array = []
+	if house_owner_name != "":
+		rows.append({"label": "Resident", "value": "%s — %s" % [house_owner_name, species]})
+	else:
+		rows.append({"label": "Resident", "value": species})
+	var note: String = race.get("housing_note", "")
+	if note != "":
+		rows.append({"label": "Chose this spot", "value": note, "muted": true})
+	return rows
+
 ## Builds a Building from a data/buildings.json row (fetched via
 ## BuildingCatalog.get_building(id)). This replaces the old one-factory-
 ## function-per-building approach now that the catalog is data-driven.
@@ -88,6 +176,7 @@ static func make_from_data(id: String, data: Dictionary) -> Building:
 	b.tick_interval = data.get("tick_interval", 5.0)
 	b.power_value = data.get("power_value", 0)
 	b.sprite_path = data.get("sprite_path", "")
+	b.description = data.get("description", "")
 	b.housing_species = data.get("housing_species", "")
 	b.capacity = data.get("capacity", 0)
 	b.max_hp = data.get("max_hp", 0)

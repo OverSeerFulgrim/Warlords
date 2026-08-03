@@ -85,14 +85,23 @@ var _pending_building_id: String = ""  # "" = not in placement mode
 var demolish_tab_btn: Button
 var _demolish_mode: bool = false
 
-# ---------------- Keep menu (click the main building) ----------------
-var keep_menu_panel: PanelContainer
+# ---------------- Inspection panel (click anything on the map) ----------------
+## One panel for everything clickable -- see InspectionPanel.gd. Replaces the
+## three separate panels this file used to carry (keep_menu_panel,
+## barracks_panel, necromancer_panel), each with its own toggle and populate
+## function. The Keep's and Barracks' *menus* survive as action builders below
+## (_build_keep_actions / _build_barracks_actions); what's gone is three
+## different ideas of what a header looks like.
+var inspector: InspectionPanel
 
-# ---------------- Barracks panel (click the Barracks) ----------------
-var barracks_panel: PanelContainer
-
-# ---------------- Necromancer panel (click the avatar) ----------------
-var necromancer_panel: PanelContainer
+## Seconds between automatic re-reads of whatever the inspector is showing. A
+## worker's Activity row and a Barracks' resident count both change while you
+## are looking at them, and polling a handful of Labels a couple of times a
+## second is far cheaper than wiring a signal per field -- most of which
+## (activity especially) would fire every frame anyway. Same reasoning as the
+## priority rows being polled from _process rather than signalled.
+const INSPECTOR_REFRESH_INTERVAL: float = 0.4
+var _inspector_refresh_timer: float = 0.0
 
 # ---------------- Follower tokens (on-screen presence, see FollowerToken.gd) ----------------
 var followers_layer: Node2D
@@ -229,8 +238,13 @@ func _place_necromancer() -> void:
 ## are polled here rather than driven by a signal that would fire every frame
 ## regardless. Everything genuinely event-shaped (deposits, depletion, dawn)
 ## still goes through EventBus -- see _connect_signals().
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_refresh_priority_status()
+	if inspector and inspector.is_open():
+		_inspector_refresh_timer += delta
+		if _inspector_refresh_timer >= INSPECTOR_REFRESH_INTERVAL:
+			_inspector_refresh_timer = 0.0
+			inspector.refresh()
 
 # ---------------- Systems ----------------
 
@@ -467,7 +481,7 @@ func _build_ui() -> void:
 	_build_alert_stack(hud_root)
 	_build_placement_hint(hud_root)
 	_build_event_panel(hud_root)
-	_build_keep_menu(hud_root)
+	_build_inspection_panel(hud_root)
 	_build_bottom_shell(hud_root)
 
 	_update_stats_label()
@@ -565,7 +579,7 @@ func _build_necro_badge(hud_root: Control) -> void:
 	# The HUD badge and the on-map avatar open the same panel -- two doors to
 	# one room, same as the Keep menu having a top-bar and a click-the-building
 	# entry point.
-	necro_badge.pressed.connect(_open_necromancer_panel)
+	necro_badge.pressed.connect(func(): _inspect(necromancer, _build_necromancer_actions))
 	hud_root.add_child(necro_badge)
 
 ## Rolling stack of up to MAX_ALERTS recent notable events, top-right,
@@ -595,27 +609,14 @@ func _build_event_panel(hud_root: Control) -> void:
 	event_panel.visible = false
 	hud_root.add_child(event_panel)
 
-func _build_keep_menu(hud_root: Control) -> void:
-	keep_menu_panel = PanelContainer.new()
-	keep_menu_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	keep_menu_panel.position = Vector2(360, 96)
-	keep_menu_panel.add_theme_stylebox_override("panel", _panel_style())
-	keep_menu_panel.visible = false
-	hud_root.add_child(keep_menu_panel)
-
-	barracks_panel = PanelContainer.new()
-	barracks_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	barracks_panel.position = Vector2(360, 96)
-	barracks_panel.add_theme_stylebox_override("panel", _panel_style())
-	barracks_panel.visible = false
-	hud_root.add_child(barracks_panel)
-
-	necromancer_panel = PanelContainer.new()
-	necromancer_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	necromancer_panel.position = Vector2(360, 96)
-	necromancer_panel.add_theme_stylebox_override("panel", _panel_style())
-	necromancer_panel.visible = false
-	hud_root.add_child(necromancer_panel)
+## One panel, reused by every inspectable thing. It positions itself under the
+## top resource bar each time it opens (see _inspect), same as the three panels
+## it replaced.
+func _build_inspection_panel(hud_root: Control) -> void:
+	inspector = InspectionPanel.new()
+	inspector.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	inspector.position = Vector2(360, 96)
+	hud_root.add_child(inspector)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -686,9 +687,9 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	var bar_hbox := HBoxContainer.new()
 	bar_panel.add_child(bar_hbox)
 
-	# Info panel: shows whatever was last clicked -- a Follower, a Worker, the
-	# Necromancer badge, or the Throne of Bones. See _select_info() and the
-	# token-hit-testing added to _unhandled_input().
+	# Info panel: a one-line echo of whatever the inspection panel is showing,
+	# so the bottom bar still says what's selected once the panel is closed or
+	# scrolled past. Fed from the same Dictionary -- see _inspect().
 	var info_panel := VBoxContainer.new()
 	info_panel.custom_minimum_size = Vector2(INFO_PANEL_WIDTH, 0)
 	info_panel.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -697,7 +698,7 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	info_name_label.add_theme_font_size_override("font_size", 15)
 	info_panel.add_child(info_name_label)
 	info_class_label = Label.new()
-	info_class_label.text = "Click a unit or the Keep"
+	info_class_label.text = "Click a unit, a building, or a resource"
 	info_class_label.add_theme_font_size_override("font_size", 11)
 	info_panel.add_child(info_class_label)
 	info_status_label = Label.new()
@@ -1115,6 +1116,10 @@ func _format_cost(cost: Dictionary) -> String:
 func _enter_placement_mode(building_id: String) -> void:
 	if _demolish_mode:
 		_toggle_demolish_mode()  # the two click-to-target modes are mutually exclusive
+	# The inspector would sit there describing something you're no longer
+	# looking at, and its Close button would be a click that doesn't place a
+	# building. Placement mode owns the screen.
+	_close_inspector()
 	_pending_building_id = building_id
 	var data: Dictionary = BuildingCatalog.get_building(building_id)
 	build_hint_label.text = "Placing %s -- click an empty tile (Esc to cancel)" % data.get("display_name", building_id)
@@ -1133,6 +1138,7 @@ func _toggle_demolish_mode() -> void:
 	_demolish_mode = not _demolish_mode
 	_restyle_demolish_button()
 	if _demolish_mode:
+		_close_inspector()  # same reasoning as _enter_placement_mode
 		build_hint_label.text = "Demolishing -- click a building to remove it (Esc to cancel)"
 		build_hint_label.visible = true
 	else:
@@ -1189,95 +1195,142 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	# Esc closes the inspector. Deliberately *below* the two placement blocks
+	# above, which both return early: while you're placing or demolishing,
+	# Esc cancels that mode, and the inspector is not what Esc is for.
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if inspector.is_open():
+			_close_inspector()
+			get_viewport().set_input_as_handled()
+		return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var world_pos: Vector2 = settlement.get_global_mouse_position()
+		if _inspect_at(world_pos):
+			get_viewport().set_input_as_handled()
 
-		# Free-roaming tokens (Followers/Workers) aren't cell-locked, so check
-		# proximity to their current on-screen position rather than a grid
-		# cell -- see _closest_token_hit(). Checked before the main-building
-		# cell check below since a token can wander over any part of the grid.
-		# The Necromancer is checked first: he paces right on top of the
-		# Throne, so a click that lands on both should get the person, not the
-		# building. (Placement and demolish modes already returned above, so
-		# this can't steal a build click.)
-		if necromancer and world_pos.distance_to(necromancer.position) <= necromancer.hit_radius():
-			_open_necromancer_panel()
-			get_viewport().set_input_as_handled()
-			return
+## Click pick order, highest priority first: **characters > resource nodes >
+## buildings > ground**. A worker standing on a tree inspects as the worker,
+## and the Necromancer pacing on top of the Throne inspects as the Necromancer.
+## Returns true if the click was consumed (it always is -- clicking bare ground
+## still counts, because closing the panel is a deliberate action).
+##
+## Click handling stays centralized here rather than each Building/ResourceNode
+## growing its own Area2D, because it has to coexist with build placement and
+## demolish mode, and those two need first refusal on every click. Placement
+## and demolish already returned before this is reached.
+func _inspect_at(world_pos: Vector2) -> bool:
+	# --- 1. Characters -------------------------------------------------------
+	# Free-roaming tokens aren't cell-locked, so these are proximity tests
+	# against the unit's current position, not a grid lookup.
+	if necromancer and world_pos.distance_to(necromancer.position) <= necromancer.hit_radius():
+		_inspect(necromancer, _build_necromancer_actions)
+		return true
 
-		var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos, 20.0)
-		if hit_follower:
-			_select_info(hit_follower.label(), "%s — %s" % [hit_follower.species, hit_follower.category],
-				"Busy" if hit_follower.is_busy else hit_follower.status_label())
-			get_viewport().set_input_as_handled()
-			return
-		var hit_worker: Worker = _closest_token_hit(worker_tokens, world_pos, 16.0)
-		if hit_worker:
-			_select_info(hit_worker.worker_name, "Skeleton Worker", hit_worker.status_label())
-			get_viewport().set_input_as_handled()
-			return
+	var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos, 20.0)
+	if hit_follower:
+		_inspect(hit_follower)
+		return true
 
-		# Not in placement mode, no token hit: a left-click landing on the main
-		# building's cell selects it and opens the Keep menu instead. Checked
-		# here (rather than giving Building its own click detection/Area2D) to
-		# keep click-handling centralized in one place alongside the
-		# build-placement clicks it has to coexist with.
-		var cell: Vector2i = settlement.cell_from_world(world_pos)
-		var main_building := settlement.get_main_building()
-		if main_building and cell == main_building.cell:
-			_select_info(main_building.display_name, "Main building", "%d/%d hp" % [main_building.hp, main_building.max_hp])
-			_toggle_keep_menu()
-			get_viewport().set_input_as_handled()
-			return
+	var hit_worker: Worker = _closest_token_hit(worker_tokens, world_pos, 16.0)
+	if hit_worker:
+		_inspect(hit_worker)
+		return true
 
-		# Clicking the Barracks opens its resident roster -- same
-		# click-the-building-on-the-map pattern as the Keep menu above.
-		var barracks := settlement.get_barracks()
-		if barracks and cell == barracks.cell:
-			_select_info(barracks.display_name, "Recruit intake",
-				"%d/%d residents" % [settlement.barracks_residents(), settlement.barracks_capacity()])
-			_toggle_barracks_panel()
-			get_viewport().set_input_as_handled()
+	# --- 2. Resource nodes ---------------------------------------------------
+	# Above buildings because nodes sit mostly off-grid (the forest, the
+	# deposit, the graves) and a deer can wander across the settlement, so a
+	# node overlapping a building means the node is the thing on top.
+	var hit_node: ResourceNode = resource_field.node_at(world_pos) if resource_field else null
+	if hit_node:
+		_inspect(hit_node)
+		return true
+
+	# --- 3. Buildings --------------------------------------------------------
+	# Every building, not just the Throne and the Barracks -- those two simply
+	# also contribute action buttons.
+	var cell: Vector2i = settlement.cell_from_world(world_pos)
+	var building: Building = settlement.cells.get(cell)
+	if building:
+		_inspect(building, _actions_for_building(building))
+		return true
+
+	# --- 4. Ground -----------------------------------------------------------
+	_close_inspector()
+	return true
+
+## Which action-button builder (if any) a building contributes. The Keep and
+## the Barracks are the only two with menus; everything else is pure
+## information, which is why this is a two-line check rather than a registry.
+func _actions_for_building(building: Building) -> Callable:
+	if building.is_main_building:
+		return _build_keep_actions
+	if building.category == "housing_intake":
+		return _build_barracks_actions
+	return Callable()
+
+## Opens the inspector on `source` and mirrors its header into the bottom-bar
+## info strip, so the two never disagree about what's selected.
+func _inspect(source: Object, extra: Callable = Callable()) -> void:
+	inspector.position.y = _menu_open_y()
+	_inspector_refresh_timer = 0.0
+	var data: Dictionary = inspector.inspect(source, extra)
+	if data.is_empty():
+		return
+	# The first details row is the most-changing one for every type (Activity
+	# for characters, Condition/Produces for buildings, Remaining for nodes),
+	# which makes it the right thing to echo into the one-line status slot.
+	var details: Array = data.get("details", [])
+	var status: String = details[0].get("value", "") if not details.is_empty() else ""
+	_select_info(data.get("title", ""), data.get("subtitle", ""), status)
+
+func _close_inspector() -> void:
+	inspector.close()
+	_select_info("Nothing selected", "Click a unit, a building, or a resource", "")
 
 ## Shared proximity hit-test for both follower_tokens and worker_tokens --
-## Followers/Workers wander freely (Tween-driven, not grid-locked), so this
-## checks distance to each token's current position rather than a grid cell.
-## Returns the Follower/Worker key whose token is closest and within radius,
-## or null if nothing qualified.
+## Laborers roam freely rather than sitting in grid cells, so this measures
+## distance rather than resolving a cell. Returns the closest Worker/Follower
+## within `radius`, or null.
+##
+## **Measures the Laborer's own `position`, not the token's.** They agree to
+## within a frame in normal play, but the token is a pure view that copies it
+## in `_process` -- so the token is always one frame stale, and a follower sent
+## away on a bounty has a token that stopped mirroring entirely and glided off
+## to the gate. Hit-testing the view would mean clicking a ghost at the gate
+## and missing the real unit. The Dictionary keys *are* the simulation objects,
+## so this costs nothing.
+##
+## Tokens that are hidden (away on a bounty/mission) are skipped: they're off
+## the map, so there's nothing there to click.
 func _closest_token_hit(tokens: Dictionary, world_pos: Vector2, radius: float):
 	var best = null
 	var best_dist := radius
 	for key in tokens.keys():
 		var token: Node2D = tokens[key]
-		var d: float = token.position.distance_to(world_pos)
+		if token and not token.visible:
+			continue
+		var d: float = key.position.distance_to(world_pos)
 		if d <= best_dist:
 			best_dist = d
 			best = key
 	return best
 
-func _toggle_keep_menu() -> void:
-	keep_menu_panel.visible = not keep_menu_panel.visible
-	if keep_menu_panel.visible:
-		keep_menu_panel.position.y = _menu_open_y()
-		_populate_keep_menu()
-
 ## Returns the y-coordinate just below the top resource bar's actual current
-## height, with a small margin -- used to position keep_menu_panel each time
-## it opens, rather than a hardcoded number.
+## height, with a small margin -- used to position the inspection panel each
+## time it opens, rather than a hardcoded number.
 func _menu_open_y() -> float:
 	return top_panel.size.y + 12.0
 
-func _populate_keep_menu() -> void:
-	for child in keep_menu_panel.get_children():
-		child.queue_free()
-	var box := VBoxContainer.new()
-	keep_menu_panel.add_child(box)
+# ---------------- Inspection panel action builders ----------------
+#
+# These are the *only* things about a clickable that don't come from its own
+# get_inspect_data(): buttons, which call handlers that live on this node. Each
+# is handed the panel's action VBox to fill. See InspectionPanel's header for
+# why the split is drawn here.
 
-	var title := Label.new()
-	title.text = "The Keep"
-	title.add_theme_font_size_override("font_size", 14)
-	box.add_child(title)
-
+## The old Keep menu, now the Throne's action block.
+func _build_keep_actions(box: VBoxContainer) -> void:
 	_add_button(box, "Recruit Worker (5 Bones)", _recruit_worker)
 
 	# Not a real feature yet -- a visible placeholder so clicking the Keep
@@ -1297,86 +1350,29 @@ func _populate_keep_menu() -> void:
 	surrender.pressed.connect(_surrender_and_restart)
 	box.add_child(surrender)
 
-	_add_button(box, "Close", func(): keep_menu_panel.visible = false)
-
 func _surrender_and_restart() -> void:
-	keep_menu_panel.visible = false
+	_close_inspector()
 	GameState.reset()
 	get_tree().reload_current_scene()
 
-# ---------------- Necromancer panel (click the avatar, or the HUD badge) ----
-
-## Deliberately the same shape as the Keep and Barracks panels rather than
-## anything cleverer: CORE_POLISH_PROMPTS Prompt B introduces one reusable
-## InspectionPanel for everything clickable, and when it lands this should be
-## folded into it and deleted, not extended.
-func _open_necromancer_panel() -> void:
-	_select_info("The Necromancer", "Master of the Settlement", "Surveying his domain")
-	necromancer_panel.visible = true
-	necromancer_panel.position.y = _menu_open_y()
-	_populate_necromancer_panel()
-
-func _populate_necromancer_panel() -> void:
-	for child in necromancer_panel.get_children():
-		child.queue_free()
-	var box := VBoxContainer.new()
-	necromancer_panel.add_child(box)
-
-	var title := Label.new()
-	title.text = "The Necromancer"
-	title.add_theme_font_size_override("font_size", 15)
-	box.add_child(title)
-
-	var subtitle := Label.new()
-	subtitle.text = "Master of the Settlement"
-	subtitle.add_theme_font_size_override("font_size", 11)
-	subtitle.modulate = Color(0.85, 0.80, 0.95)
-	box.add_child(subtitle)
-
-	var flavor := Label.new()
-	flavor.text = "He walks the bone-strewn yard at all hours, counting what the\nliving owe him. The dead do not need counting. They simply obey."
-	flavor.add_theme_font_size_override("font_size", 11)
-	flavor.modulate = Color(1, 1, 1, 0.7)
-	box.add_child(flavor)
-
-	box.add_child(HSeparator.new())
-
-	# Same "visible promise" treatment as the Barracks Upgrade button: a real
-	# disabled Button, so the shape of the future feature is legible.
+## Same "visible promise" treatment as the Barracks Upgrade button: a real
+## disabled Button, so the shape of the future feature is legible.
+func _build_necromancer_actions(box: VBoxContainer) -> void:
 	var spells := Button.new()
 	spells.text = "Spells — coming soon"
 	spells.disabled = true
 	box.add_child(spells)
 
-	_add_button(box, "Close", func(): necromancer_panel.visible = false)
-
-func _refresh_barracks_if_open() -> void:
-	if barracks_panel and barracks_panel.visible:
-		_populate_barracks_panel()
-
-func _toggle_barracks_panel() -> void:
-	barracks_panel.visible = not barracks_panel.visible
-	if barracks_panel.visible:
-		barracks_panel.position.y = _menu_open_y()
-		_populate_barracks_panel()
-
-## Lists who is living in the Barracks, with their race, category and the
-## labor skills that decide what they're actually good for -- the player needs
-## those side by side to answer "is this dwarf worth a house?".
-func _populate_barracks_panel() -> void:
-	for child in barracks_panel.get_children():
-		child.queue_free()
-	var box := VBoxContainer.new()
-	barracks_panel.add_child(box)
-
-	var title := Label.new()
-	title.text = "Barracks — %d/%d" % [settlement.barracks_residents(), settlement.barracks_capacity()]
-	title.add_theme_font_size_override("font_size", 14)
-	box.add_child(title)
-
+## The old Barracks panel, now the Barracks' action block. Lists who is living
+## there with the labor skills that decide what they're actually good for --
+## the player needs those side by side to answer "is this dwarf worth a house?".
+## The occupancy count itself is a details row now (Building.get_inspect_data),
+## not repeated here.
+func _build_barracks_actions(box: VBoxContainer) -> void:
 	if GameState.followers.is_empty():
 		var empty := Label.new()
 		empty.text = "No residents yet. Recruits will arrive."
+		empty.add_theme_font_size_override("font_size", 11)
 		empty.modulate = Color(1, 1, 1, 0.6)
 		box.add_child(empty)
 
@@ -1397,8 +1393,6 @@ func _populate_barracks_panel() -> void:
 	upgrade.disabled = true
 	box.add_child(upgrade)
 
-	_add_button(box, "Close", func(): barracks_panel.visible = false)
-
 ## One roster block. `housed` selects which half of the roster to list;
 ## `with_fund_button` adds the fund-a-house action, which only makes sense for
 ## people who haven't got one yet.
@@ -1413,11 +1407,16 @@ func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with
 	box.add_child(head)
 
 	for f in members:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+		# Stacked rather than one wide row: the inspection panel is ~330px, and
+		# the old single-line layout assumed a panel that sized itself to
+		# whatever it held. The full stat block survives -- it just wraps.
+		var entry := VBoxContainer.new()
+		entry.add_theme_constant_override("separation", 1)
 
 		var info := Label.new()
 		info.add_theme_font_size_override("font_size", 11)
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
 		info.text = "%s — %s (%s)  M%d G%d I%d L%d  W%d M%d F%d  morale %d/10  [%s]" % [
 			f.label(), f.species, f.category,
 			f.might, f.guile, f.influence, f.loyalty,
@@ -1432,7 +1431,7 @@ func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with
 			info.add_theme_color_override("font_color", Color(0.95, 0.70, 0.40))
 		elif f.is_exceptional:
 			info.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-		row.add_child(info)
+		entry.add_child(info)
 
 		if with_fund_button:
 			var target: Follower = f  # explicit re-bind for the closure
@@ -1442,9 +1441,9 @@ func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with
 			fund.tooltip_text = "They pick the spot themselves, by race. Frees a Barracks slot."
 			fund.disabled = not GameState.can_afford_cost(cost)
 			fund.pressed.connect(func(): _fund_house(target))
-			row.add_child(fund)
+			entry.add_child(fund)
 
-		box.add_child(row)
+		box.add_child(entry)
 
 ## Pays for a recruit's house. Where it lands is the recruit's call, not the
 ## player's -- see HousePlanner.
@@ -1457,8 +1456,9 @@ func _fund_house(follower) -> void:
 	_log("[color=lightgreen]%s built a house at %s (%s).[/color] Barracks now %d/%d." % [
 		follower.follower_name, cell, style,
 		settlement.barracks_residents(), settlement.barracks_capacity()], "characters events")
-	if barracks_panel.visible:
-		_populate_barracks_panel()
+	# Immediate rather than waiting on the poll: the player just pressed the
+	# button that emptied this slot, so the panel has to agree straight away.
+	inspector.refresh()
 
 func _try_place_pending(cell: Vector2i) -> void:
 	var id := _pending_building_id
@@ -1609,7 +1609,7 @@ func _connect_signals() -> void:
 			_alert("%d went hungry at %s." % [shorted, phase.to_lower()], "warn")
 		elif fed > 0:
 			_log("%s meal: %d fed." % [phase, fed], "events")
-		_refresh_barracks_if_open()
+		inspector.refresh()
 	)
 	EventBus.recruit_misbehaved.connect(func(_f, text: String, _kind: String, _amount: int):
 		_log("[color=orange]%s[/color]" % text, "characters alerts")
@@ -1619,13 +1619,18 @@ func _connect_signals() -> void:
 		_log("[color=red]%s is at breaking point and will leave if they miss another meal.[/color]"
 			% f.follower_name, "characters alerts events")
 		_alert("%s is about to desert." % f.follower_name, "bad")
-		_refresh_barracks_if_open()
+		inspector.refresh()
 	)
 	EventBus.recruit_departed.connect(func(f, reason: String):
 		_log("[color=red]%s the %s has left your service (%s).[/color]" % [f.follower_name, f.species, reason],
 			"characters alerts events")
 		_alert("%s has deserted." % f.follower_name, "bad")
-		_refresh_barracks_if_open()
+		# A Follower is a RefCounted, so is_instance_valid() stays true after
+		# they leave the roster -- the panel can't detect this one itself.
+		if inspector.current_source() == f:
+			_close_inspector()
+		else:
+			inspector.refresh()
 	)
 	EventBus.recruit_housed.connect(func(_f, _cell): _populate_build_row())
 	EventBus.follower_recruited.connect(func(f):
@@ -1633,8 +1638,7 @@ func _connect_signals() -> void:
 		_log("[color=lightgreen]%s the %s (%s %s) has joined you.[/color]%s" % [
 			f.follower_name, f.species, f.rarity, f.category, star], "characters events")
 		_alert("%s the %s has joined you." % [f.follower_name, f.species], "good")
-		if barracks_panel and barracks_panel.visible:
-			_populate_barracks_panel()
+		inspector.refresh()
 	)
 	EventBus.recruit_turned_away.connect(func(f, reason):
 		_log("[color=orange]%s the %s left — %s.[/color]" % [f.follower_name, f.species, reason], "characters events")
@@ -1656,7 +1660,14 @@ func _connect_signals() -> void:
 	EventBus.event_triggered.connect(_on_event_triggered)
 	EventBus.build_failed.connect(func(reason): _log("[color=orange]%s[/color]" % reason, "alerts"))
 	EventBus.building_placed.connect(func(_b, _c): _update_stats_label(); _populate_build_row())
-	EventBus.building_removed.connect(func(_b, _c): _update_stats_label(); _populate_build_row())
+	EventBus.building_removed.connect(func(b, _c):
+		_update_stats_label()
+		_populate_build_row()
+		# Demolishing what you're looking at. queue_free() is deferred, so the
+		# panel's own is_instance_valid() guard wouldn't notice until next frame.
+		if inspector.current_source() == b:
+			_close_inspector()
+	)
 	EventBus.main_building_damaged.connect(func(_b): _update_stats_label())
 
 func _on_bounty_completed(b: Bounty, f: Follower, success: bool) -> void:

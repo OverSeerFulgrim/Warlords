@@ -5,10 +5,13 @@
 
   "_comment_house": "'recruit_house' (category 'housing_home') is the home a recruit builds for themselves once you fund it -- flat 6 wood / 4 stone, charged by the fund-a-house action rather than by this entry, which is why 'cost' is empty. It is 'locked' because the player never places one from the build menu: the RECRUIT picks the cell, by their race's housing_style (see HousePlanner.gd and RACES.md). Its sprite_path is the default; the actual sprite and tint are overridden per race at placement time so a goblin warren and a minotaur's lodge don't look identical.",
 
+  "_comment_description": "'description' is the one-line 'what is this for' shown by the InspectionPanel when the player clicks the building on the map. It lives here rather than in a Dictionary in GDScript for the same reason costs and prerequisites do: adding a building should be a data edit, never a new branch in a description function. Keep it to one sentence or two -- the panel wraps it at ~300px.",
+
   "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (see CLAUDE.md) for the Dark Altar (its Dark Essence loop is Stage 4) and the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: EventSystem's housing gate and ThreatSystem still reference the same data shape, and these entries are the reference for whatever replaces them.",
 
   "bone_pile": {
     "display_name": "Bone Pile",
+    "description": "A heap of gathered bone, sorted and stacked. Yields a slow trickle of Bones with nobody tending it.",
     "category": "resource",
     "cost": { "bones": 5 },
     "resource_kind": "bones",
@@ -21,6 +24,7 @@
 
   "dark_altar": {
     "display_name": "Dark Altar",
+    "description": "Where raw Dark Essence is coaxed out of the world. The whole ritual economy runs through here.",
     "category": "resource",
     "cost": { "dark_essence": 8 },
     "resource_kind": "dark_essence",
@@ -34,6 +38,7 @@
 
   "bone_crypt": {
     "display_name": "Bone Crypt",
+    "description": "Stacked stone niches for skeletal labour that needs no roof, only somewhere to be put.",
     "category": "housing",
     "housing_species": "Skeleton",
     "cost": { "wood": 6, "stone": 4 },
@@ -45,6 +50,7 @@
 
   "charnel_pit": {
     "display_name": "Charnel Pit",
+    "description": "A pit kept deliberately foul. Ghouls prefer it that way.",
     "category": "housing",
     "housing_species": "Ghoul",
     "cost": { "wood": 6, "stone": 4 },
@@ -56,6 +62,7 @@
 
   "haunted_spire": {
     "display_name": "Haunted Spire",
+    "description": "A thin tower of black stone. Wraiths roost in the upper dark.",
     "category": "housing",
     "housing_species": "Wraith",
     "cost": { "wood": 6, "stone": 4 },
@@ -67,6 +74,7 @@
 
   "war_camp": {
     "display_name": "War Camp",
+    "description": "Hide tents and a fire that never quite goes out. Orcs sleep within reach of their weapons.",
     "category": "housing",
     "housing_species": "Orc",
     "cost": { "wood": 6, "stone": 4 },
@@ -78,6 +86,7 @@
 
   "burrow_warren": {
     "display_name": "Burrow Warren",
+    "description": "A hillside riddled with tunnels. Goblins pack in far tighter than looks survivable.",
     "category": "housing",
     "housing_species": "Goblin",
     "cost": { "wood": 6, "stone": 4 },
@@ -89,6 +98,7 @@
 
   "workshop": {
     "display_name": "Workshop",
+    "description": "Benches, tools, and someone who knows the use of them. Unlocks the Blacksmith line.",
     "category": "functional",
     "cost": { "wood": 10, "stone": 10 },
     "power_value": 5,
@@ -98,6 +108,7 @@
 
   "blacksmith": {
     "display_name": "Blacksmith",
+    "description": "Forge and anvil. Turns Dark Essence into gear for your followers.",
     "category": "functional",
     "cost": { "wood": 6, "stone": 12 },
     "power_value": 7,
@@ -107,6 +118,7 @@
 
   "barracks": {
     "display_name": "Barracks",
+    "description": "Where new arrivals sleep until you fund them a house of their own. No Barracks, no recruits.",
     "category": "housing_intake",
     "cost": { "wood": 8, "stone": 6 },
     "capacity": 5,
@@ -118,6 +130,7 @@
 
   "recruit_house": {
     "display_name": "House",
+    "description": "A home a recruit built for themselves once you paid for the timber. Frees their Barracks slot.",
     "category": "housing_home",
     "cost": {},
     "power_value": 2,
@@ -128,6 +141,7 @@
 
   "throne_of_bones": {
     "display_name": "Throne of Bones",
+    "description": "Your seat, raised from the dead of a hundred battlefields. If it falls, so do you.",
     "category": "main",
     "cost": {},
     "power_value": 10,

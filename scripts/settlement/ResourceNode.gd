@@ -49,6 +49,11 @@ var _alive_texture: Texture2D
 var _depleted_texture: Texture2D
 ## On-screen width in px this node should occupy; see setup_sprites().
 var _target_size: float = 32.0
+## Kept alongside the loaded textures purely so the inspection panel can show
+## whichever art is currently on screen -- Texture2D has no path back to its
+## res:// source once loaded.
+var _alive_sprite_path: String = ""
+var _depleted_sprite_path: String = ""
 
 # --- Deer roaming (node_type == "deer" only) ---
 # "2-3 deer on the map at once ... Simple wander movement, no fleeing AI yet."
@@ -92,9 +97,25 @@ func freeze(value: bool) -> void:
 ## 1024px square, so everything here is scaled down by ~0.03-0.06.
 func setup_sprites(alive_path: String, depleted_path: String, target_size: float) -> void:
 	_target_size = target_size
+	_alive_sprite_path = alive_path
+	_depleted_sprite_path = depleted_path
 	_alive_texture = _load_texture(alive_path)
 	_depleted_texture = _load_texture(depleted_path) if depleted_path != "" else null
 	_refresh_visual()
+
+## Whichever art is showing right now -- stump rather than tree once chopped.
+## The inspection panel's portrait uses this so the picture matches the state
+## the details rows are describing.
+func current_sprite_path() -> String:
+	if is_depleted() and _depleted_sprite_path != "":
+		return _depleted_sprite_path
+	return _alive_sprite_path
+
+## Click-selection radius, in world pixels. Scales with the node's own on-screen
+## size so a 58px stone deposit is easier to hit than a 26px carcass, with a
+## floor so the smallest nodes stay clickable without pixel-hunting.
+func hit_radius() -> float:
+	return maxf(18.0, _target_size * 0.6)
 
 ## Scale is recomputed from whichever texture is actually showing, rather than
 ## fixed once from the alive one. The alive and depleted art are not guaranteed
@@ -157,19 +178,80 @@ func regrow() -> void:
 func display_name() -> String:
 	match node_type:
 		"tree":
-			return "Stump" if is_depleted() else "Tree"
+			# "Pine", not just "Tree" -- the commissioned art is specifically a
+			# pine, and the stump it leaves behind is its own sprite.
+			return "Pine Stump" if is_depleted() else "Pine Tree"
 		"stone_deposit":
 			return "Stone Deposit"
 		"berry_grove":
 			return "Berry Grove"
 		"carcass":
-			return "Animal Bones"
+			return "Animal Carcass"
 		"grave":
 			return "Spent Grave" if is_depleted() else "Grave"
 		"deer":
 			return "Deer"
 		_:
 			return node_type.capitalize()
+
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+
+## One flavor line per node type. Lives here rather than in the panel because
+## the panel is deliberately type-blind -- see InspectionPanel's header.
+const FLAVOR := {
+	"tree": "A cold-country pine. Sound timber, if someone can be bothered to swing at it.",
+	"stone_deposit": "Raw rock pushing up through the frost. Deep enough to outlast you.",
+	"berry_grove": "Hardy winter berries. Stripped bare by evening, back by morning.",
+	"carcass": "Something died here a while ago. The bones are still good.",
+	"grave": "Someone was buried here and mourned. Neither fact is your concern.",
+	"deer": "Wary, and faster than your labourers. Worth the walk.",
+}
+
+## Depleted-state line, so an emptied node says what it is now rather than
+## just reading "0 left" -- FOUNDATION_SPEC section 11.1 wants exhaustion to be
+## legible, and the panel is where a player goes to ask "why is nobody working
+## this?".
+const SPENT_NOTE := {
+	"tree": "Chopped out. Only a stump remains.",
+	"stone_deposit": "Quarried out. Nothing workable left.",
+	"berry_grove": "Picked clean — but it will bear again at dawn.",
+	"carcass": "Stripped to nothing.",
+	"grave": "Already dug up. There is nothing left to rob.",
+	"deer": "Hunted.",
+}
+
+func get_inspect_data() -> Dictionary:
+	var rows: Array = []
+
+	if is_depleted():
+		rows.append({"label": "Remaining", "value": "Empty", "color": Color(0.95, 0.6, 0.5)})
+		rows.append({"label": "", "value": SPENT_NOTE.get(node_type, "Exhausted."), "muted": true})
+	else:
+		rows.append({"label": "Remaining", "value": "%d / %d %s" % [remaining, capacity, kind]})
+
+	rows.append({"label": "Gathered by", "value": skill_key.capitalize()})
+
+	# The deer is the one node that yields its whole stock in a single action
+	# (FOUNDATION_SPEC section 5, "whole deer on kill"), which is exactly the
+	# thing worth telling the player about it.
+	if yield_per_action > 1:
+		rows.append({"label": "Yield", "value": "%d %s in one action" % [yield_per_action, kind]})
+
+	if regrows_per_dawn > 0:
+		rows.append({"label": "Regrowth", "value": "+%d at dawn, up to %d" % [regrows_per_dawn, capacity]})
+	else:
+		rows.append({"label": "Regrowth", "value": "None — finite", "muted": true})
+
+	if claims > 0:
+		rows.append({"label": "Claimed by", "value": "%d worker%s" % [claims, "" if claims == 1 else "s"]})
+
+	return {
+		"title": display_name(),
+		"subtitle": "Resource node",
+		"sprite": current_sprite_path(),
+		"description": FLAVOR.get(node_type, ""),
+		"details": rows,
+	}
 
 ## Swaps to the depleted sprite where there is one (tree -> stump, grave ->
 ## spent marker) and otherwise fades toward transparent in proportion to how

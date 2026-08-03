@@ -108,6 +108,66 @@ func label() -> String:
 func has_trait(t: String) -> bool:
 	return traits.has(t)
 
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+
+func inspect_race_id() -> String:
+	return race_id
+
+func inspect_category() -> String:
+	return category
+
+func inspect_social_stats() -> Dictionary:
+	return {"guile": guile, "influence": influence, "loyalty": loyalty}
+
+func inspect_subtitle() -> String:
+	var cat: String = category if category != "" else "Recruit"
+	return "%s — %s" % [species, cat]
+
+## Derived rather than hand-written per race: rarity and category already say
+## what kind of recruit this is, and alignment says how they'll get on with the
+## rest of the settlement once rivalries exist.
+func inspect_description() -> String:
+	var parts: Array = []
+	if rarity != "":
+		parts.append("%s %s recruit." % [rarity, category.to_lower() if category != "" else ""])
+	var alignment: String = RaceCatalog.get_race(race_id).get("alignment", "")
+	if alignment != "":
+		parts.append("%s-aligned." % alignment)
+	if is_exceptional:
+		parts.append("Exceptional — a cut above their own kin.")
+	return " ".join(parts).strip_edges()
+
+func inspect_extra_rows() -> Array:
+	var rows: Array = []
+
+	# Morale first: it is the thing that changes, and the thing that decides
+	# whether this recruit is about to steal from you or walk out.
+	var morale_row := {"label": "Morale", "value": "%d / 10" % morale}
+	if morale <= MORALE_MIN:
+		morale_row["color"] = Color(1.0, 0.45, 0.45)
+	elif morale <= 3:
+		morale_row["color"] = Color(0.95, 0.70, 0.40)
+	rows.append(morale_row)
+	if departure_warned:
+		rows.append({"label": "", "value": "Warned: will leave on the next missed meal.",
+			"color": Color(1.0, 0.45, 0.45)})
+
+	rows.append({"label": "Eats", "value": "%s per meal, twice a day"
+		% String.num(RaceCatalog.food_per_meal(race_id), 2)})
+
+	if is_housed:
+		rows.append({"label": "Lives at", "value": "Their own house, cell %s" % house_cell})
+	else:
+		rows.append({"label": "Lives at", "value": "The Barracks — occupying a slot"})
+
+	if is_busy:
+		rows.append({"label": "", "value": "Away on a bounty or mission — not gathering.", "muted": true})
+
+	if not traits.is_empty():
+		rows.append({"label": "Traits", "value": ", ".join(traits)})
+
+	return rows
+
 ## Majesty-style decision: does this follower want to answer this bounty?
 ## Returns true/false rather than a hard command -- the player never directly
 ## orders anyone, only incentivizes.

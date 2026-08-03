@@ -105,3 +105,22 @@ func _pick_new_target() -> void:
 ## isn't cell-locked).
 func hit_radius() -> float:
 	return TOKEN_SIZE * 0.6
+
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+
+## He isn't a Laborer, so none of Laborer's inspection scaffolding applies --
+## he has no stats, no trip loop and no upkeep. This is deliberately its own
+## small implementation rather than a special case inside the character one.
+func get_inspect_data() -> Dictionary:
+	return {
+		"title": "The Necromancer",
+		"subtitle": "Master of the Settlement",
+		"sprite": PORTRAIT,
+		"description": "He walks the bone-strewn yard at all hours, counting what the living owe him. The dead do not need counting. They simply obey.",
+		"details": [
+			{"label": "Activity", "value": "Surveying his domain"},
+			{"label": "Health", "value": "— no combat system yet", "muted": true},
+			{"label": "Spells", "value": "None yet — the art is not yours to work"},
+			{"label": "", "value": "He does not gather, and never counts toward your workforce.", "muted": true},
+		],
+	}

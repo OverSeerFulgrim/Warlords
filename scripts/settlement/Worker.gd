@@ -35,3 +35,35 @@ func _init(p_name: String) -> void:
 
 func display_name() -> String:
 	return worker_name
+
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+
+func inspect_race_id() -> String:
+	return RACE_ID
+
+func inspect_category() -> String:
+	return RaceCatalog.category(RACE_ID)
+
+## Read from the race row rather than stored as fields. A Worker has no use for
+## Guile, Influence or Loyalty -- it can't take a bounty, can't defect, and
+## can't be talked to -- but the panel shows all four stats for every character,
+## and a skeleton's are racial constants with no variance anyway. Making them
+## fields would be three pieces of state that nothing but this panel reads.
+func inspect_social_stats() -> Dictionary:
+	return {
+		"guile": RaceCatalog.stat(RACE_ID, "guile"),
+		"influence": RaceCatalog.stat(RACE_ID, "influence"),
+		"loyalty": RaceCatalog.stat(RACE_ID, "loyalty"),
+	}
+
+func inspect_subtitle() -> String:
+	return "Skeleton Worker — %s" % inspect_category()
+
+func inspect_description() -> String:
+	return "Raised from your own stores and set to work. It eats nothing, sleeps never, and has no opinion about any of it."
+
+func inspect_extra_rows() -> Array:
+	return [
+		{"label": "Upkeep", "value": "None — the undead don't eat"},
+		{"label": "", "value": "Every Skeleton Worker is identical. There is no point comparing them.", "muted": true},
+	]

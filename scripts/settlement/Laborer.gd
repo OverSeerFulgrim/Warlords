@@ -127,6 +127,65 @@ func abandon_trip() -> void:
 	stage = TripStage.IDLE
 	gather_timer = 0.0
 
+# ---------------- Inspection (see InspectionPanel.gd for the contract) -------
+#
+# Assembled here because the *shape* of a character panel is the same for a
+# skeleton and a gray dwarf -- activity, stats, labor skills, carry, speed. The
+# parts that genuinely differ are the four hooks below, which each subclass
+# fills in. That keeps the per-object knowledge on the per-object script
+# without making both of them re-list the same eight rows.
+
+## races.json key, for the portrait and the race name.
+func inspect_race_id() -> String:
+	return ""
+
+## "Warrior" / "Economy" / "Labor" ... -- what this unit is *for*.
+func inspect_category() -> String:
+	return ""
+
+## The three social stats. Only Might lives on Laborer (it doubles as carry
+## capacity); Guile/Influence/Loyalty are Follower's, and Worker reads them off
+## the flat skeleton baseline rather than storing fields it never uses.
+func inspect_social_stats() -> Dictionary:
+	return {"guile": 0, "influence": 0, "loyalty": 0}
+
+## Rows appended after the shared block -- morale, housing, traits. Empty for
+## anything that has none of those.
+func inspect_extra_rows() -> Array:
+	return []
+
+func inspect_subtitle() -> String:
+	return ""
+
+func inspect_description() -> String:
+	return ""
+
+func get_inspect_data() -> Dictionary:
+	var social: Dictionary = inspect_social_stats()
+	var rows: Array = [
+		{"label": "Activity", "value": status_label()},
+		# Prompt C (the wolf / first combat primitive) is what gives characters
+		# hit points. Until it lands this is a deliberately visible blank rather
+		# than a missing row, so the shape of the panel doesn't shift when
+		# combat arrives -- same "visible promise" treatment as the locked
+		# Upgrade and Spells buttons.
+		{"label": "Health", "value": "— no combat system yet", "muted": true},
+		{"label": "Stats", "value": "Might %d   Guile %d   Influence %d   Loyalty %d" % [
+			might, social.get("guile", 0), social.get("influence", 0), social.get("loyalty", 0)]},
+		{"label": "Labor", "value": "Woodcutting %d   Mining %d   Foraging %d" % [
+			woodcutting, mining, foraging]},
+		{"label": "Carries", "value": "%d per trip" % carry_capacity()},
+		{"label": "Walk speed", "value": "%s cells/sec" % String.num(walk_speed, 2)},
+	]
+	rows.append_array(inspect_extra_rows())
+	return {
+		"title": display_name(),
+		"subtitle": inspect_subtitle(),
+		"sprite": RaceCatalog.sprite(inspect_race_id()),
+		"description": inspect_description(),
+		"details": rows,
+	}
+
 ## Copies the four character stats / three labor skills for `race_id` straight
 ## off the race baseline, with no variance. Used by Worker (which is
 ## interchangeable by design); Follower rolls per-recruit variance instead --

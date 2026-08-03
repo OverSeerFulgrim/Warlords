@@ -155,6 +155,7 @@ func fund_house(follower, resource_field) -> Vector2i:
 
 	var house := Building.make_from_data("recruit_house", data)
 	house.house_race_id = follower.race_id
+	house.house_owner_name = follower.follower_name
 	house.display_name = "%s's House" % follower.follower_name
 	# Sprite/tint are set before place_building() because Building._setup_sprite
 	# runs from _ready(), which fires on add_child() inside place_building.

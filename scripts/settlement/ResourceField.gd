@@ -171,6 +171,23 @@ func has_available(kind: String) -> bool:
 			return true
 	return false
 
+## Click picking: the closest node whose own hit radius contains `world_pos`,
+## or null. Depleted nodes are deliberately still hittable -- a stump and a
+## dug-up grave are exactly the things a player clicks to ask "is this
+## finished?", and answering that is half the point of the inspection panel.
+##
+## Lives here rather than in Main so the "nothing reaches into `nodes`
+## directly" rule holds for input too.
+func node_at(world_pos: Vector2) -> ResourceNode:
+	var best: ResourceNode = null
+	var best_dist: float = INF
+	for n in nodes:
+		var d: float = n.position.distance_to(world_pos)
+		if d <= n.hit_radius() and d < best_dist:
+			best_dist = d
+			best = n
+	return best
+
 ## Nearest non-depleted node of `kind`, biased away from nodes other workers
 ## are already claiming (see ResourceNode.claims / CROWDING_PENALTY_PX).
 ##
