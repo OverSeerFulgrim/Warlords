@@ -100,6 +100,7 @@ func _serve_meal(phase: String) -> void:
 			pool -= need
 			f.meals_eaten_this_cycle += 1
 			fed += 1
+			_regenerate(f)
 		else:
 			f.meals_missed_this_cycle += 1
 			f.adjust_morale(-1)
@@ -115,6 +116,26 @@ func _serve_meal(phase: String) -> void:
 	for f in shorted:
 		_handle_shorted(f)
 	_roll_mischief()
+
+## Healing is a consequence of eating, so it lives in the meal loop rather than
+## in CombatSystem: **living units regenerate +2 hp per meal actually eaten.**
+## A recruit who goes hungry doesn't heal, which is what ties the injury system
+## to the food economy instead of leaving it on a separate timer -- a wolf that
+## mauls your orc during a famine has done real, compounding damage.
+##
+## Clearing the Injured flag is also here, because reaching full health is the
+## only thing that clears it and this is where health goes up. (Skeletons have
+## no path through here at all: they eat nothing, and repair at the Throne
+## instead -- see CombatSystem._tick_throne_repair.)
+const HEAL_PER_MEAL: int = 2
+
+func _regenerate(f) -> void:
+	if f.hp >= f.max_hp():
+		return
+	f.heal(HEAL_PER_MEAL)
+	if f.is_injured and f.hp >= f.max_hp():
+		f.is_injured = false
+		EventBus.recruit_recovered.emit(f)
 
 ## Spends the whole units consumed and keeps the sub-unit remainder for next
 ## time. `pool` is what's left after the sitting.

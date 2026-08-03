@@ -32,6 +32,9 @@ func _init(p_name: String) -> void:
 	mining = 3
 	foraging = 2
 	apply_race_baseline(RACE_ID)
+	# After the baseline, not before -- max_hp() reads Might. A skeleton's
+	# Might 4 puts it at 16 hp.
+	heal_full()
 
 func display_name() -> String:
 	return worker_name

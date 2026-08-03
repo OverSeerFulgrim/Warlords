@@ -191,7 +191,7 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 
 **Deliberately not wired:** `Orc_Armed.png`, `Goblin_Armed.png`, `Gray_Dwarf_Miner.png`. These are per-state variants for combat (Stage 4+) and a working/at-node state. There is no state machine to select them, and wiring them now would mean inventing a state concept purely to justify the art.
 
-**Still placeholder:** the Stone Deposit (Kenney materials icon), animal carcasses (Kenney bones icon), the deer (generated — see below), recruit houses (Kenney House pack, tinted per race by `HouseStyle`), Workshop/Blacksmith (Kenney towers), and the five locked per-species housing buildings.
+**Still placeholder:** the Stone Deposit (Kenney materials icon), animal carcasses (Kenney bones icon), the deer and the wolf (both generated — see below), recruit houses (Kenney House pack, tinted per race by `HouseStyle`), Workshop/Blacksmith (Kenney towers), and the five locked per-species housing buildings.
 
 **Scaling.** Source art is 30–40× its on-screen size, so every use scales down. Two different mechanisms, both already in the codebase:
 
@@ -211,6 +211,8 @@ One latent bug closed on the way through: `ResourceNode` used to compute its sca
 So `art/creature_deer.png` is generated: a 32×32 side-view silhouette plotted with the `Image` API by **`tools/make_deer_sprite.gd`**, run with `godot --headless --path . -s res://tools/make_deer_sprite.gd`. The generator is kept in the repo rather than run-and-deleted so the placeholder stays tweakable, and it carries the shape/colour reasoning in its comments (including two rejected attempts at a pale belly stripe that read as a saddle blanket). It is **still a placeholder** — it just needs to read as a living animal. Nothing depends on the script at runtime, only on its output PNG.
 
 One gotcha it hit: **`_set` is an `Object` virtual** (`_set(StringName, Variant) -> bool`). Naming a pixel-plotting helper `_set` fails to parse with "function signature doesn't match the parent". It's called `_px` now.
+
+**`art/creature_wolf.png` is generated the same way** (`tools/make_wolf_sprite.gd`), and had one job the deer's didn't: at 34px on a night-tinted map it must never be mistaken for the deer, because one is food and the other eats your workers. Three deliberate contrasts carry that — cold grey-blue against warm brown (and the night tint is itself blue-shifted, so the two *separate* at night rather than converging), a low flat back against the deer's tall short one, and a head carried *below* the shoulder line with no antlers, which is the universal read for a stalking predator. Also still a placeholder.
 
 ### Stage 3: the Barracks, and recruits who are actually individuals
 
@@ -386,6 +388,87 @@ Depleted nodes stay clickable on purpose. A stump and a dug-up grave are exactly
 
 Tree nodes are `Pine Tree` / `Pine Stump` now rather than `Tree` / `Stump`, matching the commissioned art.
 
+### Combat: the minimal primitive, and the wolf (Core Feel Prompt C)
+
+The first thing on the map that can hurt you, and — more importantly — **the one damage formula that Stage-4 bounties and Stage-5 raids are meant to call.** Building wolf-specific combat inline was the explicit failure mode to avoid, so the code is layered by how reusable each piece is:
+
+| File | Knows about | Reusable by |
+|---|---|---|
+| `scripts/combat/Combat.gd` | nothing — two Combatants and some arithmetic | anything |
+| `scripts/combat/Engagement.gd` | a fight's clock and its participant list | anything |
+| `scripts/world/Wolf.gd` | how to prowl, look, and bleed | — |
+| `scripts/combat/CombatSystem.gd` | **policy**: targeting, defence, consequences | replace per encounter type |
+
+Only the last one would need rewriting for a bounty. A bounty that wants an instant abstract result calls `Combat.exchange()` in a loop and never constructs anything.
+
+#### The formulas
+
+```
+max_hp  = 8 + Might * 2          Human Peasant 18, Skeleton Worker 16, Ogre recruit 26
+damage  = attacker Might + d3 - floor(defender Might / 2)      minimum 1
+exchange interval = 1.5s, both sides swing, both swings land
+```
+
+**Might is the only stat combat reads.** No dodging, no crits, no ranged, no initiative, no armour — every one of those would need balancing before the settlement loop it serves has been proven.
+
+Three details that are load-bearing rather than incidental:
+
+- **`max_hp()` is computed, never stored.** Might already decides durability everywhere else (it's carry capacity too), and a stored copy goes stale the moment anything changes Might — which the Blacksmith's `+1 Might` already does. `hp` is stored and initialised by `heal_full()` in each subclass's `_init`, plus once more in `RecruitGenerator` after the exceptional-stat bump.
+- **The minimum of 1 is not cosmetic.** Without it a Gnome (Might 2) swinging at an Ogre (Might 9) deals `2 + d3 - 4` = nothing, ever, and a mismatched fight hangs instead of resolving.
+- **Both swings land even when one is lethal.** A dying skeleton still gets its last hit in, which is what lets a doomed defender contribute to driving the wolf off — the difference between a loss and a total loss.
+
+#### The Combatant contract
+
+Duck-typed, same shape as `get_inspect_data()`: `combat_name()`, `combat_might()`, `max_hp()`, `hp` (property), `take_damage()`, `is_alive()`, `hp_fraction()`. `Laborer` implements it for every worker and recruit; `Wolf` implements it for the creature. `Combat.is_combatant()` is a cheap guard so a half-implemented new unit fails loudly instead of silently dealing zero forever.
+
+#### The four consequence rules
+
+These are the design decision, implemented exactly:
+
+1. **Skeleton Workers can be destroyed.** No bones refunded, no corpse. Replaceable for the usual 5 Bones — losses sting, necromancers shrug.
+2. **Living recruits are never killed by wildlife.** Below 30% hp they break off, run home, and are `Injured` (no work) until healed to full, at −1 morale. This is true *by construction*, not by a check at 0 hp: `_injure_and_flee` pulls them out at the threshold, and the 0-hp path warns and injures rather than killing if anything ever reaches it.
+3. **A deer taken by a wolf is a pure economic loss.** The food is gone, the wolf is fed and stands down for the night. **This is the common case, and the point** — a wolf that never touches a person has still cost you 8 food and a hunting trip.
+4. **The Necromancer is untouchable.** Wolves won't approach him, and anything standing in his shadow is invisible to them. The protection is *positional*, so a worker who wanders off to gather is fair game again.
+
+Note rule 3 and the "nearest prey, no preference" targeting work together: your hunters walk out to the same deer the wolf wants, so the two end up in the same place often enough without a preference rule aiming them at each other.
+
+#### Emergent defence
+
+**Nobody is ordered to fight.** When a fight starts, every recruit within 3 cells either joins or runs: Warrior-category or Might ≥ 6 wades in, everyone else drops their load and flees to their idle anchor. The player's only lever is who they recruited and where those people happen to be — the Majesty indirect-control pillar applied to defence, previewed before guard posts or bounties exist.
+
+Skeleton Workers neither rally nor scatter. They have no self-preservation to override and no orders to act on, so they carry on until something bites them.
+
+#### Regen, split across two systems on purpose
+
+- **Living units: +2 hp per meal actually eaten** (`MoraleSystem._regenerate`). Healing lives in the meal loop because it's a consequence of eating — which ties injury to the food economy rather than to a separate timer. A recruit who goes hungry doesn't heal, so a wolf that mauls your orc during a famine has done compounding damage. Reaching full hp is also the only thing that clears `is_injured`.
+- **Skeletons: 1 hp per 6s, only while idle at the Throne** (`CombatSystem._tick_throne_repair`). Necromantic maintenance. The undead perk cuts both ways — free to run, but mendable only at home. Slow on purpose: a mauled skeleton being out of the workforce for a while is most of what makes losing cost anything, when the unit itself is 5 bones.
+
+#### `TripStage.FLEEING` and two new Laborer predicates
+
+The trip loop gained a fifth stage. Fleeing runs at full walk speed rather than the idle shuffle — it's the one time a unit isn't ambling — and becomes `IDLE` on arrival.
+
+Two similar-sounding checks that are deliberately different:
+
+- **`can_labor()`** (existing) — "is this unit in the labor pool at all". False while a follower is away on a bounty.
+- **`can_work_now()`** (new) — "will they take a *new* job". False while injured. An injured recruit stays in the pool, so they still walk home, still idle by their house, and still appear in the workforce summary. Removing them from the pool instead would freeze them mid-map wherever the wolf left them.
+
+`in_combat` is a third, cruder flag: `WorkerSystem._advance_laborer` skips anyone carrying it, so a unit trading blows isn't also strolling off to a tree.
+
+#### Tuning knobs
+
+Wolf: Might 5, 18 hp, flees below 5 hp, hunt radius 5 cells, **55% spawn chance per dusk** (not every night — a guaranteed nightly wolf becomes a chore to plan around, and the first nights of a run should be quiet while the player is still learning the trip loop). Max 1 alive; any wolf still around at dawn slinks off, which keeps that cap honest without a despawn timer.
+
+Wolf vs a lone Skeleton Worker is close by design — ~5 damage a swing against ~4 back, so the wolf needs 3.2 exchanges and the skeleton 3.5. Measured over 7 scripted fights the skeleton lost 7/7, but the margin is thin enough that it won't always. An Orc (Might 7, 22 hp) beats it comfortably.
+
+#### Verification
+
+A headless harness at both 10× and 60×, all passing: the formula in isolation (range 4–6 for wolf-vs-skeleton, min-damage floor, both sides damaged, contract guard); the hp table (16/18/26); dusk spawn; deer kill → fed → stands down → leaves; 7/7 lone skeletons destroyed with no bones refunded; orc engages and drives the wolf off while never dying; +2/meal recovery clearing `Injured`; a Warrior auto-joining while a Might-2 Gnome flees untouched; the Necromancer's shielding; and Throne repair (9 hp vs 3 hp for a skeleton parked elsewhere).
+
+Two harness traps worth remembering, both of which produced convincing false failures:
+
+- **`get_process_delta_time()` is already scaled by `Engine.time_scale`.** Multiplying by it again advances your accounting 60× too fast, so a "wait 6 seconds" loop returns after 0.1s and everything looks broken until the events arrive later in the log.
+- **`NecromancerToken` owns its own position and walks back to `home`.** Assigning `.position` to move him for a test doesn't stick — use `setup()`.
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -420,8 +503,14 @@ scripts/settlement/         SettlementGrid.gd, Building.gd, FollowerToken.gd, Wo
 							  ResourceNode.gd, ResourceField.gd
 scripts/ui/                 InspectionPanel.gd -- the one click-to-inspect panel; defines the
                             get_inspect_data() contract every clickable implements
+scripts/combat/             Combat.gd -- THE damage formula; reusable, knows nothing (bounties/raids call this)
+                            Engagement.gd -- one fight's clock and participants
+                            CombatSystem.gd -- policy: wolf spawning, targeting, emergent defence,
+                            the four consequence rules, skeleton repair at the Throne
 scripts/world/              DayNightCycle.gd (phase clock, CanvasModulate tint, debug time scale)
-tools/                      make_deer_sprite.gd -- one-off art generator, not runtime code
+                            Wolf.gd -- the first hostile creature
+                            Roaming.gd -- wander helpers shared by the deer and the wolf
+tools/                      make_deer_sprite.gd, make_wolf_sprite.gd -- one-off art generators, not runtime code
 scripts/bounty/              BountyBoard.gd, Bounty.gd, Follower.gd
 scripts/threat/               ThreatSystem.gd
 scripts/events/                EventSystem.gd, RecruitGenerator.gd
@@ -449,7 +538,8 @@ art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sp
 - Manual per-worker override on top of the priority list (GAME_OUTLINE Stage 1 flags it as a possible later add)
 - Replanting trees (FOUNDATION_SPEC §5: if wood scarcity bites, the planned fix is a manual replant-seeds action, explicitly *not* automatic regrowth)
 - Dawn/dusk **meal ticks** — the last unbuilt piece of FOUNDATION_SPEC §7. The clock, the phases and both signals are in place (see "Day/night, finished"); what's missing is the food/morale system they'd drive, which needs living recruits to exist first (outline gap #3)
-- Real deer / carcass / stone-deposit art — the last unreplaced map placeholders after the commissioned art pass
+- Real deer / wolf / carcass / stone-deposit art — the last unreplaced map placeholders after the commissioned art pass
+- Combat beyond the primitive: guard posts, ordered defence, more creature types, and the Stage-4 bounty/Stage-5 raid resolution that `Combat.exchange()` was built to serve
 - Per-race house art (recruit houses still reuse the tinted Kenney House pack)
 - Wiring the Orc_Armed / Goblin_Armed / Gray_Dwarf_Miner variants, once combat and work states exist to select them
 - Climate system (deliberately deferred — see "Current phase" above)

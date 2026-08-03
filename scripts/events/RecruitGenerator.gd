@@ -126,6 +126,10 @@ func _build_follower(race_id: String) -> Follower:
 	f.walk_speed = RaceCatalog.walk_speed(race_id)
 
 	_maybe_make_exceptional(f, cat)
+	# Re-top-up after the exceptional roll: a Warrior's bonus is +1 Might, which
+	# raises max_hp by 2, and a recruit should not arrive already two points
+	# short of full.
+	f.heal_full()
 	return f
 
 ## FOUNDATION_SPEC section 3: value = clamp(baseline + d3 - d3, 1, 10).

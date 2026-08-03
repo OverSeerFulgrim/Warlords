@@ -29,6 +29,7 @@ var worker_system: WorkerSystem
 var resource_field: ResourceField
 var day_night: DayNightCycle
 var morale_system: MoraleSystem
+var combat_system: CombatSystem
 var necromancer: NecromancerToken
 var camera: GameCamera
 
@@ -328,6 +329,19 @@ func _build_systems() -> void:
 	morale_system.name = "MoraleSystem"
 	morale_system.day_night = day_night
 	add_child(morale_system)
+
+	# Wolves spawn on dusk, so this also comes after day_night. It needs the
+	# labor pool (prey), the resource field (deer), the grid (the Throne, for
+	# skeleton repair) and the Necromancer (whom wolves avoid) -- all set before
+	# add_child so its first _process has everything, same convention as above.
+	combat_system = CombatSystem.new()
+	combat_system.name = "CombatSystem"
+	combat_system.settlement = settlement
+	combat_system.worker_system = worker_system
+	combat_system.resource_field = resource_field
+	combat_system.necromancer = necromancer
+	combat_system.day_night = day_night
+	add_child(combat_system)
 
 func _build_camera() -> void:
 	camera = GameCamera.new()
@@ -1237,6 +1251,16 @@ func _inspect_at(world_pos: Vector2) -> bool:
 		_inspect(hit_worker)
 		return true
 
+	# Wolves are characters too, for picking purposes -- and the player will
+	# want to click one the moment it appears, to find out how much trouble it
+	# is. Checked after your own units so a defended worker stays selectable
+	# during the fight they're standing in the middle of.
+	if combat_system:
+		for wolf in combat_system.wolves:
+			if world_pos.distance_to(wolf.position) <= wolf.hit_radius():
+				_inspect(wolf)
+				return true
+
 	# --- 2. Resource nodes ---------------------------------------------------
 	# Above buildings because nodes sit mostly off-grid (the forest, the
 	# deposit, the graves) and a deer can wander across the settlement, so a
@@ -1632,6 +1656,54 @@ func _connect_signals() -> void:
 		else:
 			inspector.refresh()
 	)
+	# ---- Combat / wildlife (CombatSystem) ----
+	# All log + alert pin, no modal popups. A wolf is something you notice and
+	# react to, not something that stops the game to ask you a question -- the
+	# whole point of the emergent-defence rule is that the settlement responds
+	# without the player being prompted.
+	EventBus.wolf_spawned.connect(func(_w):
+		_log("[color=#cc8866]Wolves prowl the treeline.[/color]", "events alerts")
+		_alert("Wolves prowl the treeline.", "warn")
+	)
+	EventBus.wolf_departed.connect(func(_w, reason: String):
+		_log("[color=#99aabb]The wolf is gone — %s.[/color]" % reason, "events")
+	)
+	EventBus.combat_started.connect(func(attacker: String, defender: String):
+		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")
+		_alert("A %s is attacking %s." % [attacker, defender], "warn")
+	)
+	EventBus.combat_joined.connect(func(f, attacker: String):
+		_log("[color=lightgreen]%s wades in against the %s.[/color]" % [f.follower_name, attacker],
+			"characters events")
+		_alert("%s joins the fight." % f.follower_name, "good")
+	)
+	EventBus.worker_destroyed.connect(func(w, cause: String):
+		_log("[color=red]A %s tore apart %s.[/color]" % [cause, w.worker_name], "events alerts characters")
+		_alert("%s was destroyed." % w.worker_name, "bad")
+		# A Worker is RefCounted, so the panel's is_instance_valid() guard can't
+		# see this -- same case as a deserting Follower.
+		if inspector.current_source() == w:
+			_close_inspector()
+	)
+	EventBus.recruit_injured.connect(func(f, cause: String):
+		_log("[color=orange]%s broke off from the %s and fled home, badly hurt. They cannot work until they recover.[/color]"
+			% [f.follower_name, cause], "events alerts characters")
+		_alert("%s is injured." % f.follower_name, "bad")
+	)
+	EventBus.recruit_recovered.connect(func(f):
+		_log("[color=lightgreen]%s has recovered and is fit to work again.[/color]" % f.follower_name,
+			"characters events")
+	)
+	EventBus.deer_taken_by_predator.connect(func(_n, predator: String):
+		_log("[color=orange]A %s brought down one of the deer. That food is gone.[/color]" % predator,
+			"events alerts")
+		_alert("A %s took a deer." % predator, "warn")
+	)
+	EventBus.necromancer_feared.connect(func(predator: String):
+		_log("[color=#a99cc8]The %s catches the Necromancer's scent and slinks away from the Throne.[/color]"
+			% predator, "events")
+	)
+
 	EventBus.recruit_housed.connect(func(_f, _cell): _populate_build_row())
 	EventBus.follower_recruited.connect(func(f):
 		var star := " [color=gold](exceptional)[/color]" if f.is_exceptional else ""

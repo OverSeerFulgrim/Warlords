@@ -124,6 +124,10 @@ func _place_at_home(l) -> void:
 # ---------------- The trip loop ----------------
 
 func _advance_laborer(w: Laborer, delta: float) -> void:
+	# A unit trading blows with something stands its ground. CombatSystem owns
+	# them until the fight resolves; the trip loop must not walk them out of it.
+	if w.in_combat:
+		return
 	match w.stage:
 		Laborer.TripStage.IDLE:
 			_tick_idle(w, delta)
@@ -133,6 +137,8 @@ func _advance_laborer(w: Laborer, delta: float) -> void:
 			_tick_gathering(w, delta)
 		Laborer.TripStage.WALK_HOME:
 			_tick_walk_home(w, delta)
+		Laborer.TripStage.FLEEING:
+			_tick_fleeing(w, delta)
 
 ## Idle workers re-check the priority list every frame -- cheap (four
 ## comparisons against GameState) and it means a threshold edit or a bit of
@@ -156,6 +162,18 @@ func _tick_idle(w: Laborer, delta: float) -> void:
 		w.idle_wait = randf_range(2.0, 5.0)
 	if w.position.distance_to(w.idle_target) > ARRIVE_EPSILON:
 		_step_toward(w, w.idle_target, delta, IDLE_SHUFFLE_SCALE)  # a shuffle, not a march
+
+## Running for the idle anchor -- their own house if they have one, the keep
+## otherwise. Deliberately at full walk speed rather than the idle shuffle:
+## this is the one time a unit is not ambling. Becomes IDLE on arrival, at
+## which point an injured recruit simply stays there (can_work_now() keeps them
+## off the job list) and an unhurt one goes back to work on the next tick.
+func _tick_fleeing(w: Laborer, delta: float) -> void:
+	var refuge: Vector2 = w.idle_anchor if w.idle_anchor != Vector2.ZERO else home_position
+	if _step_toward(w, refuge, delta):
+		w.stage = Laborer.TripStage.IDLE
+		w.idle_target = refuge
+		w.idle_wait = randf_range(2.0, 5.0)
 
 func _tick_walk_to_node(w: Laborer, delta: float) -> void:
 	if w.target_node == null or w.target_node.is_depleted():
@@ -249,6 +267,11 @@ func _step_toward(w: Laborer, target: Vector2, delta: float, speed_scale: float 
 func _pick_target_for(w: Laborer) -> ResourceNode:
 	if resource_field == null:
 		return null
+	# An injured recruit stays in the pool -- still on the map, still walking
+	# home, still counted -- but is never handed a new job until they've healed
+	# back to full. See Laborer.can_work_now().
+	if not w.can_work_now():
+		return null
 	for entry in priorities:
 		var kind: String = entry["kind"]
 		if _stock_of(kind) >= int(entry["threshold"]):
@@ -331,6 +354,17 @@ func add_worker(worker: Worker) -> void:
 	worker.position = home_position
 	worker.idle_target = home_position
 	workers.append(worker)
+	EventBus.worker_count_changed.emit(workers.size())
+
+## Removes a Worker from the roster -- currently only ever because a wolf tore
+## it apart (see CombatSystem). No bones are refunded: the design call is that
+## losses sting but are cheap to replace, so the player shrugs and raises
+## another for 5 Bones rather than reloading.
+func remove_worker(worker: Worker) -> void:
+	if not workers.has(worker):
+		return
+	worker.abandon_trip()
+	workers.erase(worker)
 	EventBus.worker_count_changed.emit(workers.size())
 
 ## Player-facing recruitment: costs RECRUIT_COST, returns null (and spends

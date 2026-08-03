@@ -62,6 +62,26 @@ signal dusk_started(day_number: int)
 ## every frame -- it exists so the HUD clock can be signal-driven.
 signal day_phase_changed(label: String)
 
+# Combat / wildlife (see CombatSystem.gd, Wolf.gd, Combat.gd)
+signal wolf_spawned(wolf)
+signal wolf_departed(wolf, reason: String)
+## A fight began. Names rather than objects because the only consumer is the
+## log, and an attacker can outlive the unit it was fighting.
+signal combat_started(attacker_name: String, defender_name: String)
+## A Warrior-category (or Might >= 6) recruit waded in unbidden -- the
+## emergent-defence rule. This is the one the player is meant to notice.
+signal combat_joined(follower, attacker_name: String)
+## A Skeleton Worker was destroyed. Workers are the only unit wildlife can kill.
+signal worker_destroyed(worker, cause: String)
+## A living recruit broke off below 30% hp. Never fatal -- see CombatSystem.
+signal recruit_injured(follower, cause: String)
+signal recruit_recovered(follower)
+## A predator ate a deer: the map loses the food, nobody gets hurt.
+signal deer_taken_by_predator(node, predator_name: String)
+## Flavor only: something hostile came too close to the Necromancer and thought
+## better of it.
+signal necromancer_feared(predator_name: String)
+
 # Threat
 signal threat_tier_escalated(new_tier: int)
 signal crusade_incoming

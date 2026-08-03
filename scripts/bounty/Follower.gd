@@ -91,6 +91,9 @@ func _init(p_name: String, p_species: String, p_traits: Array[String] = [],
 	guile = p_guile
 	influence = p_influence
 	loyalty = p_loyalty
+	# Last, because max_hp() reads Might. RecruitGenerator calls heal_full()
+	# again after its exceptional-stat bump for the same reason.
+	heal_full()
 
 func display_name() -> String:
 	return follower_name

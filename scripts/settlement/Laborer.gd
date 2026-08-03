@@ -25,7 +25,9 @@ extends RefCounted
 ##   deposit -> repeat
 ## IDLE covers both "no job yet" and "nothing worth doing" (every priority is
 ## above its threshold, or the map is out of that resource).
-enum TripStage { IDLE, WALK_TO_NODE, GATHERING, WALK_HOME }
+## FLEEING is the combat addition: dropped their job and running for their idle
+## anchor (their house, or the keep). They rejoin the loop as IDLE on arrival.
+enum TripStage { IDLE, WALK_TO_NODE, GATHERING, WALK_HOME, FLEEING }
 
 # --- Labor stats. Subclasses fill these from races.json. ---
 var might: int = 5           # also the carry capacity, per FOUNDATION_SPEC section 6
@@ -48,6 +50,90 @@ var gather_action_target: float = 0.0
 ## Idle wander bookkeeping -- only used while stage == IDLE.
 var idle_target: Vector2 = Vector2.ZERO
 var idle_wait: float = 0.0
+
+# ---------------- Combat (the Combatant contract -- see Combat.gd) ----------
+#
+# Every laborer can be attacked, so HP lives on the base class rather than on
+# Worker and Follower separately. What *happens* when one drops is completely
+# different for the two (a skeleton is destroyed, a recruit is only ever
+# injured) -- that policy is CombatSystem's, not this class's.
+
+## `max_hp = 8 + Might * 2`. Computed, never stored: Might is already the stat
+## that makes a unit durable in every other system (it's carry capacity too),
+## and a stored copy would silently go stale the moment anything changed Might
+## -- which the Blacksmith's +1 Might already does, and equipment will do more
+## of. Human Peasant 18, Skeleton Worker 16, an Ogre recruit 26.
+const HP_BASE: int = 8
+const HP_PER_MIGHT: int = 2
+
+func max_hp() -> int:
+	return HP_BASE + maxi(1, might) * HP_PER_MIGHT
+
+## Current hit points. Initialised by heal_full() in each subclass's `_init`
+## (and again by RecruitGenerator once the stat rolls have settled), because
+## Might isn't known until then and max_hp() depends on it.
+var hp: int = 1
+
+## True while a living recruit is recovering from being beaten up. They keep
+## their place on the roster and stay visible on the map -- they just can't be
+## given a job (see can_work_now) until healed back to full.
+##
+## Only Followers are ever injured; a Worker that loses a fight is destroyed
+## outright. The flag lives here anyway so `can_work_now()` is one check for the
+## whole labor pool rather than a type test in WorkerSystem.
+var is_injured: bool = false
+
+## True while locked into an Engagement. The trip loop skips anyone with this
+## set -- a unit trading blows with a wolf must not also be strolling off to a
+## tree, and this is a cheaper way to say that than teaching every stage
+## handler about combat.
+var in_combat: bool = false
+
+func heal_full() -> void:
+	hp = max_hp()
+
+## Returns the damage actually applied (clipped at 0 hp), so callers can log
+## the real number rather than the roll.
+func take_damage(amount: int) -> int:
+	var before: int = hp
+	hp = maxi(0, hp - maxi(0, amount))
+	return before - hp
+
+## Returns hp actually restored. Capped at max_hp -- see MoraleSystem for the
+## +2-per-meal living regen and CombatSystem for skeleton repair at the Throne.
+func heal(amount: int) -> int:
+	var before: int = hp
+	hp = mini(max_hp(), hp + maxi(0, amount))
+	return hp - before
+
+func is_alive() -> bool:
+	return hp > 0
+
+func hp_fraction() -> float:
+	return float(hp) / float(maxi(1, max_hp()))
+
+func combat_might() -> int:
+	return might
+
+func combat_name() -> String:
+	return display_name()
+
+## Whether this unit will pick up a *new* job. Distinct from `can_labor()`,
+## which answers "is this unit in the labor pool at all" -- an injured recruit
+## stays in the pool (so they still walk home, still idle by their house, still
+## show up in the workforce summary) but is never handed a gathering trip.
+## Taking them out of the pool entirely would freeze them mid-map wherever the
+## wolf left them.
+func can_work_now() -> bool:
+	return not is_injured
+
+## Drop everything and run for the idle anchor. Used both by units breaking off
+## a fight and by bystanders scattering from one.
+func begin_flee() -> void:
+	abandon_trip()
+	carrying_amount = 0
+	carrying_kind = ""
+	stage = TripStage.FLEEING
 
 ## Where they mill about with nothing to do. Defaults to the keep for Workers
 ## and for recruits still in the Barracks; once a recruit's house is funded it
@@ -103,6 +189,8 @@ func carrying_kind_label() -> String:
 
 ## Human-readable job state for the HUD info panel and the workforce summary.
 func status_label() -> String:
+	if in_combat:
+		return "Fighting"
 	match stage:
 		TripStage.WALK_TO_NODE:
 			return "Walking to %s" % (target_node.display_name() if target_node else "?")
@@ -112,8 +200,10 @@ func status_label() -> String:
 			return "Gathering %s" % carrying_kind_label()
 		TripStage.WALK_HOME:
 			return "Hauling %d %s home" % [carrying_amount, carrying_kind_label()]
+		TripStage.FLEEING:
+			return "Fleeing home"
 		_:
-			return "Idle"
+			return "Recovering" if is_injured else "Idle"
 
 ## Drops the current job and any claim on its node. Called when the node runs
 ## dry underneath them, when the priority list changes in a way that makes the
@@ -160,16 +250,25 @@ func inspect_subtitle() -> String:
 func inspect_description() -> String:
 	return ""
 
+## Colour-coded so a hurt unit is legible at a glance, the same way morale is.
+## The "8 + Might x2" note is deliberate: Might driving durability is the single
+## thing a player needs to understand about this combat system.
+func _hp_row() -> Dictionary:
+	var row := {"label": "Health", "value": "%d / %d hp" % [hp, max_hp()]}
+	if is_injured:
+		row["value"] += "  — Injured, not working"
+		row["color"] = Color(1.0, 0.45, 0.45)
+	elif hp_fraction() < Combat.FLEE_HP_FRACTION:
+		row["color"] = Color(1.0, 0.45, 0.45)
+	elif hp < max_hp():
+		row["color"] = Color(0.95, 0.70, 0.40)
+	return row
+
 func get_inspect_data() -> Dictionary:
 	var social: Dictionary = inspect_social_stats()
 	var rows: Array = [
 		{"label": "Activity", "value": status_label()},
-		# Prompt C (the wolf / first combat primitive) is what gives characters
-		# hit points. Until it lands this is a deliberately visible blank rather
-		# than a missing row, so the shape of the panel doesn't shift when
-		# combat arrives -- same "visible promise" treatment as the locked
-		# Upgrade and Spells buttons.
-		{"label": "Health", "value": "— no combat system yet", "muted": true},
+		_hp_row(),
 		{"label": "Stats", "value": "Might %d   Guile %d   Influence %d   Loyalty %d" % [
 			might, social.get("guile", 0), social.get("influence", 0), social.get("loyalty", 0)]},
 		{"label": "Labor", "value": "Woodcutting %d   Mining %d   Foraging %d" % [

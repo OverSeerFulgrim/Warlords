@@ -76,15 +76,14 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _frozen or is_depleted():
 		return
-	if position.distance_to(_roam_target) < 4.0:
+	# Shared with the wolf -- see Roaming.gd for why this is two static helpers
+	# rather than a base class the deer and the wolf both extend.
+	if Roaming.arrived(position, _roam_target):
 		_pick_roam_target()
-	position += position.direction_to(_roam_target) * DEER_WANDER_SPEED * delta
+	position = Roaming.step(position, _roam_target, DEER_WANDER_SPEED, delta)
 
 func _pick_roam_target() -> void:
-	_roam_target = Vector2(
-		randf_range(roam_rect.position.x, roam_rect.position.x + roam_rect.size.x),
-		randf_range(roam_rect.position.y, roam_rect.position.y + roam_rect.size.y)
-	)
+	_roam_target = Roaming.random_point_in(roam_rect)
 
 ## Stops a deer moving while it's being hunted, so the hunter isn't chasing a
 ## target that keeps sliding out from under them. Harmless no-op for every
