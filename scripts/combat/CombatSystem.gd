@@ -28,11 +28,17 @@ class_name CombatSystem
 ## Only one wolf at a time for now.
 const MAX_WOLVES: int = 1
 
-## Chance a wolf turns up on any given dusk. Not every night -- a guaranteed
-## nightly wolf becomes a chore to plan around rather than a thing that happens
-## to you, and the first few nights of a run should be quiet while the player is
-## still learning the trip loop.
+## Chance a wolf turns up on any given dusk *after the first*. Not every night:
+## a guaranteed nightly wolf becomes a chore to plan around rather than a thing
+## that happens to you.
 const WOLF_SPAWN_CHANCE_PERCENT: float = 55.0
+
+## **The first dusk of a run always brings a wolf.** Leaving the introduction to
+## a 55% roll meant a player could finish a whole session having never met the
+## creature -- which is exactly what happened in playtest, twice, because a
+## session tends to end on the first night. A mechanic gets to introduce itself
+## deterministically; it can be a gamble afterwards.
+var _first_dusk_done: bool = false
 
 ## Radius, in pixels, for both halves of the emergent-defence rule: fighters
 ## inside it join, everyone else inside it runs. 3 grid cells.
@@ -85,7 +91,9 @@ func _process(delta: float) -> void:
 func _on_dusk(_day: int) -> void:
 	if wolves.size() >= MAX_WOLVES:
 		return
-	if randf() * 100.0 > WOLF_SPAWN_CHANCE_PERCENT:
+	var guaranteed: bool = not _first_dusk_done
+	_first_dusk_done = true
+	if not guaranteed and randf() * 100.0 > WOLF_SPAWN_CHANCE_PERCENT:
 		return
 	spawn_wolf()
 
@@ -140,9 +148,10 @@ func _advance_wolf(wolf: Wolf, _delta: float) -> void:
 
 	_check_necromancer_fear(wolf)
 
-	# A fed wolf still wanders (it is visibly still there, which is the point of
-	# it standing down rather than vanishing) but takes nothing else.
-	if wolf.is_fed:
+	# A fed wolf still wanders -- visibly still out there, which is the point of
+	# it *standing down* rather than vanishing -- and takes nothing else until
+	# dawn moves it on. Same gate covers the post-spawn prowl period.
+	if not wolf.may_hunt():
 		wolf.clear_target()
 		return
 
@@ -229,12 +238,17 @@ func _check_necromancer_fear(wolf: Wolf) -> void:
 ## whole animal exactly as a hunter would (ResourceNode.make_deer's
 ## yield_per_action is the same 8), the food never reaches the player, and the
 ## wolf stands down for the night.
+##
+## It does **not** leave. An earlier version had it depart on the spot, which
+## read cleanly in the log and terribly on screen: the wolf was off the map
+## seconds after arriving and the player never saw it. "Stops hunting for the
+## rest of the day" is also what the design actually asked for. It slinks off at
+## dawn like any other wolf (see _on_dawn).
 func _take_deer(wolf: Wolf, deer) -> void:
 	deer.take(deer.remaining)
 	wolf.is_fed = true
 	wolf.clear_target()
 	EventBus.deer_taken_by_predator.emit(deer, "wolf")
-	wolf.depart("dragging its kill into the treeline")
 
 # ---------------- Fights ----------------
 

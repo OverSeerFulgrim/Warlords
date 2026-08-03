@@ -35,6 +35,19 @@ const FLEE_BELOW_HP: int = 5
 ## How far it will notice prey from, in pixels. ~5 grid cells.
 const HUNT_RADIUS_PX: float = 320.0
 
+## Seconds of visible prowling before it will take anything.
+##
+## Without this the wolf is functionally invisible: it enters at the treeline,
+## a roaming deer is usually already inside its hunt radius, and it kills and
+## leaves inside a couple of seconds. Playtest saw two spawns in a row that
+## never came within sight of the settlement -- the player got two log lines and
+## no wolf. A threat the player never sees isn't a threat, it's a tax.
+##
+## Also gives the emergent-defence rule somewhere to happen: an approaching wolf
+## is a thing you can notice and react to, which is the entire point of the
+## rule being emergent rather than ordered.
+const HUNT_DELAY_SECONDS: float = 25.0
+
 ## Close enough to start biting.
 const ENGAGE_RADIUS_PX: float = 26.0
 
@@ -74,6 +87,8 @@ var exit_point: Vector2
 
 var _target = null          ## a Laborer or a deer ResourceNode
 var _roam_target: Vector2
+## Counts down HUNT_DELAY_SECONDS from spawn. See the constant.
+var _hunt_delay_left: float = HUNT_DELAY_SECONDS
 var _sprite: Sprite2D
 var _hp_bar: Label
 
@@ -109,6 +124,7 @@ func setup(spawn_pos: Vector2, p_roam_rect: Rect2, p_exit_point: Vector2) -> voi
 
 func _process(delta: float) -> void:
 	_hp_bar.text = "%d hp" % hp
+	_hunt_delay_left = maxf(0.0, _hunt_delay_left - delta)
 	match state:
 		State.PROWL:
 			_tick_prowl(delta)
@@ -145,6 +161,13 @@ func _face_toward(p: Vector2) -> void:
 		_sprite.flip_h = p.x < position.x
 
 # ---------------- Target handling (set by CombatSystem) ----------------
+
+## False while it's still working up to it. CombatSystem checks this before
+## looking for prey at all, so an approaching wolf spends its first
+## HUNT_DELAY_SECONDS visibly crossing the map instead of eating the first deer
+## it spawns beside.
+func may_hunt() -> bool:
+	return _hunt_delay_left <= 0.0 and not is_fed
 
 func set_target(t) -> void:
 	_target = t

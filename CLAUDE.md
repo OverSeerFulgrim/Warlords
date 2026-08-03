@@ -456,7 +456,16 @@ Two similar-sounding checks that are deliberately different:
 
 #### Tuning knobs
 
-Wolf: Might 5, 18 hp, flees below 5 hp, hunt radius 5 cells, **55% spawn chance per dusk** (not every night — a guaranteed nightly wolf becomes a chore to plan around, and the first nights of a run should be quiet while the player is still learning the trip loop). Max 1 alive; any wolf still around at dawn slinks off, which keeps that cap honest without a despawn timer.
+Wolf: Might 5, 18 hp, flees below 5 hp, hunt radius 5 cells, **the first dusk of a run always brings one, then 55% per dusk after that.** Max 1 alive; any wolf still around at dawn slinks off, which keeps that cap honest without a despawn timer.
+
+Two of those numbers were corrected after the first playtest, and the failure is worth recording because it wasn't a crash — the system worked perfectly and the player still never saw it:
+
+- **The introduction was left to a coin flip.** A session tends to end on the first night, so the feature got exactly one 55% roll to exist. Two playtests in a row came up empty. A mechanic gets to introduce itself deterministically; it can be a gamble afterwards.
+- **A fed wolf used to depart on the spot, and it spawns beside the deer.** The treeline entry point is inside the deer roam area, so it killed and left within seconds of arriving — off the map before it was ever on screen, twice out of two spawns. Fixed twice over: `HUNT_DELAY_SECONDS` (25s) makes it prowl visibly before it can take anything, and a fed wolf now stays until dawn, which is also what "stops hunting for the rest of the day" actually asked for.
+
+Measured after the fix: 4 wolves over 6 dusks, first one guaranteed, each visible for a whole night.
+
+**The deer is still the usual victim** — they roam the same ground the wolf enters on, so "nearest prey" nearly always resolves to one. That is rule 3 working, not a targeting bug: the wolf is meant to be an economic threat first. It reaches people when your labourers are out in the forest at night.
 
 Wolf vs a lone Skeleton Worker is close by design — ~5 damage a swing against ~4 back, so the wolf needs 3.2 exchanges and the skeleton 3.5. Measured over 7 scripted fights the skeleton lost 7/7, but the margin is thin enough that it won't always. An Orc (Might 7, 22 hp) beats it comfortably.
 
