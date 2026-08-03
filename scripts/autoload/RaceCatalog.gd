@@ -92,6 +92,13 @@ func walk_speed(race_id: String) -> float:
 func food_per_meal(race_id: String) -> float:
 	return float(_races.get(race_id, {}).get("food_per_meal", 1.0))
 
+## res:// path to the race's on-map token art, or "" if it has none (the
+## Human Peasant reference row). Data-driven so adding a race never means
+## touching a sprite Dictionary in Main.gd -- see races.json's
+## "_comment_sprites", which also lists the unused *_Armed / _Miner variants.
+func sprite(race_id: String) -> String:
+	return _races.get(race_id, {}).get("sprite", "")
+
 func category(race_id: String) -> String:
 	return _races.get(race_id, {}).get("category", "")
 

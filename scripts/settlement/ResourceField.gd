@@ -27,19 +27,25 @@ const DEER_STARTING_COUNT: int = 2
 ## so much that the single Stone Deposit stops being worth sharing.
 const CROWDING_PENALTY_PX: float = 200.0
 
-## Art notes: no vendored pack contains a quadruped (both Kenney roguelike
-## sheets were checked tile by tile), so the deer is a generated 32x32 sprite
-## -- see tools/make_deer_sprite.gd for the generator and why. It replaced the
-## raw-meat food icon, which read as a floating steak rather than an animal.
-## Stumps reuse the branch icon; spent graves reuse the second tombstone
-## variant, dimmed by ResourceNode._refresh_visual().
-const SPRITE_TREE := "res://Icons/Materials/materials_002_tree.png"
-const SPRITE_STUMP := "res://Icons/Materials/materials_001_branch.png"
+## Art notes: trees, berry groves and graves now use the commissioned art in
+## "Official Sprites/" -- each with a real depleted-state sprite, so a chopped
+## tree becomes an actual stump and a robbed grave an actual dug-up pit rather
+## than the same image dimmed. Still placeholder: the stone deposit (Kenney
+## materials icon) and the deer (generated, see tools/make_deer_sprite.gd).
+const SPRITE_TREE := "res://Official Sprites/Pine_Tree.png"
+const SPRITE_STUMP := "res://Official Sprites/Pine_Stump.png"
+const SPRITE_BERRY := "res://Official Sprites/Berry_Grove_Full.png"
+## The grove regrows at dawn, so "picked" is a *state*, not an end state --
+## ResourceNode swaps back to the full sprite the moment remaining goes above 0.
+const SPRITE_BERRY_PICKED := "res://Official Sprites/Berry_Grove_Picked.png"
+const SPRITE_GRAVE := "res://Official Sprites/Grave_Undisturbed.png"
+const SPRITE_GRAVE_SPENT := "res://Official Sprites/Grave_Dug_Up.png"
+
+## Still placeholders -- no official art for these two yet. The stone deposit
+## reuses the Kenney materials icon and wild game reuses the generated deer
+## (see tools/make_deer_sprite.gd), same as before this pass.
 const SPRITE_STONE := "res://Icons/Materials/materials_005_stone.png"
-const SPRITE_BERRY := "res://Icons/Food/food_022_raspberry.png"
 const SPRITE_CARCASS := "res://art/icon_bones_kenney.png"
-const SPRITE_GRAVE := "res://art/detail_tombstone2.png"
-const SPRITE_GRAVE_SPENT := "res://art/detail_tombstone3.png"
 const SPRITE_DEER := "res://art/creature_deer.png"
 
 var nodes: Array = []  # Array[ResourceNode]
@@ -91,7 +97,7 @@ func _build_stone_deposit(pos: Vector2) -> void:
 	_add(ResourceNode.make_stone_deposit(pos), SPRITE_STONE, "", 58.0)
 
 func _build_berry_grove(pos: Vector2) -> void:
-	_add(ResourceNode.make_berry_grove(pos), SPRITE_BERRY, "", 46.0)
+	_add(ResourceNode.make_berry_grove(pos), SPRITE_BERRY, SPRITE_BERRY_PICKED, 46.0)
 
 ## "One by the road, one at the forest's far edge" -- the road-side grave sits
 ## north of the settlement (the approach side), the other past the forest to

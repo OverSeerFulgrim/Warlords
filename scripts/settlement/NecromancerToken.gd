@@ -36,12 +36,12 @@ const WALK_SPEED_PX: float = 22.0
 const PAUSE_MIN: float = 2.5
 const PAUSE_MAX: float = 6.0
 
-## Placeholder art. This is the 128px *portrait* from the Characters pack,
-## scaled down to token size -- the same portrait the HUD badge uses, so at
-## token scale he reads as a hooded figure rather than as a designed sprite.
-## ART_BRIEF calls for a proper Necromancer sprite; this is the stand-in until
-## that exists, in the same documented spirit as the generated deer.
-const PORTRAIT := "res://Characters/Character - 128 x 128/character_029.png"
+## Commissioned art, shared with the HUD badge (Main.NECROMANCER_SPRITE points
+## at the same file). It is a 1024px portrait scaled down to token size --
+## still a portrait rather than a purpose-drawn map sprite, so he reads as a
+## hooded figure rather than a posed character, but it is the real Necromancer
+## art rather than a pack stand-in.
+const PORTRAIT := "res://Official Sprites/Necromancer_Portrait.png"
 const TOKEN_SIZE: float = 44.0
 
 var home: Vector2 = Vector2.ZERO

@@ -16,7 +16,7 @@
     "tick_interval": 5.0,
     "power_value": 3,
     "requires": "",
-    "sprite_path": "res://art/building_bone_pile_kenney.png"
+    "sprite_path": "res://Official Sprites/Bone_Pile.png"
   },
 
   "dark_altar": {
@@ -29,7 +29,7 @@
     "power_value": 6,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://art/building_dark_altar_kenney.png"
+    "sprite_path": "res://Official Sprites/Dark_Altar.png"
   },
 
   "bone_crypt": {
@@ -113,7 +113,7 @@
     "unique": true,
     "power_value": 4,
     "requires": "",
-    "sprite_path": "res://Buildings/Tower/tower_blue.png"
+    "sprite_path": "res://Official Sprites/Barracks.png"
   },
 
   "recruit_house": {
@@ -133,6 +133,6 @@
     "power_value": 10,
     "max_hp": 40,
     "requires": "",
-    "sprite_path": "res://Buildings/Castle/castle_blue.png"
+    "sprite_path": "res://Official Sprites/Throne_of_Bones.png"
   }
 }

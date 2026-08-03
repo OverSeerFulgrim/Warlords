@@ -39,6 +39,7 @@ var event_panel: PanelContainer
 var top_panel: PanelContainer  # kept so menus below can size themselves off its actual height
 var lbl_resources_left: Label
 var lbl_resources_right: Label
+var lbl_dark_essence: Label    # sits right of the Dark Essence icon
 var time_scale_btn: Button
 var necro_badge: Button
 
@@ -111,15 +112,16 @@ var worker_keep_zone: Rect2         # deposit point + idle-wander area around th
 ## on-screen stand-in spawned per follower, and this roster row in the HUD is
 ## a second, smaller use of the same portraits.
 ##
-## Sourced from the "Characters" asset pack (res://Characters/Character - 128
-## x 128/) -- hand-picked matches by look rather than any naming convention
-## in the pack itself, since it's a generic RPG-portrait set, not a
-## monster-specific one. Picks:
-##   character_020 -- hooded, red-eyed figure -> Wraith
-##   character_023 -- green tusked figure -> Orc
-##   character_022 -- green hooded, pointed-eared figure -> Goblin
-##   character_024 -- pale figure, ribcage visible on outfit -> Skeleton
-##   character_036 -- pale/green-tinged figure with a wound -> Ghoul
+## **Legacy fallback only.** Token art is now data-driven: every race carries a
+## `sprite` in races.json (see RaceCatalog.sprite), pointing at the
+## commissioned art in "Official Sprites/". This Dictionary survives for the
+## handful of *species* that were never races -- Ghoul and Wraith exist only in
+## the superseded followers.json templates and have no races.json row, so a
+## follower built through that path would otherwise have no art at all.
+## Skeleton/Orc/Goblin are here for the same historical reason and are
+## shadowed in practice by the races.json entries.
+##
+## Don't add to this. Add a `sprite` to races.json instead.
 const SPECIES_SPRITES := {
 	"Skeleton": "res://Characters/Character - 128 x 128/character_024.png",
 	"Ghoul": "res://Characters/Character - 128 x 128/character_036.png",
@@ -128,18 +130,18 @@ const SPECIES_SPRITES := {
 	"Goblin": "res://Characters/Character - 128 x 128/character_022.png",
 }
 
-## The player's own portrait -- character_029 (black hood, pale gaunt face,
-## dark robe with blood-red trim) picked from the same "Characters" pack
-## during a reference/design pass (see Necromancer_Reference.md) as the
-## strongest "this is the villain" read of the pack's 40 portraits, with no
-## overlap against the species portraits above.
-const NECROMANCER_SPRITE := "res://Characters/Character - 128 x 128/character_029.png"
+## The player's own portrait -- commissioned, used for both the HUD badge and
+## the on-map avatar (NecromancerToken has its own copy of this path).
+const NECROMANCER_SPRITE := "res://Official Sprites/Necromancer_Portrait.png"
 
-## Stand-in portrait for any race without a hand-picked entry in
-## SPECIES_SPRITES above -- which since the race roster landed is most of them
-## (Gray Dwarf, Gnome, Minotaur, Halfling...). Picking per-race portraits out
-## of the 40-portrait pack is an art pass, not this one; what matters here is
-## that an unrecognised species still shows up on the map.
+## Icon for Dark Essence in the top resource bar. Currently the *only* resource
+## with an icon: the other four (Wood/Stone/Bones/Food) have no commissioned
+## art yet, so the bar is deliberately one icon plus four text labels rather
+## than a half-finished icon set. Revisit when the rest arrive.
+const ICON_DARK_ESSENCE := "res://Official Sprites/Icon_Dark_Essence.png"
+
+## Last-resort portrait if a follower has neither a races.json sprite nor a
+## SPECIES_SPRITES entry. Reaching this means a data gap, not a normal path.
 const FALLBACK_SPECIES_SPRITE := "res://Characters/Character - 128 x 128/character_001.png"
 
 const INFO_PANEL_WIDTH := 170.0
@@ -381,14 +383,22 @@ func _sync_follower_tokens() -> void:
 		if not GameState.followers.has(f):
 			_despawn_token(f)
 
+## Token art for a follower, preferring the data-driven races.json sprite and
+## degrading through the legacy species map to a generic portrait. Three tiers
+## because followers can arrive by two different paths -- the race roster
+## (everything current) and the superseded followers.json templates (Ghoul,
+## Wraith), which have a species but no race_id.
+func _token_sprite_for(follower) -> String:
+	if follower.race_id != "":
+		var from_data: String = RaceCatalog.sprite(follower.race_id)
+		if from_data != "":
+			return from_data
+	return SPECIES_SPRITES.get(follower.species, FALLBACK_SPECIES_SPRITE)
+
 func _spawn_token(follower) -> void:
 	var token := FollowerToken.new()
 	followers_layer.add_child(token)
-	# SPECIES_SPRITES only covers the five original undead/monster species. The
-	# race roster is 16 and growing, so anything without a hand-picked portrait
-	# falls back to a generic one rather than spawning an invisible token --
-	# which is what a missing texture would silently do.
-	var sprite_path: String = SPECIES_SPRITES.get(follower.species, FALLBACK_SPECIES_SPRITE)
+	var sprite_path: String = _token_sprite_for(follower)
 	var tex: Texture2D = null
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		tex = load(sprite_path)
@@ -424,12 +434,11 @@ func _sync_worker_tokens() -> void:
 func _spawn_worker_token(worker) -> void:
 	var token := WorkerToken.new()
 	workers_layer.add_child(token)
-	# Workers are the plain/generic labor unit -- reuse the Skeleton
-	# Follower portrait as a stand-in "undead laborer" look rather than
-	# commissioning a distinct sprite for a unit type that's deliberately
-	# meant to read as interchangeable, not individual. (Confirmed again
-	# during the UI design pass: kept deliberately as-is.)
-	var sprite_path: String = SPECIES_SPRITES.get("Skeleton", "")
+	# Workers now have their own commissioned art rather than borrowing a
+	# Follower portrait -- Skeleton_Worker.png, via the same races.json lookup
+	# every other unit uses. They still read as interchangeable by design:
+	# every worker is the same skeleton, which is the point.
+	var sprite_path: String = RaceCatalog.sprite(Worker.RACE_ID)
 	var tex: Texture2D = null
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		tex = load(sprite_path)
@@ -495,6 +504,27 @@ func _build_top_bar(hud_root: Control) -> void:
 	lbl_resources_left = Label.new()
 	lbl_resources_left.add_theme_font_size_override("font_size", 14)
 	row.add_child(lbl_resources_left)
+
+	# Dark Essence gets an icon; the other four are still text. The source art
+	# is 1024px square, so it's scaled into a fixed 20x20 box by the
+	# TextureRect rather than by a Sprite2D scale factor -- Controls size
+	# themselves, and EXPAND_IGNORE_SIZE is what stops the raw 1024px asking
+	# for a 1024px-tall top bar.
+	var essence_icon := TextureRect.new()
+	if ResourceLoader.exists(ICON_DARK_ESSENCE):
+		essence_icon.texture = load(ICON_DARK_ESSENCE)
+	else:
+		push_warning("Main: Dark Essence icon not found at %s" % ICON_DARK_ESSENCE)
+	essence_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	essence_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	essence_icon.custom_minimum_size = Vector2(20, 20)
+	essence_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	essence_icon.tooltip_text = "Dark Essence"
+	row.add_child(essence_icon)
+
+	lbl_dark_essence = Label.new()
+	lbl_dark_essence.add_theme_font_size_override("font_size", 14)
+	row.add_child(lbl_dark_essence)
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1689,12 +1719,15 @@ func _update_stats_label() -> void:
 	if main_building:
 		home_hp_str = "   Throne: %d/%d hp" % [main_building.hp, main_building.max_hp]
 	# Mundane resources first, in the order the foundation loop cares about
-	# them (Wood/Stone build, Bones raise workers, Food feeds living recruits),
-	# with Dark Essence last -- it's locked at 0 for the whole foundation build
-	# but stays visible as the roadmap promise that Stage 4 unlocks it.
-	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d   Dark Essence: %d" % [
-		GameState.wood, GameState.stone, GameState.bones, GameState.food, GameState.dark_essence
+	# them (Wood/Stone build, Bones raise workers, Food feeds living recruits).
+	# Dark Essence trails behind its icon -- locked at 0 for the whole
+	# foundation build, but visible as the roadmap promise that Stage 4
+	# unlocks it.
+	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d" % [
+		GameState.wood, GameState.stone, GameState.bones, GameState.food
 	]
+	if lbl_dark_essence:
+		lbl_dark_essence.text = str(GameState.dark_essence)
 	var clock_str := "%s   " % day_night.phase_label() if day_night else ""
 	lbl_resources_right.text = "%sThreat: %d (tier %d)   Power: %d%s" % [
 		clock_str, GameState.threat, GameState.threat_tier, GameState.power, home_hp_str

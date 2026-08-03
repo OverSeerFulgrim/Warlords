@@ -1,6 +1,8 @@
 {
   "_comment": "Race roster, transcribed from RACES.md (which stays the human-readable source of truth for the design rationale). All stats and labor skills run 1-10 on the Human Peasant = 5 scale; walk_speed and food_per_meal are racial constants with no per-recruit variance (FOUNDATION_SPEC section 3). 'category' is what the race offers (Warrior/Economy/Research/Foraging/Versatile/Labor) and drives the first-run category-spread guarantee plus which stat gets the 5% exceptional roll. 'alignment' is data, not a moral system -- it drives recruit-event weighting and later good/evil friction. 'rarity' is the base recruit-offer weight (Common 60 / Uncommon 30 / Rare 10, shifting toward Uncommon/Rare as settlement Power grows); 'player-made' and 'not recruitable' never appear in recruit offers. 'housing_style' is the fund-a-house placement rule the recruit picks their own spot by. 'rivalries' lists specific race ids with a starting-relationship penalty; on top of these there is a mild blanket penalty between any Good-aligned and any Evil-aligned pair, which is derived from 'alignment' rather than listed per race. Non-'_' keys are races; human_peasant is the 1-10 measuring stick and is deliberately not recruitable.",
 
+  "_comment_sprites": "'sprite' is the on-map token art, commissioned, in 'Official Sprites/' at 1254px square (Skeleton_Worker is 1024). The mapping lives here rather than in a Dictionary in Main.gd so adding a race is a data edit. Tokens scale it down to ~32-40px on screen; see FollowerToken/WorkerToken. human_peasant has no sprite on purpose -- it is the not-recruitable measuring stick and never gets a token. THREE VARIANTS EXIST BUT ARE DELIBERATELY NOT WIRED: Orc_Armed.png, Goblin_Armed.png and Gray_Dwarf_Miner.png. They are for future per-state art -- armed versions for when combat exists (Stage 4+), the miner for a working/at-node state -- and there is no state machine to select them yet. Wiring them now would mean inventing a state concept purely to justify the art.",
+
   "human_peasant": {
     "display_name": "Human Peasant",
     "category": "reference",
@@ -18,6 +20,7 @@
 
   "skeleton_worker": {
     "display_name": "Skeleton Worker",
+    "sprite": "res://Official Sprites/Skeleton_Worker.png",
     "category": "Labor",
     "alignment": "Undead",
     "rarity": "player-made",
@@ -33,6 +36,7 @@
 
   "orc": {
     "display_name": "Orc",
+    "sprite": "res://Official Sprites/Orc.png",
     "category": "Warrior",
     "alignment": "Evil",
     "rarity": "Common",
@@ -48,6 +52,7 @@
 
   "hobgoblin": {
     "display_name": "Hobgoblin",
+    "sprite": "res://Official Sprites/Hobgoblin.png",
     "category": "Warrior",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -63,6 +68,7 @@
 
   "ogre": {
     "display_name": "Ogre",
+    "sprite": "res://Official Sprites/Ogre.png",
     "category": "Warrior",
     "alignment": "Chaotic",
     "rarity": "Uncommon",
@@ -78,6 +84,7 @@
 
   "troll": {
     "display_name": "Troll",
+    "sprite": "res://Official Sprites/Troll.png",
     "category": "Warrior",
     "alignment": "Chaotic",
     "rarity": "Rare",
@@ -93,6 +100,7 @@
 
   "gray_dwarf": {
     "display_name": "Gray Dwarf",
+    "sprite": "res://Official Sprites/Gray_Dwarf.png",
     "category": "Economy",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -108,6 +116,7 @@
 
   "kobold": {
     "display_name": "Kobold",
+    "sprite": "res://Official Sprites/Kobold.png",
     "category": "Economy",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -123,6 +132,7 @@
 
   "minotaur": {
     "display_name": "Minotaur",
+    "sprite": "res://Official Sprites/Minotaur.png",
     "category": "Economy",
     "alignment": "Neutral",
     "rarity": "Uncommon",
@@ -138,6 +148,7 @@
 
   "mountain_dwarf": {
     "display_name": "Mountain Dwarf",
+    "sprite": "res://Official Sprites/Mountain_Dwarf.png",
     "category": "Economy",
     "alignment": "Good",
     "rarity": "Rare",
@@ -153,6 +164,7 @@
 
   "gnome": {
     "display_name": "Gnome",
+    "sprite": "res://Official Sprites/Gnome.png",
     "category": "Research",
     "alignment": "Neutral",
     "rarity": "Uncommon",
@@ -168,6 +180,7 @@
 
   "dark_elf": {
     "display_name": "Dark Elf",
+    "sprite": "res://Official Sprites/Dark_Elf.png",
     "category": "Research",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -183,6 +196,7 @@
 
   "high_elf": {
     "display_name": "High Elf",
+    "sprite": "res://Official Sprites/High_Elf.png",
     "category": "Research",
     "alignment": "Good",
     "rarity": "Rare",
@@ -198,6 +212,7 @@
 
   "goblin": {
     "display_name": "Goblin",
+    "sprite": "res://Official Sprites/Goblin.png",
     "category": "Foraging",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -213,6 +228,7 @@
 
   "gnoll": {
     "display_name": "Gnoll",
+    "sprite": "res://Official Sprites/Gnoll.png",
     "category": "Foraging",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -228,6 +244,7 @@
 
   "halfling": {
     "display_name": "Halfling",
+    "sprite": "res://Official Sprites/Halfling.png",
     "category": "Foraging",
     "alignment": "Good",
     "rarity": "Rare",
@@ -243,6 +260,7 @@
 
   "human_outcast": {
     "display_name": "Human Outcast",
+    "sprite": "res://Official Sprites/Human_Outcast.png",
     "category": "Versatile",
     "alignment": "Neutral",
     "rarity": "Uncommon",

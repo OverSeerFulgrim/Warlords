@@ -47,6 +47,8 @@ var claims: int = 0
 var _sprite: Sprite2D
 var _alive_texture: Texture2D
 var _depleted_texture: Texture2D
+## On-screen width in px this node should occupy; see setup_sprites().
+var _target_size: float = 32.0
 
 # --- Deer roaming (node_type == "deer" only) ---
 # "2-3 deer on the map at once ... Simple wander movement, no fleeing AI yet."
@@ -85,12 +87,25 @@ func _pick_roam_target() -> void:
 func freeze(value: bool) -> void:
 	_frozen = value
 
+## `target_size` is the on-screen width in pixels the node should occupy,
+## regardless of how large the source art is -- the commissioned sprites are
+## 1024px square, so everything here is scaled down by ~0.03-0.06.
 func setup_sprites(alive_path: String, depleted_path: String, target_size: float) -> void:
+	_target_size = target_size
 	_alive_texture = _load_texture(alive_path)
 	_depleted_texture = _load_texture(depleted_path) if depleted_path != "" else null
-	if _alive_texture and _alive_texture.get_size().x > 0.0:
-		_sprite.scale = Vector2.ONE * (target_size / _alive_texture.get_size().x)
 	_refresh_visual()
+
+## Scale is recomputed from whichever texture is actually showing, rather than
+## fixed once from the alive one. The alive and depleted art are not guaranteed
+## to share dimensions -- and when they didn't, swapping in the depleted
+## texture kept the alive texture's scale factor and rendered it at the wrong
+## size. Currently every pair happens to match at 1024px, so this is a latent
+## bug being closed rather than a visible one being fixed.
+func _apply_scale_for(tex: Texture2D) -> void:
+	if tex == null or tex.get_size().x <= 0.0:
+		return
+	_sprite.scale = Vector2.ONE * (_target_size / tex.get_size().x)
 
 func _load_texture(path: String) -> Texture2D:
 	if path == "" or not ResourceLoader.exists(path):
@@ -166,14 +181,21 @@ func _refresh_visual() -> void:
 	if is_depleted():
 		if _depleted_texture:
 			_sprite.texture = _depleted_texture
-			_sprite.modulate = Color(0.75, 0.72, 0.68, 1.0)
+			_apply_scale_for(_depleted_texture)
+			# The commissioned depleted sprites (stump, dug-up grave, picked
+			# grove) already read as spent on their own, so they're drawn at
+			# full colour. The old placeholders needed dimming because they
+			# were the same image reused.
+			_sprite.modulate = Color(1, 1, 1, 1)
 		else:
 			# No empty-state art: a killed deer / emptied carcass just goes
 			# away rather than lingering as a ghost sprite.
 			_sprite.texture = _alive_texture
+			_apply_scale_for(_alive_texture)
 			_sprite.modulate = Color(1, 1, 1, 0.0)
 		return
 	_sprite.texture = _alive_texture
+	_apply_scale_for(_alive_texture)
 	var fullness: float = float(remaining) / float(max(1, capacity))
 	# Floor at 0.45 alpha -- a nearly-empty node still has to be findable and
 	# clickable, it just shouldn't look untouched.

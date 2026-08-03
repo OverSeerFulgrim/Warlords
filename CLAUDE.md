@@ -144,7 +144,7 @@ Berry regrowth and deer respawn are both "at each dawn" in FOUNDATION_SPEC §5, 
 
 - **New `class_name` scripts need an import pass.** Running `godot --headless --path . --quit-after N` right after adding one fails with `Could not find type "X" in the current scope` — the global class cache isn't rebuilt. Run `godot --headless --path . --import` once first.
 - **Some `Icons/Food/` files really are named `*.png.png`** (roughly the first ten). If a path from that folder looks like it has a typo'd extension, check the filename on disk before "fixing" it.
-- **There is no animal sprite in any vendored art pack** — see "The deer sprite" below for what was done about it. Stumps reuse the branch icon; spent graves reuse the second tombstone variant.
+- **There is no animal sprite in any vendored art pack** — see "The deer sprite" below. (Trees, groves and graves have since gained real commissioned depleted-state art; see "Art provenance".)
 
 **Verification.** A headless 10× run with 3 workers and wood threshold 30: wood climbed 8 → 32 and fell through to stone exactly as specified, stone then climbed to 29 and fell through to food; two deer were tracked down and hauled home 8-food-in-one-load each; bones drained from carcasses and both graves until the map read `bones=None left` and the workforce went idle; two trees became stumps. A separate 60× run (fast enough to clear a whole 50-minute cycle) confirmed dusk at t≈1792, dawn at t≈2992, the berry grove regrowing +8, and a replacement deer wandering in. And a plain 1× run with no harness at all logged `Skeleton Worker #1 delivered 4 wood` — one full walk-chop-haul-deposit trip, carrying exactly its Might.
 
@@ -170,6 +170,39 @@ The fade's `from` colour is captured as the *actual current tint* at the moment 
 > The practical consequence for future work: **if you add a timer, use `delta` accumulation or a `SceneTreeTimer` and it just works.** A timer built on `Time.get_ticks_msec()` or `OS.get_unix_time()` would silently ignore the speed control and desync from everything else — don't.
 
 It's labelled debug because it is one: a way to watch a 50-minute cycle or a gathering trip without waiting, not a player-facing game-speed feature.
+
+### Art provenance — what's commissioned and what's still placeholder
+
+`Official Sprites/` holds the **commissioned art**: transparent PNGs, 1024px square for buildings/nodes/icons and 1254px square for race tokens. This is the real art. Everything else in the project is a stand-in.
+
+**Wired:**
+
+| Use | Sprite | Where the path lives |
+|---|---|---|
+| Throne, Barracks, Bone Pile, Dark Altar | `Throne_of_Bones` / `Barracks` / `Bone_Pile` / `Dark_Altar` | `data/buildings.json` → `sprite_path` |
+| Trees | `Pine_Tree` → `Pine_Stump` when chopped | `ResourceField` consts |
+| Berry grove | `Berry_Grove_Full` → `Berry_Grove_Picked` when stripped | `ResourceField` consts |
+| Graves | `Grave_Undisturbed` → `Grave_Dug_Up` when robbed | `ResourceField` consts |
+| All 16 race tokens + Skeleton Worker | one per race | **`data/races.json` → `sprite`** |
+| Necromancer (HUD badge + map avatar) | `Necromancer_Portrait` | `Main.NECROMANCER_SPRITE`, `NecromancerToken.PORTRAIT` |
+| Dark Essence in the resource bar | `Icon_Dark_Essence` | `Main.ICON_DARK_ESSENCE` |
+
+**Race token art is data, not code.** `RaceCatalog.sprite(race_id)` reads it from `races.json`, so adding a race never means editing a Dictionary in `Main.gd`. `Main.SPECIES_SPRITES` survives *only* as a fallback for Ghoul and Wraith, which exist in the superseded `followers.json` templates and have no `races.json` row — don't add to it.
+
+**Deliberately not wired:** `Orc_Armed.png`, `Goblin_Armed.png`, `Gray_Dwarf_Miner.png`. These are per-state variants for combat (Stage 4+) and a working/at-node state. There is no state machine to select them, and wiring them now would mean inventing a state concept purely to justify the art.
+
+**Still placeholder:** the Stone Deposit (Kenney materials icon), animal carcasses (Kenney bones icon), the deer (generated — see below), recruit houses (Kenney House pack, tinted per race by `HouseStyle`), Workshop/Blacksmith (Kenney towers), and the five locked per-species housing buildings.
+
+**Scaling.** Source art is 30–40× its on-screen size, so every use scales down. Two different mechanisms, both already in the codebase:
+
+- **`Sprite2D` users** divide a target pixel width by the texture width — `Building._setup_sprite` (largest side → 64px = `CELL_SIZE`), `ResourceNode.setup_sprites` (per-node target: tree 38, grove 46, grave 34, deposit 58), and the tokens (worker 32, follower 40, necromancer 44).
+- **`Control` users** (the HUD badge and the Dark Essence icon) use a `TextureRect` with `EXPAND_IGNORE_SIZE` + a `custom_minimum_size`. Without `EXPAND_IGNORE_SIZE` a raw 1024px texture asks for a 1024px-tall container and blows the top bar open.
+
+Verified after the swap: every building renders 64×64, every node at its target, every token 32/40/44, and the top bar stayed 47px.
+
+One latent bug closed on the way through: `ResourceNode` used to compute its scale once from the *alive* texture and keep it when swapping to the depleted one. Every pair happens to be 1024px so nothing visibly broke, but a stump of a different resolution to its tree would have rendered at the wrong size. Scale is now recomputed per texture in `_apply_scale_for()`.
+
+`Official Sprites/_originals/` holds full-resolution backups and carries a `.gdignore`, which makes Godot skip the whole directory — confirmed no `.import` files are generated in it and nothing in `.godot/` references it. Leave that file in place.
 
 ### The deer sprite
 
@@ -349,7 +382,9 @@ data/followers.json           SUPERSEDED recruit templates -- only the off-timer
 data/races.json               Race roster from RACES.md: stats, labor skills, alignment, rarity, housing style, rivalries (loaded by RaceCatalog)
 data/buildings.json           Building catalog: costs, prerequisites, "locked" and "unique" flags, Barracks capacity
 data/recruitment.json         Recruit tuning: rarity-by-power table, stat-roll dice, exceptional chance, first-run categories
-art/, Buildings/, Characters/    Placeholder sprites (see README for provenance/upgrade path)
+Official Sprites/            COMMISSIONED art -- buildings, nodes, all 16 race tokens, necromancer, icons
+Official Sprites/_originals/ Full-res backups; .gdignore keeps Godot out. Leave alone.
+art/, Buildings/, Characters/    Remaining placeholder sprites (see "Art provenance")
 art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sprite.gd
 ```
 
@@ -362,7 +397,9 @@ art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sp
 - Manual per-worker override on top of the priority list (GAME_OUTLINE Stage 1 flags it as a possible later add)
 - Replanting trees (FOUNDATION_SPEC §5: if wood scarcity bites, the planned fix is a manual replant-seeds action, explicitly *not* automatic regrowth)
 - Dawn/dusk **meal ticks** — the last unbuilt piece of FOUNDATION_SPEC §7. The clock, the phases and both signals are in place (see "Day/night, finished"); what's missing is the food/morale system they'd drive, which needs living recruits to exist first (outline gap #3)
-- Real deer art (and a real animal set generally) — `art/creature_deer.png` is a generated placeholder
+- Real deer / carcass / stone-deposit art — the last unreplaced map placeholders after the commissioned art pass
+- Per-race house art (recruit houses still reuse the tinted Kenney House pack)
+- Wiring the Orc_Armed / Goblin_Armed / Gray_Dwarf_Miner variants, once combat and work states exist to select them
 - Climate system (deliberately deferred — see "Current phase" above)
 - Save/load
 - Remaining villain classes and climates (Phase 2, per design doc)
