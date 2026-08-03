@@ -185,10 +185,13 @@ func _find_prey(wolf: Wolf):
 			best = candidate
 	return best
 
+## all_units() rather than laborers(): a skeleton standing guard at a rally
+## point is out of the workforce but very much still on the map, and a wolf that
+## couldn't see it would walk straight past the thing sent to stop it.
 func _prey_candidates() -> Array:
 	var out: Array = []
 	if worker_system:
-		for l in worker_system.laborers():
+		for l in worker_system.all_units():
 			if _is_valid_target(l):
 				out.append(l)
 	if resource_field:
@@ -252,6 +255,32 @@ func _take_deer(wolf: Wolf, deer) -> void:
 
 # ---------------- Fights ----------------
 
+## Public entry point for "this unit and that wolf are now fighting", whoever
+## started it. Adds to the existing fight if one is already running against that
+## wolf, so three rallied skeletons converging on the same wolf produce one
+## three-defender Engagement rather than three separate duels.
+##
+## Called by UndeadCommand when a bound skeleton closes on a wolf -- the roles
+## are nominally reversed there (the skeleton is the aggressor) but combat is
+## symmetric, both sides swing, so the Engagement doesn't care who is filed as
+## the attacker.
+func engage(wolf: Wolf, unit) -> void:
+	if wolf == null or unit == null or not is_instance_valid(wolf):
+		return
+	var existing := _engagement_for(wolf)
+	if existing:
+		if existing.add_defender(unit):
+			unit.in_combat = true
+			unit.abandon_trip()
+		return
+	_begin_fight(wolf, unit)
+
+func _engagement_for(wolf: Wolf) -> Engagement:
+	for e in _engagements:
+		if e.attacker == wolf:
+			return e
+	return null
+
 func _begin_fight(wolf: Wolf, defender) -> void:
 	if not Combat.is_combatant(wolf) or not Combat.is_combatant(defender):
 		push_warning("CombatSystem: refusing to start a fight with a non-Combatant.")
@@ -274,10 +303,15 @@ func _begin_fight(wolf: Wolf, defender) -> void:
 func _rally_and_scatter(wolf: Wolf, e: Engagement) -> void:
 	if worker_system == null:
 		return
-	for l in worker_system.laborers():
+	for l in worker_system.all_units():
 		if l.in_combat or not l.is_alive():
 			continue
 		if l.position.distance_to(wolf.position) > ASSIST_RADIUS_PX:
+			continue
+		# Skeletons neither rally nor scatter (see _will_fight) -- and a rallied
+		# one is under standing orders that outrank a panic, so it is skipped
+		# entirely rather than being told to run.
+		if not (l is Follower):
 			continue
 		if _will_fight(l):
 			e.add_defender(l)
@@ -288,8 +322,12 @@ func _rally_and_scatter(wolf: Wolf, e: Engagement) -> void:
 			l.begin_flee()
 
 ## Skeleton Workers are never volunteers -- they have no self-preservation to
-## override and no orders to act on, so they neither rally nor scatter; they
-## simply carry on until something bites them. Only living recruits react.
+## override and, unless the Necromancer has bound them to a rally point, no
+## orders to act on either. They neither rally nor scatter; they carry on until
+## something bites them. Only living recruits react on their own.
+##
+## (Caller already excludes non-Followers, so this is the same rule stated
+## twice on purpose -- it is the sort of thing a later edit gets wrong.)
 func _will_fight(l) -> bool:
 	if not (l is Follower):
 		return false

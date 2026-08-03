@@ -102,7 +102,7 @@ func display_name() -> String:
 ## trip loop skips anyone this returns false for, and WorkerSystem abandons
 ## whatever trip they were mid-way through.
 func can_labor() -> bool:
-	return not is_busy
+	return not is_busy and super()
 
 ## Name with the exceptional star, for lists and the info panel.
 func label() -> String:

@@ -30,6 +30,7 @@ var resource_field: ResourceField
 var day_night: DayNightCycle
 var morale_system: MoraleSystem
 var combat_system: CombatSystem
+var undead_command: UndeadCommand
 var necromancer: NecromancerToken
 var camera: GameCamera
 
@@ -85,6 +86,12 @@ var _pending_building_id: String = ""  # "" = not in placement mode
 # refuses the main building; see _try_demolish().
 var demolish_tab_btn: Button
 var _demolish_mode: bool = false
+
+# ---------------- Command Undead (click-to-place a rally point) ----------------
+# A third click-to-target mode, sharing the shape of the other two: arm it,
+# click the map, done. All three are mutually exclusive and all three take
+# priority over inspection -- see _unhandled_input().
+var _rally_placement_mode: bool = false
 
 # ---------------- Inspection panel (click anything on the map) ----------------
 ## One panel for everything clickable -- see InspectionPanel.gd. Replaces the
@@ -342,6 +349,14 @@ func _build_systems() -> void:
 	combat_system.necromancer = necromancer
 	combat_system.day_night = day_night
 	add_child(combat_system)
+
+	# Command Undead. Needs combat_system to hand fights to, so it comes after.
+	undead_command = UndeadCommand.new()
+	undead_command.name = "UndeadCommand"
+	undead_command.settlement = settlement
+	undead_command.worker_system = worker_system
+	undead_command.combat_system = combat_system
+	add_child(undead_command)
 
 func _build_camera() -> void:
 	camera = GameCamera.new()
@@ -1129,7 +1144,8 @@ func _format_cost(cost: Dictionary) -> String:
 
 func _enter_placement_mode(building_id: String) -> void:
 	if _demolish_mode:
-		_toggle_demolish_mode()  # the two click-to-target modes are mutually exclusive
+		_toggle_demolish_mode()  # the three click-to-target modes are mutually exclusive
+	_cancel_rally_placement()
 	# The inspector would sit there describing something you're no longer
 	# looking at, and its Close button would be a click that doesn't place a
 	# building. Placement mode owns the screen.
@@ -1149,6 +1165,7 @@ func _cancel_placement() -> void:
 func _toggle_demolish_mode() -> void:
 	if _pending_building_id != "":
 		_cancel_placement()
+	_cancel_rally_placement()
 	_demolish_mode = not _demolish_mode
 	_restyle_demolish_button()
 	if _demolish_mode:
@@ -1209,6 +1226,19 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	# Command Undead's rally point: the third click-to-target mode, same shape
+	# as the two above. Unlike them it isn't cell-locked -- the dead rally on a
+	# spot, not a tile -- so it takes the raw world position.
+	if _rally_placement_mode:
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_cancel_rally_placement()
+			get_viewport().set_input_as_handled()
+			return
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_place_rally_point(settlement.get_global_mouse_position())
+			get_viewport().set_input_as_handled()
+		return
+
 	# Esc closes the inspector. Deliberately *below* the two placement blocks
 	# above, which both return early: while you're placing or demolishing,
 	# Esc cancels that mode, and the inspector is not what Esc is for.
@@ -1260,6 +1290,16 @@ func _inspect_at(world_pos: Vector2) -> bool:
 			if world_pos.distance_to(wolf.position) <= wolf.hit_radius():
 				_inspect(wolf)
 				return true
+
+	# --- 1b. The rally point -------------------------------------------------
+	# Sits with the characters rather than with the buildings: it's a small
+	# marker the player needs to be able to re-order quickly, and it has no
+	# footprint of its own to compete with anything.
+	if undead_command and undead_command.is_active():
+		var rp: RallyPoint = undead_command.rally_point
+		if world_pos.distance_to(rp.position) <= rp.hit_radius():
+			_inspect(rp, _build_rally_actions)
+			return true
 
 	# --- 2. Resource nodes ---------------------------------------------------
 	# Above buildings because nodes sit mostly off-grid (the forest, the
@@ -1379,13 +1419,84 @@ func _surrender_and_restart() -> void:
 	GameState.reset()
 	get_tree().reload_current_scene()
 
-## Same "visible promise" treatment as the Barracks Upgrade button: a real
-## disabled Button, so the shape of the future feature is legible.
+## His spellbook. Command Undead is the first real entry -- everything else is
+## still the "visible promise" treatment (a real disabled Button, so the shape
+## of the future feature is legible).
 func _build_necromancer_actions(box: VBoxContainer) -> void:
-	var spells := Button.new()
-	spells.text = "Spells — coming soon"
-	spells.disabled = true
-	box.add_child(spells)
+	var cast := Button.new()
+	cast.text = "Command Undead" if not undead_command.is_active() else "Command Undead — move rally point"
+	cast.tooltip_text = "Plant a rally point. Every skeleton marches to it and stops gathering."
+	cast.pressed.connect(_enter_rally_placement_mode)
+	box.add_child(cast)
+
+	if undead_command.is_active():
+		var dismiss := Button.new()
+		dismiss.text = "Dismiss the rally point"
+		dismiss.tooltip_text = "Release the dead back to the gathering priorities."
+		dismiss.pressed.connect(func():
+			undead_command.dismiss()
+			inspector.refresh()
+		)
+		box.add_child(dismiss)
+
+	var more := Button.new()
+	more.text = "Further spells — coming soon"
+	more.disabled = true
+	box.add_child(more)
+
+## Order buttons for the rally point itself. Lives here rather than on
+## RallyPoint for the usual reason -- these call into UndeadCommand, and the
+## inspectable object is deliberately data-only. See InspectionPanel's header.
+func _build_rally_actions(box: VBoxContainer) -> void:
+	var current: int = undead_command.rally_point.order if undead_command.is_active() else -1
+	for order in [RallyPoint.Order.DEFEND, RallyPoint.Order.PATROL, RallyPoint.Order.ATTACK]:
+		var o: int = order  # explicit re-bind for the closure
+		var b := Button.new()
+		b.text = RallyPoint.order_name(o)
+		b.tooltip_text = RallyPoint.ORDER_BLURB.get(o, "")
+		b.disabled = o == current
+		b.pressed.connect(func():
+			undead_command.set_order(o)
+			inspector.refresh()
+		)
+		box.add_child(b)
+
+	box.add_child(HSeparator.new())
+	var move := Button.new()
+	move.text = "Move the rally point"
+	move.pressed.connect(_enter_rally_placement_mode)
+	box.add_child(move)
+
+	var dismiss := Button.new()
+	dismiss.text = "Dismiss — back to work"
+	dismiss.add_theme_color_override("font_color", Color(0.95, 0.75, 0.5))
+	dismiss.pressed.connect(func():
+		undead_command.dismiss()
+		_close_inspector()
+	)
+	box.add_child(dismiss)
+
+func _enter_rally_placement_mode() -> void:
+	if _pending_building_id != "":
+		_cancel_placement()
+	if _demolish_mode:
+		_toggle_demolish_mode()
+	_close_inspector()
+	_rally_placement_mode = true
+	build_hint_label.text = "Command Undead — click where the dead should rally (Esc to cancel)"
+	build_hint_label.visible = true
+
+func _cancel_rally_placement() -> void:
+	_rally_placement_mode = false
+	build_hint_label.visible = false
+
+func _place_rally_point(world_pos: Vector2) -> void:
+	# Keeps whatever order is already in force when the point is moved, so
+	# re-siting a patrol doesn't silently demote it to defend.
+	var order: int = undead_command.rally_point.order if undead_command.is_active() else RallyPoint.Order.DEFEND
+	undead_command.cast(world_pos, order)
+	_cancel_rally_placement()
+	_inspect(undead_command.rally_point, _build_rally_actions)
 
 ## The old Barracks panel, now the Barracks' action block. Lists who is living
 ## there with the labor skills that decide what they're actually good for --
@@ -1698,6 +1809,14 @@ func _connect_signals() -> void:
 		_log("[color=orange]A %s brought down one of the deer. That food is gone.[/color]" % predator,
 			"events alerts")
 		_alert("A %s took a deer." % predator, "warn")
+	)
+	EventBus.undead_commanded.connect(func(_at: Vector2, order_name: String, bound: int):
+		_log("[color=#b8a0e0]Command Undead — %d of the dead answer. Order: %s.[/color] They will not gather while bound."
+			% [bound, order_name], "events characters")
+		_alert("%d undead rallied (%s)." % [bound, order_name], "info")
+	)
+	EventBus.undead_dismissed.connect(func():
+		_log("[color=#b8a0e0]The rally point fades. The dead return to their work.[/color]", "events characters")
 	)
 	EventBus.necromancer_feared.connect(func(predator: String):
 		_log("[color=#a99cc8]The %s catches the Necromancer's scent and slinks away from the Throne.[/color]"

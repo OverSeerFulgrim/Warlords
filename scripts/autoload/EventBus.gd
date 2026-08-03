@@ -82,6 +82,11 @@ signal deer_taken_by_predator(node, predator_name: String)
 ## better of it.
 signal necromancer_feared(predator_name: String)
 
+# Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
+## Cast, moved, or re-ordered. Carries the new order and how many undead answered.
+signal undead_commanded(at: Vector2, order_name: String, bound: int)
+signal undead_dismissed
+
 # Threat
 signal threat_tier_escalated(new_tier: int)
 signal crusade_incoming

@@ -83,6 +83,19 @@ var hp: int = 1
 ## whole labor pool rather than a type test in WorkerSystem.
 var is_injured: bool = false
 
+## True while bound to the Necromancer's rally point by Command Undead. A
+## rallied unit leaves the labor pool entirely (see can_labor) and UndeadCommand
+## drives its movement instead of WorkerSystem's trip loop. Only ever set on
+## undead -- see is_undead().
+var rallied: bool = false
+
+## Whether Command Undead reaches this unit. Read from races.json's `alignment`
+## rather than from the class, so the ghouls and wraiths on the roadmap become
+## commandable the day they exist and no living race ever can -- the spell binds
+## the dead, not "things that are Workers".
+func is_undead() -> bool:
+	return RaceCatalog.get_race(inspect_race_id()).get("alignment", "") == "Undead"
+
 ## True while locked into an Engagement. The trip loop skips anyone with this
 ## set -- a unit trading blows with a wolf must not also be strolling off to a
 ## tree, and this is a cheaper way to say that than teaching every stage
@@ -150,10 +163,12 @@ const IDLE_WANDER_RADIUS: float = 34.0
 func display_name() -> String:
 	return "Laborer"
 
-## False while a Follower is off on a bounty or mission. Workers are always
-## available -- they have nothing else to do.
+## Whether this unit is in the labor pool at all. False while a Follower is off
+## on a bounty or mission, and false for any undead currently bound to a rally
+## point -- Command Undead takes them off the workforce for as long as it holds,
+## which is the whole cost of casting it.
 func can_labor() -> bool:
-	return true
+	return not rallied
 
 ## Carry capacity = Might (FOUNDATION_SPEC section 6). An Ogre hauls 9 units
 ## per trip; a Gnome 2. This is what makes Might matter for labor without
@@ -191,6 +206,8 @@ func carrying_kind_label() -> String:
 func status_label() -> String:
 	if in_combat:
 		return "Fighting"
+	if rallied:
+		return "Bound to the rally point"
 	match stage:
 		TripStage.WALK_TO_NODE:
 			return "Walking to %s" % (target_node.display_name() if target_node else "?")

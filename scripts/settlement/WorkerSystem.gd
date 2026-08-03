@@ -105,15 +105,32 @@ func _process(delta: float) -> void:
 ## faster (`4.0s * 5 / skill`), and their higher Might means a bigger load per
 ## round trip on top. Workers and Followers stay separate classes -- see
 ## Laborer.gd for where that line is drawn -- they just share the job.
+## Workers are filtered by can_labor() too, not appended wholesale -- Command
+## Undead binds skeletons to a rally point and takes them off the workforce for
+## as long as it holds, so "every Worker is always available" stopped being
+## true. Anyone pulled out mid-trip drops the job and releases their claim,
+## rather than leaving a phantom hold on a resource node forever.
 func laborers() -> Array:
-	var out: Array = workers.duplicate()
+	var out: Array = []
+	for w in workers:
+		if w.can_labor():
+			out.append(w)
+		elif w.stage != Laborer.TripStage.IDLE:
+			w.abandon_trip()
 	for f in GameState.followers:
 		if f.can_labor():
 			out.append(f)
 		elif f.stage != Laborer.TripStage.IDLE:
-			# Pulled onto a bounty mid-trip: drop the job and release the node
-			# rather than leaving a phantom claim on it forever.
 			f.abandon_trip()
+	return out
+
+## Everyone on the roster regardless of whether they can currently work --
+## rallied skeletons, followers away on bounties, the lot. Combat targeting and
+## Command Undead both need this: a skeleton standing guard is still very much
+## something a wolf can bite, and `laborers()` deliberately can't see it.
+func all_units() -> Array:
+	var out: Array = workers.duplicate()
+	out.append_array(GameState.followers)
 	return out
 
 func _place_at_home(l) -> void:

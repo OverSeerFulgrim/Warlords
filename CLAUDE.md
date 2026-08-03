@@ -478,6 +478,29 @@ Two harness traps worth remembering, both of which produced convincing false fai
 - **`get_process_delta_time()` is already scaled by `Engine.time_scale`.** Multiplying by it again advances your accounting 60× too fast, so a "wait 6 seconds" loop returns after 0.1s and everything looks broken until the events arrive later in the log.
 - **`NecromancerToken` owns its own position and walks back to `home`.** Assigning `.position` to move him for a test doesn't stick — use `setup()`.
 
+### Command Undead — the Necromancer's first spell
+
+Playtest feedback after the combat pass was "I can't direct skeletons anywhere; there's no option to command them." That was true and deliberate (GAME_OUTLINE pillar 2), but it left a threat on the map with no lever to answer it. **The resolution the user chose is better than adding unit orders: a spell.**
+
+**Why this doesn't break the indirect-control pillar.** You still don't order units around. You cast a spell that binds *the dead, as a class*, to a point. The distinction is real rather than a fig leaf: a skeleton has no will to override, which is the entire difference between it and a recruit. Living followers remain uncommandable and always will be.
+
+- **`UndeadCommand`** (system) + **`RallyPoint`** (Node2D marker, inspectable). Cast from the Necromancer's panel — the old "Spells — coming soon" placeholder is now a real button — which arms a third click-to-target mode alongside build placement and demolish. Click the map to plant it.
+- **Three orders, differing only in leash length**, which is the only axis that matters at this scale: **Defend** (1.2 cells), **Patrol** (3 cells, walks a beat), **Attack** (7 cells, seeks the nearest hostile). Clicking the rally point opens it in the inspection panel with the order buttons, a Move, and a Dismiss.
+- **Hostiles are measured from the rally point, not from the unit.** Measuring from the unit would let a skeleton that chased something to the edge of its leash re-measure from there and keep going forever.
+- **The cost is the economy.** Bound undead leave the labor pool — `can_labor()` returns `not rallied`, so the priority list stops seeing them. *The dead can dig or they can fight, not both.* With one starting skeleton that's a total shutdown; with six it becomes a real allocation question, which is when it gets interesting.
+- **No resource cost yet.** Dark Essence is the obvious candidate and is locked at 0 for the whole foundation build, so charging now would mean the spell could never be cast. Revisit at Stage 4.
+- **It commands *all* undead, not a chosen subset** — on purpose. Picking which skeletons to send is a selection UI, and a selection UI is exactly the per-unit control the pillar rules out.
+- **A standing order binds skeletons raised later.** Raise a new one while the point is up and it falls in automatically; the spell is an order on the dead, not on the individuals who happened to be present.
+
+**`Laborer.is_undead()` reads `alignment: "Undead"` from races.json**, not the class. So the ghouls and wraiths on the roadmap are commandable the day they exist, and no living race ever can be — which is what the user meant by "later this will be useful when he unlocks more powerful undead."
+
+Two related fixes fell out:
+
+- **`WorkerSystem.laborers()` now filters Workers by `can_labor()`** instead of appending them wholesale. "Every Worker is always available" stopped being true the moment a spell could take them off the roster. `all_units()` is the new unfiltered view, which combat targeting needs — a skeleton standing guard is out of the workforce but very much still something a wolf can bite.
+- **Skeletons no longer flee from fights.** `_rally_and_scatter` was calling `begin_flee()` on them, contradicting this file's own claim that they "neither rally nor scatter". Code now matches the documented intent: they have no self-preservation to override.
+
+Verified headless at 60×: alignment-based targeting, all 3 skeletons bound and the orc untouched, skeletons out of `laborers()` but still in `all_units()`, the march to the point, patrol staying inside its ring (164px of 192px) while defend holds tight, Attack sending them out to engage a wolf beyond the patrol ring, converging skeletons sharing *one* Engagement rather than three duels, dismiss returning everyone to the priority list, a later-raised skeleton joining the standing order, and a regression check that an uncommanded skeleton still gets attacked normally and still doesn't run.
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -516,6 +539,8 @@ scripts/combat/             Combat.gd -- THE damage formula; reusable, knows not
                             Engagement.gd -- one fight's clock and participants
                             CombatSystem.gd -- policy: wolf spawning, targeting, emergent defence,
                             the four consequence rules, skeleton repair at the Throne
+                            UndeadCommand.gd -- the Command Undead spell; binds the dead to a rally point
+                            RallyPoint.gd -- the marker and its Defend/Patrol/Attack order
 scripts/world/              DayNightCycle.gd (phase clock, CanvasModulate tint, debug time scale)
                             Wolf.gd -- the first hostile creature
                             Roaming.gd -- wander helpers shared by the deer and the wolf
@@ -544,7 +569,7 @@ art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sp
 - Multi-cell building footprints (everything is 1x1 on the grid for now)
 - Housing capacity limits (currently a pure hard gate — species is unlocked or not, no cap on how many of that species you can have once housing exists)
 - Physical gathering *buildings* / per-node worker capacity (workers now walk to real map nodes, but there's still no Lumber Camp/Quarry building layer and no hard cap on how many workers can share one node — `claims` is only a soft spreading hint)
-- Manual per-worker override on top of the priority list (GAME_OUTLINE Stage 1 flags it as a possible later add)
+- ~~Manual per-worker override on top of the priority list~~ — **answered differently**: see "Command Undead". The player's lever over unit movement is a spell that binds the dead as a class, not per-unit orders, which keeps the indirect-control pillar intact. Per-worker overrides for *living* recruits remain out.
 - Replanting trees (FOUNDATION_SPEC §5: if wood scarcity bites, the planned fix is a manual replant-seeds action, explicitly *not* automatic regrowth)
 - Dawn/dusk **meal ticks** — the last unbuilt piece of FOUNDATION_SPEC §7. The clock, the phases and both signals are in place (see "Day/night, finished"); what's missing is the food/morale system they'd drive, which needs living recruits to exist first (outline gap #3)
 - Real deer / wolf / carcass / stone-deposit art — the last unreplaced map placeholders after the commissioned art pass
