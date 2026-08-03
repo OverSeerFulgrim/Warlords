@@ -426,6 +426,7 @@ Duck-typed, same shape as `get_inspect_data()`: `combat_name()`, `combat_might()
 These are the design decision, implemented exactly:
 
 1. **Skeleton Workers can be destroyed.** No bones refunded, no corpse. Replaceable for the usual 5 Bones — losses sting, necromancers shrug.
+   - **The wolf, conversely, leaves a body.** Killed outright (hp 0) it drops an ordinary carcass node worth `WOLF_CARCASS_BONES` (9) where it fell — better than a seeded carcass (5), because map bones are finite and a predator that pays out more than it costs is a welcome pressure valve. Merely *driven off* (below 5 hp) leaves nothing: routing it away is the cheap win, killing it is the paying one. The carcass is a plain `ResourceNode`, so the priority list, crowding rules and inspection panel all pick it up with no special casing.
 2. **Living recruits are never killed by wildlife.** Below 30% hp they break off, run home, and are `Injured` (no work) until healed to full, at −1 morale. This is true *by construction*, not by a check at 0 hp: `_injure_and_flee` pulls them out at the threshold, and the 0-hp path warns and injures rather than killing if anything ever reaches it.
 3. **A deer taken by a wolf is a pure economic loss.** The food is gone, the wolf is fed and stands down for the night. **This is the common case, and the point** — a wolf that never touches a person has still cost you 8 food and a hunting trip.
 4. **The Necromancer is untouchable.** Wolves won't approach him, and anything standing in his shadow is invisible to them. The protection is *positional*, so a worker who wanders off to gather is fair game again.
@@ -462,6 +463,7 @@ Two of those numbers were corrected after the first playtest, and the failure is
 
 - **The introduction was left to a coin flip.** A session tends to end on the first night, so the feature got exactly one 55% roll to exist. Two playtests in a row came up empty. A mechanic gets to introduce itself deterministically; it can be a gamble afterwards.
 - **A fed wolf used to depart on the spot, and it spawns beside the deer.** The treeline entry point is inside the deer roam area, so it killed and left within seconds of arriving — off the map before it was ever on screen, twice out of two spawns. Fixed twice over: `HUNT_DELAY_SECONDS` (25s) makes it prowl visibly before it can take anything, and a fed wolf now stays until dawn, which is also what "stops hunting for the rest of the day" actually asked for.
+- **And it still wasn't visible after that.** Playtest reported "the wolf spawned but I didn't see it" *with the alert firing and a fight starting*. Two causes: it entered 5.5 cells past the grid edge, which at the default 0.72 zoom is the very rim of the viewport, and a 34px token renders there as ~24 screen pixels of dark grey on dark ground. Entry moved to 2 cells out, `TOKEN_SIZE` raised to 46 (larger than any other unit), `z_index` 6 so nothing occludes it, and the hp label given a black outline. The thing that eats your labourers should be the most legible object on the map.
 
 Measured after the fix: 4 wolves over 6 dusks, first one guaranteed, each visible for a whole night.
 
@@ -500,6 +502,27 @@ Two related fixes fell out:
 - **Skeletons no longer flee from fights.** `_rally_and_scatter` was calling `begin_flee()` on them, contradicting this file's own claim that they "neither rally nor scatter". Code now matches the documented intent: they have no self-preservation to override.
 
 Verified headless at 60×: alignment-based targeting, all 3 skeletons bound and the orc untouched, skeletons out of `laborers()` but still in `all_units()`, the march to the point, patrol staying inside its ring (164px of 192px) while defend holds tight, Attack sending them out to engage a wolf beyond the patrol ring, converging skeletons sharing *one* Engagement rather than three duels, dismiss returning everyone to the priority list, a later-raised skeleton joining the standing order, and a regression check that an uncommanded skeleton still gets attacked normally and still doesn't run.
+
+### HUD layering, and four playtest bugs worth remembering
+
+A batch of playtest reports that all turned out to be UI plumbing rather than game logic. Recorded because three of them share one root cause that will recur.
+
+**Sibling `Control` order is z-order *and* input order, last on top.** `_build_bottom_shell` used to be the final child of `hud_root`, which put the command bar over both floating panels. The consequences looked like completely unrelated bugs:
+
+- A recruit offer's choice buttons hang below the screen's centre line, landed under the command bar, got tinted by its translucent background (so they read as **disabled**) and had their clicks eaten. A full-Barracks offer was literally unanswerable.
+- `PRESET_CENTER` made it worse: it anchors a Control's **top-left corner** to the screen centre, so the panel grows down-right from there rather than being centred on it. The event panel is `PRESET_TOP_LEFT` + `_position_event_panel()` now, which centres it in the *visible band* (between the top strip and the command bar) and clamps it so it can never cover the bar.
+- The inspection panel had the same exposure. It also moved from x=360 to x=60 so a centred event offer can't sit on top of the Barracks panel's **Fund house** button — the one control you need to reach to answer a full-Barracks offer.
+
+**A recruit offer is a live decision, not a snapshot.** Its choices used to be frozen at the instant it fired, so funding a house while the offer was open freed a slot that did nothing — you stayed stuck with the two turn-away variants until the offer expired. `EventSystem.refresh_recruit_offer()` re-evaluates against current occupancy and rewrites the description and choices in place; `Main._refresh_open_offer()` drives it off the same 0.4s HUD poll as the inspector. Works both ways — a slot filled by someone else takes the accept option back. Polled rather than signalled because occupancy moves for four unrelated reasons and the refresh is a no-op unless the answer actually changed.
+
+**The inspection panel now scrolls.** A full Barracks roster measured **706px** — five residents each with a wrapped stat block and a Fund house button — which ran off a 760px window and under the command bar. `InspectionPanel` is `PanelContainer > ScrollContainer > VBox` with `max_body_height` set by Main from the real band. Note the cap covers the **whole panel including its own stylebox padding**: capping just the body still overhung by 8px, which was enough to steal clicks from the bottom button.
+
+**The History log was a letterbox.** Fixed at 56px with dead space under it, because neither `command_area` nor `cmd_history` had `SIZE_EXPAND_FILL` vertically, so the tab shrank to its content minimum. All three now expand; the log gets 166px of the 250px band and grows with the window.
+
+Two testing notes from this round, both of which produced false results:
+
+- **Headless Godot runs at a 64×64 viewport.** Every geometry assertion is meaningless until you `get_tree().root.size = Vector2i(1400, 760)` and wait a few frames. The bottom bar otherwise computes to y = −186.
+- **GDScript lambdas capture locals by value.** `var seen := false` + `sig.connect(func(): seen = true)` writes to the closure's own copy and the outer `seen` never changes. Capture through an Array (or a member) instead.
 
 ### Foundation exit criteria (manual playtest checklist)
 

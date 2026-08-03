@@ -102,14 +102,16 @@ var _rally_placement_mode: bool = false
 ## different ideas of what a header looks like.
 var inspector: InspectionPanel
 
-## Seconds between automatic re-reads of whatever the inspector is showing. A
+## Seconds between the HUD's slow poll -- refreshing whatever the inspector is
+## showing, and re-checking whether an open recruit offer has become
+## answerable. A
 ## worker's Activity row and a Barracks' resident count both change while you
 ## are looking at them, and polling a handful of Labels a couple of times a
 ## second is far cheaper than wiring a signal per field -- most of which
 ## (activity especially) would fire every frame anyway. Same reasoning as the
 ## priority rows being polled from _process rather than signalled.
 const INSPECTOR_REFRESH_INTERVAL: float = 0.4
-var _inspector_refresh_timer: float = 0.0
+var _poll_timer: float = 0.0
 
 # ---------------- Follower tokens (on-screen presence, see FollowerToken.gd) ----------------
 var followers_layer: Node2D
@@ -248,11 +250,12 @@ func _place_necromancer() -> void:
 ## still goes through EventBus -- see _connect_signals().
 func _process(delta: float) -> void:
 	_refresh_priority_status()
-	if inspector and inspector.is_open():
-		_inspector_refresh_timer += delta
-		if _inspector_refresh_timer >= INSPECTOR_REFRESH_INTERVAL:
-			_inspector_refresh_timer = 0.0
+	_poll_timer += delta
+	if _poll_timer >= INSPECTOR_REFRESH_INTERVAL:
+		_poll_timer = 0.0
+		if inspector and inspector.is_open():
 			inspector.refresh()
+		_refresh_open_offer()
 
 # ---------------- Systems ----------------
 
@@ -505,13 +508,22 @@ func _build_ui() -> void:
 	hud_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	canvas.add_child(hud_root)
 
+	# ORDER MATTERS. Sibling Controls are drawn -- and offered mouse input -- in
+	# child order, last on top. The bottom command bar used to be built last,
+	# which put it over the two floating panels: the event panel's choice
+	# buttons hang below the screen's centre line, landed underneath the command
+	# bar, were tinted by its translucent background (they looked *disabled*),
+	# and had their clicks swallowed by it. A recruit offer became genuinely
+	# impossible to answer. The floating panels are built last now so they sit
+	# above the bar, and _show_event_panel() also keeps the event panel inside
+	# the visible band so it never covers the bar in the first place.
 	_build_top_bar(hud_root)
 	_build_necro_badge(hud_root)
 	_build_alert_stack(hud_root)
 	_build_placement_hint(hud_root)
-	_build_event_panel(hud_root)
-	_build_inspection_panel(hud_root)
 	_build_bottom_shell(hud_root)
+	_build_inspection_panel(hud_root)
+	_build_event_panel(hud_root)
 
 	_update_stats_label()
 	_populate_build_row()
@@ -630,9 +642,13 @@ func _build_placement_hint(hud_root: Control) -> void:
 	build_hint_label.visible = false
 	hud_root.add_child(build_hint_label)
 
+## Deliberately TOP_LEFT-anchored and positioned by hand in _show_event_panel().
+## PRESET_CENTER anchors the panel's *top-left corner* to the screen centre --
+## it grows down and right from there rather than being centred on it -- which
+## is how its choice buttons ended up under the bottom command bar.
 func _build_event_panel(hud_root: Control) -> void:
 	event_panel = PanelContainer.new()
-	event_panel.set_anchors_preset(Control.PRESET_CENTER)
+	event_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	event_panel.custom_minimum_size = Vector2(280, 0)
 	event_panel.add_theme_stylebox_override("panel", _panel_style())
 	event_panel.visible = false
@@ -641,10 +657,19 @@ func _build_event_panel(hud_root: Control) -> void:
 ## One panel, reused by every inspectable thing. It positions itself under the
 ## top resource bar each time it opens (see _inspect), same as the three panels
 ## it replaced.
+## Parked on the left, clear of the centred event panel. It used to open at
+## x=360 (inherited from the old Keep menu), which at the default 1400px put it
+## straight under a recruit offer -- and since the event panel is now drawn on
+## top, that would have covered the Barracks panel's "Fund house" button: the
+## exact control you need to reach to answer a full-Barracks offer.
+## x=60 clears the Necromancer badge at (10, 40) and leaves the whole centre
+## free.
+const INSPECTOR_X: float = 60.0
+
 func _build_inspection_panel(hud_root: Control) -> void:
 	inspector = InspectionPanel.new()
 	inspector.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	inspector.position = Vector2(360, 96)
+	inspector.position = Vector2(INSPECTOR_X, 96)
 	hud_root.add_child(inspector)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
@@ -739,6 +764,10 @@ func _build_bottom_shell(hud_root: Control) -> void:
 
 	var command_area := VBoxContainer.new()
 	command_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Vertical fill too, or the History log inside it has no height to expand
+	# into -- the container would shrink to its content and leave the dead band
+	# playtest reported below the log.
+	command_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	bar_hbox.add_child(command_area)
 
 	_build_cmd_town(command_area)
@@ -844,6 +873,12 @@ func _build_cmd_town(command_area: VBoxContainer) -> void:
 func _build_cmd_history(command_area: VBoxContainer) -> void:
 	cmd_history = VBoxContainer.new()
 	cmd_history.visible = false
+	# Claim the whole command area. Without this the tab shrinks to its content
+	# minimum and the log is stuck in a 56px slot with a band of dead space
+	# underneath it -- which is what made the History tab a "tiny scrollwheel"
+	# in playtest.
+	cmd_history.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cmd_history.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	command_area.add_child(cmd_history)
 
 	var filter_row := HBoxContainer.new()
@@ -859,6 +894,11 @@ func _build_cmd_history(command_area: VBoxContainer) -> void:
 		filter_row.add_child(fb)
 
 	var scroll := ScrollContainer.new()
+	# EXPAND_FILL rather than a fixed 56px height: the log should use every
+	# pixel the bottom band has left after the filter chips, and grow with the
+	# window instead of staying a letterbox.
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.custom_minimum_size = Vector2(0, 56)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	cmd_history.add_child(scroll)
@@ -1337,7 +1377,11 @@ func _actions_for_building(building: Building) -> Callable:
 ## info strip, so the two never disagree about what's selected.
 func _inspect(source: Object, extra: Callable = Callable()) -> void:
 	inspector.position.y = _menu_open_y()
-	_inspector_refresh_timer = 0.0
+	# Cap the body to the visible band so a long roster scrolls inside the panel
+	# instead of running off the bottom of the window and under the command bar.
+	inspector.max_body_height = maxf(
+		140.0, get_viewport_rect().size.y - float(BOTTOM_BAR_HEIGHT) - _menu_open_y() - 8.0)
+	_poll_timer = 0.0
 	var data: Dictionary = inspector.inspect(source, extra)
 	if data.is_empty():
 		return
@@ -1779,6 +1823,11 @@ func _connect_signals() -> void:
 	EventBus.wolf_departed.connect(func(_w, reason: String):
 		_log("[color=#99aabb]The wolf is gone — %s.[/color]" % reason, "events")
 	)
+	EventBus.wolf_killed.connect(func(_at: Vector2, bones: int):
+		_log("[color=lightgreen]The wolf is dead. Its carcass is worth %d bones — send someone to fetch it.[/color]"
+			% bones, "events alerts")
+		_alert("Wolf killed — %d bones on the ground." % bones, "good")
+	)
 	EventBus.combat_started.connect(func(attacker: String, defender: String):
 		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")
 		_alert("A %s is attacking %s." % [attacker, defender], "warn")
@@ -1881,7 +1930,14 @@ func _on_mission_resolved(m: Dictionary, party: Array, outcome: String) -> void:
 func _on_event_triggered(event: Dictionary) -> void:
 	current_event = event
 	_log("[b]EVENT: %s[/b] -- %s" % [event.get("title", "?"), event.get("description", "")], "events")
+	_render_event_panel(event)
+	_show_event_panel()
+
+## Split out from _on_event_triggered so an *open* offer can be re-rendered in
+## place when the world changes underneath it -- see _refresh_open_offer().
+func _render_event_panel(event: Dictionary) -> void:
 	for child in event_panel.get_children():
+		event_panel.remove_child(child)
 		child.queue_free()
 	var box := VBoxContainer.new()
 	event_panel.add_child(box)
@@ -1907,7 +1963,58 @@ func _on_event_triggered(event: Dictionary) -> void:
 		var choice: Dictionary = choices[i]
 		var idx := i
 		_add_button(box, choice.get("label", "..."), func(): _resolve_event_choice(idx))
+
+func _show_event_panel() -> void:
 	event_panel.visible = true
+	# Above every other HUD element, including the bottom bar. Belt and braces
+	# with the build order in _build_ui -- a decision the player has to answer
+	# must never be the thing that ends up underneath something else.
+	event_panel.move_to_front()
+	_position_event_panel()
+
+## Centres the panel in the **visible map band** -- between the top resource
+## strip and the bottom command bar -- rather than in the raw window, and
+## clamps it so a tall offer never spills over the command bar. Same band logic
+## the camera framing uses.
+##
+## Runs over two frames because a Control's size isn't final until layout has
+## settled; the first pass uses the minimum size so it is never wildly wrong in
+## the meantime.
+func _position_event_panel() -> void:
+	_place_event_panel_using(event_panel.get_combined_minimum_size())
+	await get_tree().process_frame
+	if event_panel.visible:
+		_place_event_panel_using(event_panel.size)
+
+func _place_event_panel_using(panel_size: Vector2) -> void:
+	var view: Vector2 = get_viewport_rect().size
+	var band_top: float = (top_panel.size.y if top_panel else 0.0) + 8.0
+	var band_bottom: float = view.y - float(BOTTOM_BAR_HEIGHT) - 8.0
+	var y: float = band_top + maxf(0.0, (band_bottom - band_top - panel_size.y) * 0.5)
+	event_panel.position = Vector2(
+		maxf(8.0, (view.x - panel_size.x) * 0.5),
+		clampf(y, band_top, maxf(band_top, band_bottom - panel_size.y))
+	)
+
+## A recruit offer is a live decision, not a snapshot. It used to freeze its
+## choices at the moment it fired, so a player who funded a house to make room
+## while the offer was on screen was still stuck with the two turn-away
+## variants -- the freed slot did nothing until the offer expired. Polled
+## rather than wired to a signal because occupancy moves for several unrelated
+## reasons (housing, desertion, another recruit, demolishing the Barracks) and
+## EventSystem.refresh_recruit_offer() is a no-op unless the answer actually
+## changed.
+func _refresh_open_offer() -> void:
+	if not event_panel.visible or current_event.is_empty():
+		return
+	if not event_system.refresh_recruit_offer(current_event):
+		return
+	_render_event_panel(current_event)
+	_position_event_panel()
+	if current_event.get("has_room", false):
+		_log("[color=lightgreen]A Barracks slot opened — %s can be taken in after all.[/color]"
+			% current_event.get("title", "the recruit"), "events characters")
+		_alert("Room found for %s." % current_event.get("title", "a recruit"), "good")
 
 func _resolve_event_choice(idx: int) -> void:
 	event_system.resolve_event(current_event, idx)

@@ -67,14 +67,40 @@ var _source: Object = null
 var _extra: Callable = Callable()
 
 var _root: VBoxContainer
+var _scroll: ScrollContainer
+
+## Tallest the **whole panel** may grow before its content starts scrolling.
+## Set by Main from the real visible band each time the panel opens. Note this
+## covers the panel including its own padding -- _fit_body() subtracts the
+## stylebox margins, because capping the *body* at the band height still let the
+## panel overhang by its own chrome (measured: an 8px spill onto the command
+## bar, which was enough to steal clicks from the bottom Fund house button).
+##
+## A full Barracks roster measured 706px -- five residents, each a wrapped
+## two-line stat block plus a Fund house button. On a 760px window that runs off
+## the bottom of the screen and under the command bar, which is the same bug the
+## gathering-priority rows had. Content taller than this scrolls instead.
+var max_body_height: float = 520.0
+
+## Never squash the body below this, however cramped the window is -- a panel
+## with two visible rows and a scrollbar is still usable; a 20px slit is not.
+const MIN_BODY_HEIGHT: float = 90.0
 
 func _init() -> void:
-	custom_minimum_size = Vector2(PANEL_WIDTH, 0)
 	visible = false
 	add_theme_stylebox_override("panel", _panel_style())
+	# PanelContainer > ScrollContainer > VBox. The ScrollContainer reports ~0
+	# minimum height on the axis it can scroll, so the panel would collapse to
+	# nothing -- _fit_body() below sizes it explicitly to whatever the content
+	# needs, capped at max_body_height.
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	add_child(_scroll)
 	_root = VBoxContainer.new()
 	_root.add_theme_constant_override("separation", 4)
-	add_child(_root)
+	_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_root)
 
 func _panel_style() -> StyleBoxFlat:
 	# Matches Main._panel_style() so the inspector reads as part of the same HUD
@@ -175,6 +201,21 @@ func _render(data: Dictionary) -> void:
 	close_btn.text = "Close"
 	close_btn.pressed.connect(close)
 	_root.add_child(close_btn)
+
+	_fit_body()
+
+## Sizes the scroll viewport to the content, up to max_body_height. Uses
+## get_combined_minimum_size() rather than `size` because that is computable
+## immediately -- waiting for layout would leave the panel the wrong height for
+## a frame every time it re-renders, and it re-renders on a 0.4s poll.
+func _fit_body() -> void:
+	var chrome: float = 0.0
+	var sb: StyleBox = get_theme_stylebox("panel")
+	if sb:
+		chrome = sb.content_margin_top + sb.content_margin_bottom
+	var allowed: float = maxf(MIN_BODY_HEIGHT, max_body_height - chrome)
+	var needed: float = _root.get_combined_minimum_size().y
+	_scroll.custom_minimum_size = Vector2(PANEL_WIDTH, minf(needed, allowed))
 
 func _build_header(data: Dictionary) -> void:
 	var header := HBoxContainer.new()

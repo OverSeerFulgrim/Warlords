@@ -56,6 +56,13 @@ const ASSIST_MIGHT_THRESHOLD: int = 6
 const THRONE_REPAIR_SECONDS: float = 6.0
 const THRONE_REPAIR_RADIUS_PX: float = 1.5 * float(SettlementGrid.CELL_SIZE)
 
+## Bones left by a killed wolf. Deliberately better than a seeded animal carcass
+## (5): map bones are finite and the whole point of Stage 4's harvest bounties
+## is that they run out, so a predator that walks into your settlement and pays
+## out more than it costs is a small, welcome pressure valve -- and it makes
+## keeping a warrior around something other than pure insurance.
+const WOLF_CARCASS_BONES: int = 9
+
 # ---------------- Wiring (set by Main, same convention as the other systems) --
 var settlement: SettlementGrid = null
 var worker_system: WorkerSystem = null
@@ -115,8 +122,12 @@ func spawn_wolf(at: Vector2 = Vector2.INF) -> Wolf:
 	var grid_h: float = float(SettlementGrid.GRID_HEIGHT * SettlementGrid.CELL_SIZE)
 	var cell: float = float(SettlementGrid.CELL_SIZE)
 
-	# East of the grid, level with the forest -- off-screen edge, walking in.
-	var entry := Vector2(grid_w + cell * 5.5, grid_h * 0.35)
+	# East of the grid, level with the forest. Deliberately only ~2 cells out:
+	# it used to enter 5.5 cells past the edge, which at the default 0.72 zoom
+	# put it right on the rim of the viewport -- playtest reported "the wolf
+	# spawned but I didn't see it" even with the alert firing. It has to arrive
+	# somewhere the player is actually looking.
+	var entry := Vector2(grid_w + cell * 2.0, grid_h * 0.35)
 	var spawn_at: Vector2 = entry if at == Vector2.INF else at
 
 	var wolf := Wolf.new()
@@ -350,9 +361,23 @@ func _advance_engagement(e: Engagement, delta: float) -> void:
 			_injure_and_flee(defender, wolf)
 			e.remove_defender(defender)
 
-	if not wolf.is_alive() or wolf.should_flee():
-		# Never actually killed: it breaks off. A corpse would want a butchering
-		# mechanic and this pass is deliberately not building one.
+	if not wolf.is_alive():
+		# **Killed outright**, which is the good outcome and now pays for itself:
+		# the body is left on the map as a carcass any labourer can gather. It
+		# reuses the ordinary carcass node, so hauling a dead wolf home is the
+		# same trip as hauling any other bones -- no new mechanic, and the
+		# reward for defending the settlement is a real one.
+		for d in e.defenders:
+			d.in_combat = false
+		_leave_carcass(wolf)
+		wolf.leave_reason = "killed"
+		_despawn(wolf)
+		_finish(e)
+		return
+
+	if wolf.should_flee():
+		# Hurt but alive: it breaks off and leaves. No body, no bones -- driving
+		# it away is the cheap win and killing it is the paying one.
 		for d in e.defenders:
 			d.in_combat = false
 		wolf.depart("beaten off")
@@ -365,6 +390,19 @@ func _advance_engagement(e: Engagement, delta: float) -> void:
 		wolf.state = Wolf.State.PROWL
 		wolf.clear_target()
 		_finish(e)
+
+## Drops a gatherable carcass where the wolf fell. Added to ResourceField the
+## same way the seeded ones are, so the priority list, the crowding rules and
+## the inspection panel all pick it up with no special casing -- a dead wolf is
+## simply another pile of bones that happens to have arrived late.
+func _leave_carcass(wolf: Wolf) -> void:
+	if resource_field == null:
+		return
+	var carcass := ResourceNode.make_carcass(wolf.position)
+	carcass.capacity = WOLF_CARCASS_BONES
+	carcass.remaining = WOLF_CARCASS_BONES
+	resource_field.add_node(carcass, ResourceField.SPRITE_CARCASS, "", 28.0)
+	EventBus.wolf_killed.emit(wolf.position, WOLF_CARCASS_BONES)
 
 func _finish(e: Engagement) -> void:
 	e.finished = true

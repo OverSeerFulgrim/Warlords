@@ -65,6 +65,8 @@ signal day_phase_changed(label: String)
 # Combat / wildlife (see CombatSystem.gd, Wolf.gd, Combat.gd)
 signal wolf_spawned(wolf)
 signal wolf_departed(wolf, reason: String)
+## Killed outright rather than driven off -- leaves a gatherable carcass.
+signal wolf_killed(at: Vector2, bones: int)
 ## A fight began. Names rather than objects because the only consumer is the
 ## log, and an attacker can outlive the unit it was fighting.
 signal combat_started(attacker_name: String, defender_name: String)

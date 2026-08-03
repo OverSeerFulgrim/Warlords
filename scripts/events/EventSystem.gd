@@ -117,9 +117,39 @@ func _fire_recruit_offer() -> void:
 		"title": "%s the %s" % [recruit.follower_name, recruit.species],
 		"description": _describe(recruit, has_room),
 		"recruit": recruit,
+		# Recorded so refresh_recruit_offer() can tell whether the answer has
+		# changed since the offer went up, rather than rebuilding every poll.
+		"has_room": has_room,
 		"choices": _offer_choices(has_room),
 	}
 	EventBus.event_triggered.emit(event)
+
+## Re-evaluates an already-open recruit offer against the Barracks' **current**
+## occupancy, rewriting its description and choices in place. Returns true if
+## anything actually changed.
+##
+## The offer used to be a snapshot: whatever the capacity was at the instant it
+## fired, that was the decision you were stuck with. So a player who saw
+## "Barracks full", funded a house to make room, and came back to the still-open
+## offer found the freed slot did nothing -- the two turn-away variants were the
+## only choices until the offer expired and a *new* recruit turned up. An offer
+## is a standing decision, and the world is allowed to move while you think.
+##
+## Works in both directions: a slot filled by a departing recruit or a second
+## offer takes the accept option back away again.
+func refresh_recruit_offer(event: Dictionary) -> bool:
+	if event.get("id", "") != "recruit_offer":
+		return false
+	var recruit = event.get("recruit")
+	if recruit == null or settlement == null:
+		return false
+	var has_room: bool = settlement.barracks_free_slots() > 0
+	if has_room == bool(event.get("has_room", false)):
+		return false
+	event["has_room"] = has_room
+	event["description"] = _describe(recruit, has_room)
+	event["choices"] = _offer_choices(has_room)
+	return true
 
 func _describe(f: Follower, has_room: bool) -> String:
 	var stars := " ★ exceptional" if f.is_exceptional else ""
@@ -129,7 +159,9 @@ func _describe(f: Follower, has_room: bool) -> String:
 		f.woodcutting, f.mining, f.foraging,
 	]
 	if not has_room:
-		line += "\n\n[Barracks full — %d/%d. No room to take anyone in.]" % [
+		# Says what to do about it, because you can: funding a house from the
+		# Barracks panel frees a slot and this offer updates itself on the spot.
+		line += "\n\n[Barracks full — %d/%d. Fund a house to free a slot and this offer will update.]" % [
 			settlement.barracks_residents(), settlement.barracks_capacity()]
 	return line
 

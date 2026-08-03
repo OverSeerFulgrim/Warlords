@@ -122,6 +122,13 @@ func _add(node: ResourceNode, alive_sprite: String, depleted_sprite: String, siz
 	node.setup_sprites(alive_sprite, depleted_sprite, size)
 	nodes.append(node)
 
+## Public version of _add, for nodes that appear during play rather than at
+## seeding -- currently just the carcass a killed wolf leaves behind. Goes
+## through here rather than letting the caller touch `nodes` directly, so the
+## "nothing reaches into ResourceField.nodes" rule holds for creation too.
+func add_node(node: ResourceNode, alive_sprite: String, depleted_sprite: String, size: float) -> void:
+	_add(node, alive_sprite, depleted_sprite, size)
+
 # ---------------- Dawn upkeep ----------------
 
 ## Berry groves regrow; a new deer wanders in up to the cap. Both are

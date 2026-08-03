@@ -61,7 +61,11 @@ const LEAVE_SPEED_PX: float = 96.0   # it does not linger once it's done
 const NECROMANCER_FEAR_RADIUS_PX: float = 150.0
 
 const SPRITE_PATH := "res://art/creature_wolf.png"
-const TOKEN_SIZE: float = 34.0
+## Bigger than a worker token (32) and matching the Necromancer (44). At the
+## default 0.72 zoom a 34px token renders at ~24 screen pixels of dark grey on
+## dark ground, which playtest simply could not find. The thing that eats your
+## labourers should be the most legible unit on the map.
+const TOKEN_SIZE: float = 46.0
 
 enum State {
 	PROWL,    ## drifting around the roam rect looking for something
@@ -108,12 +112,14 @@ func _ready() -> void:
 	# of emergent defence is that the player gets to react. The hp readout
 	# doubles as "is my orc winning".
 	_hp_bar = Label.new()
-	_hp_bar.add_theme_font_size_override("font_size", 10)
-	_hp_bar.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5))
-	_hp_bar.position = Vector2(-16, -32)
+	_hp_bar.add_theme_font_size_override("font_size", 11)
+	_hp_bar.add_theme_color_override("font_color", Color(1.0, 0.45, 0.40))
+	_hp_bar.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	_hp_bar.add_theme_constant_override("outline_size", 4)
+	_hp_bar.position = Vector2(-18, -40)
 	add_child(_hp_bar)
 
-	z_index = 4  # above buildings and resource nodes, below the Necromancer
+	z_index = 6  # above every other unit -- it is the thing you must not miss
 	set_process(true)
 
 func setup(spawn_pos: Vector2, p_roam_rect: Rect2, p_exit_point: Vector2) -> void:
