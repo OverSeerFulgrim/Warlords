@@ -81,8 +81,17 @@ signal recruit_recovered(follower)
 ## A predator ate a deer: the map loses the food, nobody gets hurt.
 signal deer_taken_by_predator(node, predator_name: String)
 ## Flavor only: something hostile came too close to the Necromancer and thought
-## better of it.
+## better of it. Only fires while CombatSystem.LAIR_AURA_PROTECTS_VILLAIN holds.
 signal necromancer_feared(predator_name: String)
+
+# The villain (see scripts/villain/Necromancer.gd)
+## He hit 0 hp. **Carries the villain object** rather than assuming there is one
+## of him -- ROGUELITE_REWORK section 11. Emitted from Necromancer.take_damage()
+## so that *anything* which can damage him announces it, not just CombatSystem.
+##
+## Nothing ends the run on this yet: the run lifecycle is rework stage R4. For
+## now Main logs it, loudly, so the moment is impossible to miss in testing.
+signal villain_died(villain, cause: String)
 
 # Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
 ## Cast, moved, or re-ordered. Carries the new order and how many undead answered.

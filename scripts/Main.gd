@@ -31,7 +31,16 @@ var day_night: DayNightCycle
 var morale_system: MoraleSystem
 var combat_system: CombatSystem
 var undead_command: UndeadCommand
-var necromancer: NecromancerToken
+## The villain, as data -- position, hp, Might, carry, escort. **This node holds
+## a reference to one instance; it is not a singleton and nothing looks it up.**
+## Anything that needs "the villain" is handed this (see combat_system.villain,
+## villain_controller.villain) -- ROGUELITE_REWORK section 11, which is what
+## keeps the Demonologist and multiplayer possible.
+var villain: Necromancer
+## Pure view over `villain`. Draws him; owns nothing.
+var necromancer_token: NecromancerToken
+## Reads WASD and drives him, and keeps the camera on him.
+var villain_controller: VillainController
 var camera: GameCamera
 
 var current_event: Dictionary = {}
@@ -44,6 +53,8 @@ var lbl_resources_right: Label
 var lbl_dark_essence: Label    # sits right of the Dark Essence icon
 var time_scale_btn: Button
 var necro_badge: Button
+## Camera-follow readout, under the badge. See _refresh_follow_state_label().
+var follow_state_label: Label
 
 # ---------------- Alerts + history log (Town/History/Research tabs) ----------------
 var alert_stack: VBoxContainer
@@ -236,12 +247,20 @@ func _settle_initial_camera_framing() -> void:
 ## Re-frame on resize, but only while the player hasn't taken the camera
 ## somewhere themselves -- yanking the view back to the Throne because someone
 ## dragged a window corner would be worse than a slightly-off centre.
+## Insets are re-synced unconditionally: the follow camera (VillainController)
+## calls center_on every frame regardless of whether the player has ever panned,
+## so stale insets would mis-frame him for the rest of the session.
 func _on_viewport_resized() -> void:
-	if camera and not camera.player_has_moved_camera:
+	if camera == null:
+		return
+	_sync_camera_insets()
+	if not camera.player_has_moved_camera:
 		_frame_camera_on_throne()
 
 func _place_necromancer() -> void:
-	necromancer.setup(_throne_world_centre())
+	villain.place_at(_throne_world_centre())
+	necromancer_token.setup(villain, villain_controller)
+	villain_controller.snap_to_villain()
 
 ## Worker states change continuously now that gathering is a real trip loop,
 ## so the priority rows' Working/Satisfied labels and the workforce summary
@@ -256,6 +275,17 @@ func _process(delta: float) -> void:
 		if inspector and inspector.is_open():
 			inspector.refresh()
 		_refresh_open_offer()
+		# Follow drops silently on a right-drag, so it's polled on the same slow
+		# tick as everything else that changes without announcing itself.
+		_refresh_follow_state_label()
+
+## Follow on: bright. Follow off: dim, and it names the key that brings it back.
+func _refresh_follow_state_label() -> void:
+	if follow_state_label == null or villain_controller == null:
+		return
+	follow_state_label.text = villain_controller.follow_status_text()
+	follow_state_label.modulate = (Color(0.75, 0.90, 0.75)
+		if villain_controller.following else Color(1, 1, 1, 0.45))
 
 # ---------------- Systems ----------------
 
@@ -296,11 +326,19 @@ func _build_systems() -> void:
 	# between trips and where every load gets deposited.
 	worker_keep_zone = Rect2(Vector2(-16, -16), Vector2(SettlementGrid.CELL_SIZE + 32, SettlementGrid.CELL_SIZE + 32))
 
-	# The player's avatar. Parented to `settlement` so he shares the same
-	# coordinate space as the grid and every other token.
-	necromancer = NecromancerToken.new()
-	necromancer.name = "NecromancerToken"
-	settlement.add_child(necromancer)
+	# The player himself: a data object plus a view over it, the same split
+	# Laborer/WorkerToken uses. The token is parented to `settlement` so he
+	# shares the coordinate space of the grid and every other token; the villain
+	# object is plain data and lives in this field.
+	villain = Necromancer.new()
+	# A soft fence one cell outside the grid, so holding W can't walk him into
+	# empty space he can never find his way back from. The world map (R1) will
+	# replace this with real bounds.
+	var fence: float = float(SettlementGrid.CELL_SIZE)
+	villain.bounds = Rect2(Vector2(-fence, -fence), Vector2(grid_w + fence * 2.0, grid_h + fence * 2.0))
+	necromancer_token = NecromancerToken.new()
+	necromancer_token.name = "NecromancerToken"
+	settlement.add_child(necromancer_token)
 
 	bounty_board = BountyBoard.new()
 	bounty_board.name = "BountyBoard"
@@ -349,7 +387,7 @@ func _build_systems() -> void:
 	combat_system.settlement = settlement
 	combat_system.worker_system = worker_system
 	combat_system.resource_field = resource_field
-	combat_system.necromancer = necromancer
+	combat_system.villain = villain
 	combat_system.day_night = day_night
 	add_child(combat_system)
 
@@ -370,6 +408,15 @@ func _build_camera() -> void:
 	camera.zoom = Vector2(0.72, 0.72)
 	add_child(camera)
 	camera.make_current()
+
+	# Built here rather than in _build_systems() because it needs the camera it
+	# follows with, and the camera has to exist first. Both of its dependencies
+	# are handed to it -- it looks nothing up.
+	villain_controller = VillainController.new()
+	villain_controller.name = "VillainController"
+	villain_controller.villain = villain
+	villain_controller.camera = camera
+	add_child(villain_controller)
 
 func _build_ground_background() -> void:
 	# Simple tiled ground so the grid isn't a void behind the buildings.
@@ -599,10 +646,10 @@ func _build_top_bar(hud_root: Control) -> void:
 	time_scale_btn.pressed.connect(_on_time_scale_pressed)
 	row.add_child(time_scale_btn)
 
-## Clickable player portrait, top-left under the resource bar. There's no
-## real player data model yet (no stats, no busy-state) -- clicking it always
-## reports "Idle" for now; see Necromancer_Reference.md's open question about
-## what this should eventually grow into (spells panel? on-map token?).
+## Clickable player portrait, top-left under the resource bar. It and the on-map
+## token are two doors to one room: both open his entry in the shared inspection
+## panel, which now reads real state (hp, Might, carry, escort) off the
+## `Necromancer` data object rather than the placeholder rows it used to carry.
 func _build_necro_badge(hud_root: Control) -> void:
 	necro_badge = Button.new()
 	necro_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -620,8 +667,18 @@ func _build_necro_badge(hud_root: Control) -> void:
 	# The HUD badge and the on-map avatar open the same panel -- two doors to
 	# one room, same as the Keep menu having a top-bar and a click-the-building
 	# entry point.
-	necro_badge.pressed.connect(func(): _inspect(necromancer, _build_necromancer_actions))
+	necro_badge.pressed.connect(func(): _inspect(necromancer_token, _build_necromancer_actions))
 	hud_root.add_child(necro_badge)
+
+	# Follow state, small, immediately under the badge -- the one bit of camera
+	# mode the player has to be able to read at a glance, since a right-drag
+	# silently drops out of it.
+	follow_state_label = Label.new()
+	follow_state_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	follow_state_label.position = Vector2(54, 50)
+	follow_state_label.add_theme_font_size_override("font_size", 10)
+	hud_root.add_child(follow_state_label)
+	_refresh_follow_state_label()
 
 ## Rolling stack of up to MAX_ALERTS recent notable events, top-right,
 ## opposite the necromancer badge. Each pin's full message is its
@@ -1307,8 +1364,11 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	# --- 1. Characters -------------------------------------------------------
 	# Free-roaming tokens aren't cell-locked, so these are proximity tests
 	# against the unit's current position, not a grid lookup.
-	if necromancer and world_pos.distance_to(necromancer.position) <= necromancer.hit_radius():
-		_inspect(necromancer, _build_necromancer_actions)
+	# Measured against the villain's own position, not the token's -- the token
+	# is a pure view and therefore always a frame stale. Same correctness
+	# _closest_token_hit() was fixed for.
+	if villain and world_pos.distance_to(villain.position) <= necromancer_token.hit_radius():
+		_inspect(necromancer_token, _build_necromancer_actions)
 		return true
 
 	var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos, 20.0)
@@ -1487,6 +1547,20 @@ func _build_necromancer_actions(box: VBoxContainer) -> void:
 	more.text = "Further spells — coming soon"
 	more.disabled = true
 	box.add_child(more)
+
+	box.add_child(HSeparator.new())
+	# The camera escape hatch, given a button as well as a key. The key (F) is
+	# the fast path; this is the discoverable one, and it's how you find out the
+	# key exists.
+	var follow := Button.new()
+	follow.text = "Stop following (F)" if villain_controller.following else "Follow him (F)"
+	follow.tooltip_text = "Keep the camera centred on the Necromancer. Any right-drag or arrow-key pan drops out of it."
+	follow.pressed.connect(func():
+		villain_controller.toggle_follow()
+		_refresh_follow_state_label()
+		inspector.refresh()
+	)
+	box.add_child(follow)
 
 ## Order buttons for the rally point itself. Lives here rather than on
 ## RallyPoint for the usual reason -- these call into UndeadCommand, and the
@@ -1827,6 +1901,17 @@ func _connect_signals() -> void:
 		_log("[color=lightgreen]The wolf is dead. Its carcass is worth %d bones — send someone to fetch it.[/color]"
 			% bones, "events alerts")
 		_alert("Wolf killed — %d bones on the ground." % bones, "good")
+	)
+	# The villain going down. **Nothing ends here yet** -- run start/end is
+	# rework stage R4, and building half a run lifecycle now would mean unpicking
+	# it then. What this does is make the moment impossible to miss while R1-R3
+	# are being built, which is exactly what it's for.
+	EventBus.villain_died.connect(func(v, cause: String):
+		_log("[color=red][b]THE NECROMANCER HAS FALLEN — the run would end here.[/b][/color] (%s)"
+			% cause, "events alerts characters")
+		_alert("THE NECROMANCER HAS FALLEN.", "bad")
+		push_warning("Villain down (%s, class '%s') — the run lifecycle is R4, so play continues."
+			% [v.combat_name(), v.class_id])
 	)
 	EventBus.combat_started.connect(func(attacker: String, defender: String):
 		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")

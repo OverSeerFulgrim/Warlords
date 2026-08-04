@@ -1,9 +1,16 @@
 extends Camera2D
 class_name GameCamera
-## Simple pan (right-click drag, or WASD/arrows) + zoom (scroll wheel) camera
+## Simple pan (right-click drag, or the arrow keys) + zoom (scroll wheel) camera
 ## controller for the settlement view. Deliberately minimal -- no inertia, no
 ## edge-scrolling, no smoothing curves -- matches the "keep it simple, AoE/
 ## Majesty-ish" scope call rather than a full RimWorld-style camera rig.
+##
+## **WASD used to pan here too, and deliberately no longer does.** Those keys
+## now drive the Necromancer (see VillainController), and the two would have
+## fought over every keystroke. The split is: **WASD moves the man, arrows move
+## the camera.** With follow mode on they read almost identically anyway --
+## moving him moves the view -- so the arrow keys are really "look away from him
+## for a moment", and like a right-drag they drop follow.
 
 @export var zoom_min: float = 0.35
 @export var zoom_max: float = 1.4
@@ -23,6 +30,14 @@ var _dragging: bool = false
 ## itself on window resize, but only while this is false -- once you've moved
 ## the camera yourself, a resize must not yank the view back to the Throne.
 var player_has_moved_camera: bool = false
+
+## Bumped once per *manual pan* -- a right-drag or an arrow key. Deliberately
+## separate from `player_has_moved_camera`, which zooming also sets: dropping
+## Necromancer-follow is what panning means, and zooming in on the man you are
+## following must not stop following him. VillainController watches this for a
+## change rather than reading a boolean, so re-engaging follow doesn't have to
+## reach in and clear someone else's flag.
+var manual_pan_ticks: int = 0
 
 func _ready() -> void:
 	set_process(true)
@@ -46,21 +61,27 @@ func _unhandled_input(event: InputEvent) -> void:
 			_dragging = event.pressed
 	elif event is InputEventMouseMotion and _dragging:
 		position -= event.relative * zoom.x
-		player_has_moved_camera = true
+		_note_manual_pan()
 
+## Arrow keys only -- WASD belongs to the Necromancer now (see the class header).
 func _process(delta: float) -> void:
 	var move := Vector2.ZERO
-	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+	if Input.is_key_pressed(KEY_LEFT):
 		move.x -= 1
-	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_key_pressed(KEY_RIGHT):
 		move.x += 1
-	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+	if Input.is_key_pressed(KEY_UP):
 		move.y -= 1
-	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+	if Input.is_key_pressed(KEY_DOWN):
 		move.y += 1
 	if move != Vector2.ZERO:
 		position += move.normalized() * pan_speed * delta * zoom.x
-		player_has_moved_camera = true
+		_note_manual_pan()
+
+## Pan, specifically -- see manual_pan_ticks for why zoom is not this.
+func _note_manual_pan() -> void:
+	player_has_moved_camera = true
+	manual_pan_ticks += 1
 
 func _apply_zoom(delta: float) -> void:
 	var z: float = clamp(zoom.x + delta, zoom_min, zoom_max)

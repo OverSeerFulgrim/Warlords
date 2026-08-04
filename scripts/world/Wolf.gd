@@ -251,7 +251,11 @@ func get_inspect_data() -> Dictionary:
 	]
 	if is_fed:
 		rows.append({"label": "", "value": "It has eaten. It will not hunt again tonight.", "muted": true})
-	rows.append({"label": "", "value": "It will not go near the Necromancer.", "muted": true})
+	# Reads the flag rather than restating the rule: the lair aura is an open
+	# tunable (CombatSystem.LAIR_AURA_PROTECTS_VILLAIN) and the panel must not go
+	# on promising protection after it's switched off.
+	if CombatSystem.LAIR_AURA_PROTECTS_VILLAIN:
+		rows.append({"label": "", "value": "It will not go near the Necromancer.", "muted": true})
 	return {
 		"title": "Wolf",
 		"subtitle": "Wildlife — hostile",

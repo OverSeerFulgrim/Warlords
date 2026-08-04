@@ -23,7 +23,29 @@ class_name CombatSystem
 #    they break off, run home, and are Injured until healed to full. -1 morale.
 # 3. **A deer taken by a wolf is a pure economic loss** -- the food is gone, the
 #    wolf is fed and stands down for the night. This is the common case.
-# 4. **The Necromancer is untouchable.** Wolves will not approach him.
+# 4. **Wolves will not approach the Necromancer** -- while LAIR_AURA_PROTECTS_
+#    VILLAIN holds. He is a real Combatant now (he implements the whole contract
+#    on `Necromancer`, and Combat.exchange() hits him with no special casing);
+#    this rule is a *lair* rule, not an invulnerability, and it lives behind the
+#    flag below so R2 can turn it off out in the world.
+
+## **The lair aura.** While true, wolves won't come near the villain and anything
+## standing in his shadow is invisible to them -- the settlement-era rule, kept
+## because inside his own domain he should read as the apex predator.
+##
+## It is a named flag rather than hardcoded behaviour because ROGUELITE_REWORK
+## section 15 lists "whether a protective aura applies inside his own lair" as an
+## open tunable, and section 5 repeals it out in the world: **R2 flips this off**
+## (or makes it positional, holding only near the Throne). Deleting the rule now
+## would mean rediscovering it then; leaving it hardcoded would mean hunting it.
+## Leave the switch.
+##
+## Flipping it off is necessary but **not sufficient** to make wildlife hunt him:
+## he is not in `_prey_candidates()` at all, and the consequence rules below have
+## no branch for a villain losing a fight (that branch is "the run ends", which
+## is R4). Turning this off today only stops wolves *avoiding* him. `Combat` is
+## already complete on him -- `Combat.exchange(wolf, villain)` works right now.
+const LAIR_AURA_PROTECTS_VILLAIN: bool = true
 
 ## Only one wolf at a time for now.
 const MAX_WOLVES: int = 1
@@ -67,7 +89,11 @@ const WOLF_CARCASS_BONES: int = 9
 var settlement: SettlementGrid = null
 var worker_system: WorkerSystem = null
 var resource_field: ResourceField = null
-var necromancer: Node2D = null
+## The villain this settlement belongs to. A **reference passed in**, not a
+## lookup and not a singleton -- ROGUELITE_REWORK section 11. It reads his
+## `position` off the data object rather than off his token, which is the same
+## view-is-a-frame-stale correctness the click hit-test already learned.
+var villain: Necromancer = null
 var day_night: DayNightCycle = null
 
 var wolves: Array = []          # Array[Wolf]
@@ -232,18 +258,19 @@ func _is_deer(t) -> bool:
 	return t is ResourceNode and t.node_type == "deer"
 
 func _near_necromancer(pos: Vector2) -> bool:
-	if necromancer == null:
+	if not LAIR_AURA_PROTECTS_VILLAIN or villain == null:
 		return false
-	return pos.distance_to(necromancer.position) <= Wolf.NECROMANCER_FEAR_RADIUS_PX
+	return pos.distance_to(villain.position) <= Wolf.NECROMANCER_FEAR_RADIUS_PX
 
 ## Rule 4, as behaviour rather than a hard wall: a wolf that drifts too close to
 ## the Necromancer turns around. Flavor-logged the first time, then debounced.
+## No-ops entirely once the lair aura is switched off -- see the flag.
 func _check_necromancer_fear(wolf: Wolf) -> void:
 	if not _near_necromancer(wolf.position):
 		return
 	wolf.clear_target()
 	# Push it back out the way it came.
-	wolf.position += (wolf.position - necromancer.position).normalized() * 12.0
+	wolf.position += (wolf.position - villain.position).normalized() * 12.0
 	if _necro_fear_cooldown <= 0.0:
 		_necro_fear_cooldown = 20.0
 		EventBus.necromancer_feared.emit("wolf")

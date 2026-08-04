@@ -13,11 +13,13 @@ A villain-power-fantasy roguelite settlement builder, in the lineage of *Against
 - One villain class: **Undead Empire**
 - Climate: deliberately **not implemented yet** — the placeholder "Frozen Wastes" label/art is still in the code (`tile_ground_frozen.png`, log message in `Main.gd`) but per an explicit user scope call, climate mechanics are a later feature. Narratively the settlement is currently framed as a cold, remote, forested/mountainous hideout (Alps/Alaska-ish — a necromancer needs somewhere to hide) rather than a barren wasteland, which is why Wood exists as a resource; nothing in code enforces this yet, it's just the intended flavor for whenever climate *does* get built.
 - Core Loop: settlement grid + building/housing system + a Worker-driven resource economy, Bounty Board (indirect control), Reputation/Threat escalation ladder, a random event pool, and a hand-picked-party mission system
-- Win condition: **both** — survive the High-Threat Crusade climax **and** reach a Power threshold (per user's answer in design discussion)
+- Win condition: **both** — survive the High-Threat Crusade climax **and** reach a Power threshold (per user's answer in design discussion) — **superseded by the roguelite rework** (below): the win becomes taking the human lord's manor, with Power surviving as an escalation input only. The code still implements the old "both" check; changing it is rework stage R4.
 
 **Important:** the design doc barely specifies the settlement-building/economy layer at all — see its Core Loop section, which only says "establish a settlement" and "carry forward buildings" as meta-progression, nothing more. The building/housing system and the Worker/resource-gathering economy (this section) were designed live in conversation with the user, not transcribed from the doc. If the doc and the code ever disagree on this specific layer, the code (and this file) is the more current source of truth, not the doc.
 
 Multi-settlement, trade, alliances, and climate are explicitly **out of scope** until this loop is proven — see design doc Section 11.
+
+**The roguelite rework (`ROGUELITE_REWORK.md`, 2026-08) is the agreed direction beyond Stages 1–3** and supersedes GAME_OUTLINE Stages 4–5 and the timed-recruit-event model. Headlines: one region = one run (Slay-the-Spire structure — death ends the run, XP/unlocks/stash persist and add *variety, never power*); the Necromancer becomes a directly controlled, killable unit exploring a 144×144 world map (the one sanctioned exception to indirect control — followers stay uncommandable); recruitment gates on a five-axis reputation earned by deeds, not on a timer; victory is taking the human lord's manor; a between-runs Lair hub holds the stash, trophies, and chronicle. The Stage 1–3 settlement foundation is unchanged and is a prerequisite — it becomes the in-run base layer. Design constraint effective immediately: **no system may assume exactly one villain on the map** (villain state on per-villain objects, not global singletons) — this is the whole present-day cost of keeping the second class and multiplayer possible. Build order is `ROGUELITE_REWORK.md` §13 (R1–R6). **R1's first task is done** — the Necromancer is split into a data object + view, is driven with WASD, is followed by the camera, and is killable; see "The villain splits" below. Nothing else from the rework is built. The world-map spec lives in `Warlords_World_Map_Scale_and_Exploration_Plan.docx` (user-authored), adopted with the three amendments in the rework doc's §4.
 
 ## Engine & tooling
 
@@ -184,7 +186,7 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 | Berry grove | `Berry_Grove_Full` → `Berry_Grove_Picked` when stripped | `ResourceField` consts |
 | Graves | `Grave_Undisturbed` → `Grave_Dug_Up` when robbed | `ResourceField` consts |
 | All 16 race tokens + Skeleton Worker | one per race | **`data/races.json` → `sprite`** |
-| Necromancer (HUD badge + map avatar) | `Necromancer_Portrait` | `Main.NECROMANCER_SPRITE`, `NecromancerToken.PORTRAIT` |
+| Necromancer (HUD badge + map avatar) | `Necromancer_Portrait` | `Main.NECROMANCER_SPRITE`, `Necromancer.PORTRAIT` (the data object names its own portrait, so the inspection payload never asks a view for it) |
 | Dark Essence in the resource bar | `Icon_Dark_Essence` | `Main.ICON_DARK_ESSENCE` |
 
 **Race token art is data, not code.** `RaceCatalog.sprite(race_id)` reads it from `races.json`, so adding a race never means editing a Dictionary in `Main.gd`. `Main.SPECIES_SPRITES` survives *only* as a fallback for Ghoul and Wraith, which exist in the superseded `followers.json` templates and have no `races.json` row — don't add to it.
@@ -330,9 +332,7 @@ The player now has an avatar on the map — a token that paces slowly within ~2 
 
 **He is not a `Laborer`, and the exclusion is structural rather than a flag.** `WorkerSystem.laborers()` is the union of `workers` and `GameState.followers`; he is in neither, so there is no path by which he can be handed a gathering trip or counted in the workforce summary. Keep it that way — if he ever needs to act on the world, give him his own system rather than slotting him into the labor pool. (Smoke-tested: labor pool size 1, `is Laborer` false, summary still reads "1 worker".)
 
-**Where his position lives — a documented exception.** It's on the node, not on a separate data object, which is the opposite of the convention above about simulation state belonging on a RefCounted with the token as a pure view. That convention exists because `WorkerToken` once animated on a clock that disagreed with the economy driving it. There's no such risk here: nothing reads his position, there's no simulation counterpart to drift from, and a `Necromancer` RefCounted whose position only its own token writes and reads would be ceremony with no beneficiary.
-
-**The migration trigger is explicit:** the moment any *other* system needs to know where he is — spells cast from his location, a raider targeting him, him walking somewhere on command — split it exactly like `Laborer`/`WorkerToken`, data object owning `position` and the node becoming a pure view.
+**Where his position used to live — the documented exception, now closed.** It was on the node rather than a data object, the opposite of the convention above, on the grounds that nothing else read it. The section carried an explicit migration trigger: split it the moment any *other* system needed to know where he was. **That trigger fired and the split is done** — see "The villain splits" below. Everything from here to the end of this subsection describes the *pre-split* code and survives only as the reasoning trail.
 
 Clicking him (or the HUD badge — two doors, one room) opens his entry in the shared `InspectionPanel` (see below), with a "Spells — coming soon" disabled button, the same visible-promise treatment as the Barracks Upgrade. His own bespoke panel is gone, as this section previously predicted it would be.
 
@@ -429,7 +429,7 @@ These are the design decision, implemented exactly:
    - **The wolf, conversely, leaves a body.** Killed outright (hp 0) it drops an ordinary carcass node worth `WOLF_CARCASS_BONES` (9) where it fell — better than a seeded carcass (5), because map bones are finite and a predator that pays out more than it costs is a welcome pressure valve. Merely *driven off* (below 5 hp) leaves nothing: routing it away is the cheap win, killing it is the paying one. The carcass is a plain `ResourceNode`, so the priority list, crowding rules and inspection panel all pick it up with no special casing.
 2. **Living recruits are never killed by wildlife.** Below 30% hp they break off, run home, and are `Injured` (no work) until healed to full, at −1 morale. This is true *by construction*, not by a check at 0 hp: `_injure_and_flee` pulls them out at the threshold, and the 0-hp path warns and injures rather than killing if anything ever reaches it.
 3. **A deer taken by a wolf is a pure economic loss.** The food is gone, the wolf is fed and stands down for the night. **This is the common case, and the point** — a wolf that never touches a person has still cost you 8 food and a hunting trip.
-4. **The Necromancer is untouchable.** Wolves won't approach him, and anything standing in his shadow is invisible to them. The protection is *positional*, so a worker who wanders off to gather is fair game again.
+4. **Wolves won't approach the Necromancer**, and anything standing in his shadow is invisible to them. The protection is *positional*, so a worker who wanders off to gather is fair game again. **Since the villain split he is no longer "untouchable" in the general sense** — he implements the full Combatant contract and `Combat.exchange()` damages him like anything else. This is a *lair* rule, and it now sits behind `CombatSystem.LAIR_AURA_PROTECTS_VILLAIN` so R2 can switch it off in the world (rework §15 lists it as an open tunable). Flipping it off is necessary but not sufficient to make wildlife hunt him: he isn't in `_prey_candidates()` and there's no consequence branch for a villain losing a fight, because that branch is "the run ends", which is R4.
 
 Note rule 3 and the "nearest prey, no preference" targeting work together: your hunters walk out to the same deer the wolf wants, so the two end up in the same place often enough without a preference rule aiming them at each other.
 
@@ -524,6 +524,71 @@ Two testing notes from this round, both of which produced false results:
 - **Headless Godot runs at a 64×64 viewport.** Every geometry assertion is meaningless until you `get_tree().root.size = Vector2i(1400, 760)` and wait a few frames. The bottom bar otherwise computes to y = −186.
 - **GDScript lambdas capture locals by value.** `var seen := false` + `sig.connect(func(): seen = true)` writes to the closure's own copy and the outer `seen` never changes. Capture through an Array (or a member) instead.
 
+### The villain splits: data object, direct control, and a camera that follows (rework R1, first task)
+
+**The documented migration trigger fired.** `NecromancerToken` used to own his position outright, as an explicit exception to the token-is-a-pure-view convention, with the exception's own expiry condition written into the file: *split it the moment any other system needs to know where he is.* Three now do — the camera follows him, `Combat.exchange()` hits him, and the keyboard drives him. This pass is that split, and nothing more: no world map, no sorties, no escort behaviour. **The game is still the settlement build; it just has a Necromancer the player drives.**
+
+#### The split itself
+
+`scripts/villain/Necromancer.gd` (RefCounted) owns position, hp, Might, carry capacity and current carried load, an escort roster, and a class identity string. `NecromancerToken` is now a **pure view** — it reads `villain.position`, draws there, flips a sprite, and decides nothing. Exactly the `Laborer`/`WorkerToken` contract, for exactly the reason that one exists.
+
+Two details that carry weight:
+
+- **He extends `RefCounted` directly, not `Laborer`** — deliberately. Sharing the trip-loop base class would put him one `laborers()` change away from being labour. The exclusion stays structural: `WorkerSystem.laborers()` is the union of `workers` and `GameState.followers`, and he is in neither. (Re-verified after the split: labor pool size 1, `is_instance_of(villain, Laborer)` false, summary still reads "1 worker".)
+- **`carry_capacity()` is Might**, the same rule as every other unit (FOUNDATION_SPEC §6). One rule, not two. `carried` is a `kind -> amount` Dictionary rather than a Laborer's single kind/amount pair, because a sortie brings back a mixed load and a worker trip is one resource by construction. Nothing banks it yet — that's R2's deposit-at-the-lair step.
+
+#### Per-villain state is the whole point (rework §11)
+
+**None of this is in `GameState` or any other autoload, and nothing looks him up.** `Main` holds a reference to one instance; every consumer takes him as a field — `CombatSystem.villain`, `VillainController.villain`, `NecromancerToken.villain`. `CombatSystem`'s old `necromancer: Node2D` (which read the *token's* position) is now `villain: Necromancer` reading the data object, which also closes the same view-is-a-frame-stale hole `_closest_token_hit` was fixed for.
+
+If a future pass catches itself writing `GameState.necromancer_hp` or a static `Necromancer.current`, that is the mistake this discipline exists to prevent. It is the entire present-day cost of keeping the Demonologist and multiplayer possible, and retrofitting it later is the expensive version.
+
+#### Direct control is the keyboard, deliberately not click-to-move
+
+Left-click already means three things arbitrated by mode (inspection, build/demolish placement, rally-point targeting) and right-drag means camera pan. Adding "walk here" as a fourth meaning for a mouse button would make every click first ask *which mode am I in* before it could ask *what did they click* — which is how an input layer rots. Hold-to-move on the keyboard is a separate channel: it can't collide with any click, it needs no mode, and it reads as direct control rather than as issuing an order (which matters, since ordering people about is the one thing the pillars rule out).
+
+**There was a real conflict to resolve, and it's resolved as WASD = the man, arrows = the camera.** `GameCamera._process` used to pan on both WASD *and* the arrow keys; the WASD half is gone. With follow mode on the two read almost identically anyway — moving him moves the view — so the arrow keys are really "look away from him for a moment", and like a right-drag they drop follow.
+
+- **`MOVE_SPEED_CELLS = 1.4`, flagged as a tunable.** Same cells-per-second convention as `walk_speed` (1.0 = one grid cell/sec, literally). Faster than a Skeleton Worker's 0.9 because he's the player and trudging is not a fantasy; slow enough that the settlement doesn't read as small.
+- **Movement is polled (`Input.is_key_pressed`), not event-driven.** Hold-to-move is a *state*, and rebuilding it from key-down/key-up desyncs the first time the window loses focus mid-hold. The F key (snap back to follow) is the opposite — a discrete press, so it's in `_unhandled_input`.
+- **Movement is suppressed while a `LineEdit` has focus.** The Economy tab's threshold `SpinBox`es are real text entry; without the guard, typing "30" into one walks the Necromancer across the map. (This bug already existed in the WASD *camera* pan — it was just less visible.)
+
+#### Idle pacing survives, demoted
+
+No movement input for 8 seconds and he resumes the old slow wander — within ~2 cells of **wherever he's standing**, not of the Throne, because he's a unit you park now rather than a fixture of the keep. Any input cancels it in the same frame, with no easing out and no finishing the current step. Both halves live in `Necromancer.step()` rather than being split between the object and its controller, because both write `position` and position has exactly one owner: the controller decides *what the player asked for*, the object decides *where he ends up*.
+
+#### Camera follow, and the escape hatch
+
+`VillainController` calls `GameCamera.center_on(villain.position)` each frame while following — that band arithmetic (between the top strip and the command bar) already exists and already survives zooming, so following him is one call per frame rather than a second camera implementation.
+
+**The drop-out needed a new flag, and the reason is worth keeping.** `player_has_moved_camera` is set by pan *and* zoom, and zooming in on the man you're following must not stop following him. So `GameCamera.manual_pan_ticks` counts manual pans only (right-drag or arrow key); the controller drops follow when the count changes. Comparing a counter rather than reading a boolean also means re-engaging follow doesn't have to reach in and clear someone else's flag. **F snaps back and re-engages**, and there's a button in his panel doing the same thing — the key is the fast path, the button is how you learn the key exists. State is shown under the HUD badge (bright "Following [F]" / dim "Free camera").
+
+One consequence: `Main._on_viewport_resized` now re-syncs the camera insets **unconditionally** rather than only while the player hasn't panned. The follow camera calls `center_on` every frame regardless, so stale insets would mis-frame him for the rest of the session.
+
+#### He is killable
+
+`Necromancer` implements the whole Combatant contract (`combat_name`/`combat_might`/`max_hp`/`hp`/`take_damage`/`is_alive`/`hp_fraction`), so `Combat.exchange()` works on him with **no special casing anywhere**. `max_hp` is computed from Might, never stored, and it reuses `Laborer.HP_BASE`/`HP_PER_MIGHT` rather than restating the formula — there is exactly one hp formula in the project. Might 6 → 20 hp, a first guess flagged as the number to move when rework §15's "Necromancer combat stats" gets answered.
+
+**Death is emitted from `take_damage()`, not from a policy layer.** `Combat.exchange()` doesn't know who it's hitting, so a run-ending event that only fired when `CombatSystem` happened to be the caller would be a trap for every later damage source (traps, the crusade, a rival villain). `EventBus.villain_died(villain, cause)` carries the villain object rather than assuming there's one of him, and fires once — `_death_announced` guards it, because `exchange()` will happily land another swing on a corpse in the same frame. **Nothing ends the run:** Main logs "THE NECROMANCER HAS FALLEN — the run would end here" and play continues. The run lifecycle is R4 and building half of it now would mean unpicking it then.
+
+The lair aura is now `CombatSystem.LAIR_AURA_PROTECTS_VILLAIN` — see combat consequence rule 4 above for what flipping it off does and doesn't do. `Wolf.get_inspect_data()` reads the flag too, so the panel stops promising protection the moment it's switched off.
+
+#### Inspection
+
+His entry shows hp (current/max, colour-coded), Might, carry (current/capacity), escort count, and follow state. `NecromancerToken.get_inspect_data()` **delegates** to the data object rather than duplicating it — the one row it adds itself is camera follow, deliberately, because where the camera is pointing is a property of the view and not of the man. Put it on the data object and the next thing on it is a scroll offset. Actions (Command Undead, the follow toggle) stay in `Main`, unchanged split.
+
+#### Verification
+
+A headless scene harness, 49 assertions, all passing: the split (token mirrors the object, owns nothing, same instance), absence from `laborers()`/`all_units()` and the workforce summary, 1s of held input covering exactly 1.4 cells with diagonals no faster, the token catching up within one frame, follow tracking / dropping on a simulated manual pan / staying put once dropped / re-engaging on snap / surviving a zoom, pacing staying quiet at 7s and resuming by 8s within 2 cells then cancelling instantly on input, the Combatant contract, `max_hp` tracking a changed Might, `Combat.exchange(wolf, villain)` damaging both sides, death at 0 hp firing exactly once and not re-firing on a corpse, the lair aura still hiding a worker standing in his shadow, and every inspection row present via delegation.
+
+Two harness notes for next time:
+
+- **A `-s` SceneTree script compiles before the autoloads are registered**, so every class touching `EventBus` or `RaceCatalog` fails with "Identifier not found". Run a harness as a **scene** (`godot --headless --path . res://tools/whatever.tscn`) instead. If you do need `-s`, autoloads are reachable as `root.get_node("EventBus")`.
+- **`root` is busy setting up children during your `_ready`** — await one frame before `add_child`ing an instantiated `Main.tscn`, or the call fails outright.
+- The compiler statically rejects `villain is Laborer` ("Expression is of type Necromancer so it can't be of type Laborer"), which is itself the proof the assertion wanted. Route through an `Object` local and `is_instance_of()` if you want it as a runtime check.
+
+**Not verified here, and it needs a human:** `Input.is_key_pressed` polling and `_unhandled_input` are both unreachable from godot-mcp's simulated input (see "Known constraint"). Actually holding W/A/S/D, panning with the arrows, and pressing F have to be checked with a real keyboard in the real window.
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -550,7 +615,7 @@ scripts/Main.gd              Wires all systems together + debug UI + build menu
 scripts/autoload/           GameState.gd, EventBus.gd, BuildingCatalog.gd, RaceCatalog.gd (singletons)
 scripts/settlement/         SettlementGrid.gd, Building.gd, FollowerToken.gd, WorkerSystem.gd, WorkerToken.gd,
                             MoraleSystem.gd -- meals, morale, theft, desertion
-                            NecromancerToken.gd -- player avatar; NOT a Laborer
+                            NecromancerToken.gd -- PURE VIEW over scripts/villain/Necromancer.gd; NOT a Laborer
                             HousePlanner.gd -- WHERE a recruit builds (race housing_style)
                             HouseStyle.gd   -- WHAT it looks like (sprite + tint per race)
                             Laborer.gd -- base class: the trip loop + labor stats
@@ -564,6 +629,11 @@ scripts/combat/             Combat.gd -- THE damage formula; reusable, knows not
                             the four consequence rules, skeleton repair at the Throne
                             UndeadCommand.gd -- the Command Undead spell; binds the dead to a rally point
                             RallyPoint.gd -- the marker and its Defend/Patrol/Attack order
+scripts/villain/            Necromancer.gd -- THE villain as data: position, hp, Might, carry, escort.
+                            Per-villain state lives here and NOWHERE else (rework section 11 -- no
+                            autoload may hold it, no code may assume exactly one villain)
+                            VillainController.gd -- WASD hold-to-move + camera follow; takes the
+                            villain and the camera as fields, looks nothing up
 scripts/world/              DayNightCycle.gd (phase clock, CanvasModulate tint, debug time scale)
                             Wolf.gd -- the first hostile creature
                             Roaming.gd -- wander helpers shared by the deer and the wolf
@@ -572,7 +642,7 @@ scripts/bounty/              BountyBoard.gd, Bounty.gd, Follower.gd
 scripts/threat/               ThreatSystem.gd
 scripts/events/                EventSystem.gd, RecruitGenerator.gd
 scripts/missions/            MissionSystem.gd
-scripts/GameCamera.gd     Pan (right-drag)/zoom Camera2D controller
+scripts/GameCamera.gd     Pan (right-drag or ARROW keys -- not WASD, that's the villain)/zoom Camera2D
 addons/godot_mcp/           Third-party MCP bridge plugin (mkdevkit, MIT) — Godot-editor side
 data/events.json               15 MVP random events
 data/missions.json            4 MVP party missions
@@ -587,6 +657,8 @@ art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sp
 ```
 
 ## Next milestones (not yet built)
+
+> **The roadmap is now `ROGUELITE_REWORK.md` §13 (stages R1–R6)** — see "Current phase". The list below predates it and survives as a backlog of settlement-layer items; where the two disagree, the rework doc wins. Specifically superseded by it: "Combat beyond the primitive"'s Stage-4/5 bounty-raid framing (bounties return in the run frame, R2+ escort/encounters first), "Save/load" (now required, scoped in R5 as meta-persistence first), and "Remaining villain classes" (the Demonologist is the second *playable* class, rework §11).
 
 - Real UI (replace the code-built debug UI with a proper `.tscn`-based interface once validated in-editor)
 - Multi-cell building footprints (everything is 1x1 on the grid for now)
