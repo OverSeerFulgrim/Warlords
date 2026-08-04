@@ -138,6 +138,15 @@ procgen. Shuffle is R4.
    GDScript. Movement must respect blocking — the Necromancer, the wolf and
    the deer all route around it.
 
+   USE THE REAL ART, not coloured rectangles: "Official Sprites/
+   Terrain_Tileset_Snow.png" is a 4x4 grid of seamless tiles — grass, three
+   snow-over-grass variants, dirt, dirt-with-snow, a worn track, bone-strewn
+   ground, three cobblestones, gravel, ice, and a ritual circle. Slice it
+   into a TileSet and map those to the ground/road/blocking categories.
+   Note the snow tiles are cold-hideout FLAVOR, not the climate system —
+   CLAUDE.md's scope call that climate is deferred still stands, and this
+   prompt must not start implementing one.
+
 4. The settlement becomes a band inside the world, not the world.
    SettlementGrid's 10x8 sits at a defined world origin; ResourceField.build()
    becomes the lair-band seeder within the larger map (§12) rather than
