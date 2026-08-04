@@ -89,6 +89,10 @@ var leave_reason: String = "slipping back into the dark"
 var roam_rect: Rect2
 var exit_point: Vector2
 
+## The terrain it has to get around. Set by CombatSystem at spawn; null-safe, so
+## a wolf spawned in a test with no map still prowls in a straight line.
+var world: WorldMap = null
+
 var _target = null          ## a Laborer or a deer ResourceNode
 var _roam_target: Vector2
 ## Counts down HUNT_DELAY_SECONDS from spawn. See the constant.
@@ -122,11 +126,13 @@ func _ready() -> void:
 	z_index = 6  # above every other unit -- it is the thing you must not miss
 	set_process(true)
 
-func setup(spawn_pos: Vector2, p_roam_rect: Rect2, p_exit_point: Vector2) -> void:
+func setup(spawn_pos: Vector2, p_roam_rect: Rect2, p_exit_point: Vector2,
+		p_world: WorldMap = null) -> void:
 	position = spawn_pos
 	roam_rect = p_roam_rect
 	exit_point = p_exit_point
-	_roam_target = Roaming.random_point_in(roam_rect)
+	world = p_world
+	_roam_target = Roaming.random_point_in(roam_rect, world)
 
 func _process(delta: float) -> void:
 	_hp_bar.text = "%d hp" % hp
@@ -143,8 +149,13 @@ func _process(delta: float) -> void:
 
 func _tick_prowl(delta: float) -> void:
 	if Roaming.arrived(position, _roam_target):
-		_roam_target = Roaming.random_point_in(roam_rect)
-	position = Roaming.step(position, _roam_target, PROWL_SPEED_PX, delta)
+		_roam_target = Roaming.random_point_in(roam_rect, world)
+	var before: Vector2 = position
+	position = Roaming.step(position, _roam_target, PROWL_SPEED_PX, delta, world)
+	# Wedged against terrain: pick somewhere else rather than grinding at a
+	# cliff face for the rest of the night.
+	if position.is_equal_approx(before):
+		_roam_target = Roaming.random_point_in(roam_rect, world)
 	_face_toward(_roam_target)
 
 ## Chases whatever CombatSystem handed it. Re-reads the target's position every
@@ -155,11 +166,11 @@ func _tick_stalk(delta: float) -> void:
 		state = State.PROWL
 		return
 	var target_pos: Vector2 = _target.position
-	position = Roaming.step(position, target_pos, CHASE_SPEED_PX, delta)
+	position = Roaming.step(position, target_pos, CHASE_SPEED_PX, delta, world)
 	_face_toward(target_pos)
 
 func _tick_leaving(delta: float) -> void:
-	position = Roaming.step(position, exit_point, LEAVE_SPEED_PX, delta)
+	position = Roaming.step(position, exit_point, LEAVE_SPEED_PX, delta, world)
 	_face_toward(exit_point)
 
 func _face_toward(p: Vector2) -> void:

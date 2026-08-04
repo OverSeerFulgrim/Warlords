@@ -62,6 +62,8 @@ var _depleted_sprite_path: String = ""
 var roam_rect: Rect2
 var _roam_target: Vector2
 var _frozen: bool = false
+## Terrain, for deer only -- set by ResourceField when it spawns one. Null-safe.
+var world: WorldMap = null
 const DEER_WANDER_SPEED: float = 18.0  # px/sec -- an amble, well under any worker's walk
 
 func _ready() -> void:
@@ -80,10 +82,13 @@ func _process(delta: float) -> void:
 	# rather than a base class the deer and the wolf both extend.
 	if Roaming.arrived(position, _roam_target):
 		_pick_roam_target()
-	position = Roaming.step(position, _roam_target, DEER_WANDER_SPEED, delta)
+	var before: Vector2 = position
+	position = Roaming.step(position, _roam_target, DEER_WANDER_SPEED, delta, world)
+	if position.is_equal_approx(before):
+		_pick_roam_target()  # wedged against terrain -- amble somewhere else
 
 func _pick_roam_target() -> void:
-	_roam_target = Roaming.random_point_in(roam_rect)
+	_roam_target = Roaming.random_point_in(roam_rect, world)
 
 ## Stops a deer moving while it's being hunted, so the hunter isn't chasing a
 ## target that keeps sliding out from under them. Harmless no-op for every

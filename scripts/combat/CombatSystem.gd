@@ -94,6 +94,9 @@ var resource_field: ResourceField = null
 ## `position` off the data object rather than off his token, which is the same
 ## view-is-a-frame-stale correctness the click hit-test already learned.
 var villain: Necromancer = null
+## Terrain, handed to each wolf so it prowls around mountains and lakes rather
+## than through them.
+var world: WorldMap = null
 var day_night: DayNightCycle = null
 
 var wolves: Array = []          # Array[Wolf]
@@ -153,6 +156,15 @@ func spawn_wolf(at: Vector2 = Vector2.INF) -> Wolf:
 	# put it right on the rim of the viewport -- playtest reported "the wolf
 	# spawned but I didn't see it" even with the alert firing. It has to arrive
 	# somewhere the player is actually looking.
+	#
+	# **This stayed correct when the world grew to 144x144**, and it is worth
+	# knowing why rather than re-deriving it: every number here is a multiple of
+	# the *settlement grid's* size, and the settlement kept the engine origin
+	# when the world map was slid in around it (see WorldMap's header). So the
+	# entry point is ~12 cells from the Throne on a 144-cell map exactly as it
+	# was on a 10-cell one. Anything added here must stay relative to grid_w /
+	# grid_h for the same reason -- a wolf that spawned relative to the *world*
+	# would arrive two minutes' walk away and never be seen.
 	var entry := Vector2(grid_w + cell * 2.0, grid_h * 0.35)
 	var spawn_at: Vector2 = entry if at == Vector2.INF else at
 
@@ -162,7 +174,7 @@ func spawn_wolf(at: Vector2 = Vector2.INF) -> Wolf:
 	# The prowl area covers the settlement and its surroundings; the exit is the
 	# way it came in.
 	wolf.setup(spawn_at, Rect2(Vector2(-cell * 2.0, -cell * 2.0),
-		Vector2(grid_w + cell * 6.0, grid_h + cell * 4.0)), entry)
+		Vector2(grid_w + cell * 6.0, grid_h + cell * 4.0)), entry, world)
 	wolves.append(wolf)
 	EventBus.wolf_spawned.emit(wolf)
 	return wolf

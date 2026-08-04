@@ -19,7 +19,7 @@ A villain-power-fantasy roguelite settlement builder, in the lineage of *Against
 
 Multi-settlement, trade, alliances, and climate are explicitly **out of scope** until this loop is proven — see design doc Section 11.
 
-**The roguelite rework (`ROGUELITE_REWORK.md`, 2026-08) is the agreed direction beyond Stages 1–3** and supersedes GAME_OUTLINE Stages 4–5 and the timed-recruit-event model. Headlines: one region = one run (Slay-the-Spire structure — death ends the run, XP/unlocks/stash persist and add *variety, never power*); the Necromancer becomes a directly controlled, killable unit exploring a 144×144 world map (the one sanctioned exception to indirect control — followers stay uncommandable); recruitment gates on a five-axis reputation earned by deeds, not on a timer; victory is taking the human lord's manor; a between-runs Lair hub holds the stash, trophies, and chronicle. The Stage 1–3 settlement foundation is unchanged and is a prerequisite — it becomes the in-run base layer. Design constraint effective immediately: **no system may assume exactly one villain on the map** (villain state on per-villain objects, not global singletons) — this is the whole present-day cost of keeping the second class and multiplayer possible. Build order is `ROGUELITE_REWORK.md` §13 (R1–R6). **R1's first task is done** — the Necromancer is split into a data object + view, is driven with WASD, is followed by the camera, and is killable; see "The villain splits" below. Nothing else from the rework is built. The world-map spec lives in `Warlords_World_Map_Scale_and_Exploration_Plan.docx` (user-authored), adopted with the three amendments in the rework doc's §4.
+**The roguelite rework (`ROGUELITE_REWORK.md`, 2026-08) is the agreed direction beyond Stages 1–3** and supersedes GAME_OUTLINE Stages 4–5 and the timed-recruit-event model. Headlines: one region = one run (Slay-the-Spire structure — death ends the run, XP/unlocks/stash persist and add *variety, never power*); the Necromancer becomes a directly controlled, killable unit exploring a 144×144 world map (the one sanctioned exception to indirect control — followers stay uncommandable); recruitment gates on a five-axis reputation earned by deeds, not on a timer; victory is taking the human lord's manor; a between-runs Lair hub holds the stash, trophies, and chronicle. The Stage 1–3 settlement foundation is unchanged and is a prerequisite — it becomes the in-run base layer. Design constraint effective immediately: **no system may assume exactly one villain on the map** (villain state on per-villain objects, not global singletons) — this is the whole present-day cost of keeping the second class and multiplayer possible. Build order is `ROGUELITE_REWORK.md` §13 (R1–R6). **R1 is largely done**: the Necromancer is split into a data object + view, driven with WASD, followed by the camera, and killable (see "The villain splits"); and the 144×144 world exists with fixed-layout terrain, blocking, roads and fog of war (see "The world the Necromancer walks"). Still open in R1: the static village shell and the R1 exit criterion of walking lair→village→back inside the travel-time targets. Nothing from R2+ is built. The world-map spec lives in `Warlords_World_Map_Scale_and_Exploration_Plan.docx` (user-authored), adopted with the three amendments in the rework doc's §4.
 
 ## Engine & tooling
 
@@ -193,7 +193,9 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 
 **Deliberately not wired:** `Orc_Armed.png`, `Goblin_Armed.png`, `Gray_Dwarf_Miner.png`. These are per-state variants for combat (Stage 4+) and a working/at-node state. There is no state machine to select them, and wiring them now would mean inventing a state concept purely to justify the art.
 
-**Still placeholder:** the Stone Deposit (Kenney materials icon), animal carcasses (Kenney bones icon), the deer and the wolf (both generated — see below), recruit houses (Kenney House pack, tinted per race by `HouseStyle`), Workshop/Blacksmith (Kenney towers), and the five locked per-species housing buildings.
+**Still placeholder:** the Stone Deposit (Kenney materials icon), animal carcasses (Kenney bones icon), the deer and the wolf (both generated — see below), recruit houses (Kenney House pack, tinted per race by `HouseStyle`), Workshop/Blacksmith (Kenney towers), and the five locked per-species housing buildings. **World terrain is commissioned** (`Terrain_Tileset_Snow.png`, wired via `data/world_map.json`'s legend), with one gap: there is no mountainside tile, so rocky scree stands in for blocking high ground.
+
+`art/tile_ground_frozen.png` is **no longer used** — the world map's terrain layer replaced the settlement's tiled ground background.
 
 **Scaling.** Source art is 30–40× its on-screen size, so every use scales down. Two different mechanisms, both already in the codebase:
 
@@ -589,6 +591,78 @@ Two harness notes for next time:
 
 **Not verified here, and it needs a human:** `Input.is_key_pressed` polling and `_unhandled_input` are both unreachable from godot-mcp's simulated input (see "Known constraint"). Actually holding W/A/S/D, panning with the arrows, and pressing F have to be checked with a real keyboard in the real window.
 
+### The world the Necromancer walks (rework R1: the 144×144 map, fog, terrain)
+
+The region from `WORLD_MAP_PLAN.md` §2, built as a **fixed layout** — no shuffle, no procgen; shuffling is R4. The settlement stops being the map and becomes a band inside one.
+
+#### One scale, and where the settlement sits
+
+`SettlementGrid.CELL_SIZE` (64px) stays the single unit across settlement, world and walk speed. **There is deliberately no second scale**, so walk speed 1.0 is one cell/second everywhere and the map doc's travel-time targets are a division rather than a conversion. 144 cells = 9216px ≈ 2.4 minutes straight-line, inside the 3–5 minute crossing target once terrain and detours exist.
+
+**The engine origin stays the Throne's corner cell, and the world map is offset around it** (`WorldMap.origin_px` = `-lair_origin × 64`, currently cell (18, 56)). The alternative — moving the settlement to its world position — would have meant auditing every `get_global_mouse_position()` call in the project, because that returns *global* space and every settlement child position is settlement-local; today they coincide, and one missed conversion is a silent click-offset bug. So world cells are the derived coordinate system, and `WorldMap.cell_at()` / `cell_origin_px()` do the arithmetic so callers never do. Consequence: every existing position — worker trips, the forest, the graves, the wolf's entry point, click hit-tests — is untouched, which is what makes "keep the settlement layer working" true by construction rather than by testing.
+
+`ResourceField` is the lair-band seeder now (rework §12) rather than "the map". Its code didn't change: everything in it was already placed relative to `grid_w`/`grid_h`, which is exactly why nothing moved.
+
+#### The performance trap, and how it's avoided
+
+20,736 cells. **No node per cell, anywhere.**
+
+- **Terrain is one `TileMapLayer`.** 20,736 `set_cell` calls at load — those are dictionary writes into the layer's own storage, not scene-tree operations — and one child node. Measured: 52 draw calls with the whole map loaded, 226 nodes in the tree, 1.3 ms average frame.
+- **Fog is one node and one 144×144 `Image`** — literally one pixel per cell — uploaded to an `ImageTexture` and stretched over the map in a single `draw_texture_rect`. A move costs a few hundred pixel writes and one 82KB upload, and only when the villain crosses a cell boundary.
+- `Main._build_ground_background()` is **gone**: it was a `Sprite2D` per cell, which nobody noticed at 80 cells and would have been 20,736 orphan nodes here. That nested `add_child` loop was the exact shape of the trap.
+
+#### Terrain is data, and it's the real art
+
+`Official Sprites/Terrain_Tileset_Snow.png` — 1254px square, 4×4 tiles, **5px margin and 8px gutters, so 305px per tile** (measured off the file, not assumed). `WorldMap._build_atlas_texture()` slices it once at load and resamples each tile to 64px with Lanczos into a gutter-free 256×256 atlas. The alternative — pointing the TileSet at the full-size sheet and scaling the layer by 64/305 — keeps more detail but minifies on the GPU with no mipmaps, which shimmers while panning.
+
+Filtering is split on purpose and the two reasons are opposite: **terrain is nearest** (the atlas is packed edge-to-edge, so linear would sample across a tile seam), **fog is linear** (it's an alpha mask, so interpolation gives a soft one-cell falloff instead of a staircase).
+
+Layout lives in **`data/world_map.json`**: `width`/`height`, `lair_origin`, `lair_band`, a `legend` mapping one character to `{tile, category, speed, name}`, and 144 row strings. The runtime has **no layout knowledge in GDScript** — `WorldMap` reads the legend and rows and doesn't know where the village is. Three categories: `ground`, `road` (a speed multiplier), `blocking`. Adding "marsh: walkable but slow" is a JSON edit, not a new branch.
+
+`tools/make_world_map.gd` generates that file (`godot --headless --path . -s res://tools/make_world_map.gd`), same arrangement as the deer-sprite generator: 20,736 cells is too many to type and too few to deserve a procgen system, so the layout is expressed once as WORLD_MAP_PLAN §4's regions and baked. Fixed seed, so the layout is identical every run. Re-run it after editing and commit the JSON.
+
+- **Ground cover is picked in patches, not per cell.** Independent per-cell picks rendered as television snow — four quite different tiles alternating every 64px, the eye reading noise instead of terrain. A hashed 4×4 patch coordinate makes neighbours agree (drifts, outcrops), with a 25% break-out so patch edges stay ragged rather than a visible quilt.
+- **The snow is flavor, not climate.** CLAUDE.md's climate scope call still stands: nothing reads these tiles for temperature and nothing should.
+- **Rocky scree stands in for mountains** — the sheet has no mountainside tile. It is the one terrain placeholder; a real cliff/mountain tile belongs in the art brief.
+- The map carries the structure the docs asked for: Old Road north–south, crossroads into the village, Southern Road past the church, a worn track from the lair out to the network, the human lordship east, the Northern Wilderness, a western range and a central ridge **with two gaps** (a wall with a door is a route decision; a wall without one is a smaller map), two frozen lakes, and the Demonologist's **sealed** ritual ground in the south-west (rework §4 amendment 1 — terrain only, no rival).
+
+#### Blocking, and one slide for everything that moves
+
+`WorldMap.slide(from, motion)` refuses blocking cells but slides along them — full motion, then x-only, then y-only. The axis retries are what make a wall feel like a wall instead of flypaper. **Everything that moves uses it**: the Necromancer directly, and the wolf and the deer through `Roaming.step(..., world)`, so predator and prey round a boulder the same way. `Roaming.random_point_in(rect, world)` retries for a walkable target, and both roamers re-target if a step leaves them where they started rather than grinding at a cliff all night.
+
+Out-of-bounds is *not walkable*, which is what stops anything leaving the world without a second fence. The lair band is guaranteed blocking-free by the generator, so **workers need no pathfinding** — the trip loop is untouched.
+
+Roads: `speed 1.35` on cobblestone, `1.2` on the worn track. Tunable. The map doc's §9 tradeoff is "roads are faster but expose you", and the exposure half arrives with R3's patrols — so this number wants revisiting once there's a cost.
+
+#### Fog of war
+
+Three states: unexplored (opaque), remembered (dim — terrain you've seen, no live contents), visible. Reveal radius travels with the Necromancer at 7 cells (the map doc's 8–12 is the *Raven's* scouting number, rework §6, and that's R2; a man on foot sees less than a bird).
+
+- **The lair band never dims.** Fiction: it's his own domain. Mechanics: the settlement layer is a management screen, and having the workforce vanish into haze the moment he leaves the valley would break the half of the game that already worked.
+- **Layering:** a child of the settlement layer with `z_index` 100, so it covers terrain, buildings and units — and, being an ordinary Node2D, it stays under the HUD's `CanvasLayer`. Same lesson as `DayNightCycle`'s `CanvasModulate`, which darkens the settlement and leaves the HUD legible. **Not in `hud_root`.**
+- "No live contents" is done by painting over rather than each unit testing the fog, plus **one guard in `Main._inspect_at`**: you cannot inspect anything standing in a cell that isn't currently visible. Clicking into fog closes the panel, exactly like clicking bare ground.
+
+#### Camera
+
+`zoom_min` 0.35 → **0.12** (a 1400px window now covers ~180 cells, so the whole region fits with margin). Panning and zooming clamp to `world_bounds`, done in code rather than with `Camera2D`'s built-in `limit_*`: those clamp what is *drawn* while leaving `position` free to wander, which turns a drag into a dead zone that lurches when you come back. An axis where the world is smaller than the view is centred instead of clamped. `center_on` clamps too, so following him into a corner shows the corner rather than the void — he drifts off exact centre there, which is correct. Initial framing on the Throne is unchanged and still lands dead centre (the Throne is 18 cells from the west edge, well clear of the clamp at default zoom).
+
+#### The wolf still comes to the lair — and why nothing had to change
+
+`CombatSystem.spawn_wolf()`'s entry point is `grid_w + 2 cells` east of the settlement, and its prowl rect is likewise built from `grid_w`/`grid_h`. Because the settlement kept the engine origin, **that is still ~12 cells from the Throne on a 144-cell map exactly as it was on a 10-cell one** — verified, not assumed. Anything added there must stay relative to `grid_w`/`grid_h` for the same reason: a wolf spawned relative to the *world* would arrive two minutes' walk away and never be seen. The wolf now also carries a `world` reference so it prowls around terrain.
+
+#### Verification
+
+A headless-and-windowed scene harness, **41 assertions, all passing**: 144×144 bounds and a 9216px square; one `TileMapLayer` with zero children and 20,736 painted cells; 191 nodes in the whole tree; the Throne still at (32, 32) and sitting on `lair_origin`; all 30 seeded resource nodes walkable and inside the band, with the stone deposit still at its exact old offset; blocking stops him and the diagonal slides 127px along the ridge; **1.35× measured on the road** (89.6px vs 121.0px in one second); fog starting at 678 revealed cells, growing to 1090 after a walk, ground behind him REMEMBERED and unvisited country UNEXPLORED while the lair band stays VISIBLE; camera clamped at both corners; the wolf spawning 11.7 cells from the Throne inside the band; **a worker completing a full trip and banking 4 wood**; day/night still ticking; and 52 draw calls / 1.3 ms average frame with the whole map loaded.
+
+Notes worth keeping:
+
+- **The `_set` trap bites again.** Naming a grid-writing helper `_set` in the generator fails to parse — `_set(StringName, Variant) -> bool` is an `Object` virtual. This file already recorded that from the deer sprite; it's `_put` now.
+- **A harness that spawns a wolf and then runs 25 minutes of game time at 60× is flaky**, because the wolf can eat the only Skeleton Worker and take the worker-trip assertion with it. Despawn it between sections; the failure has nothing to do with what's under test.
+- **`Performance.TIME_PROCESS` did not move between frames** in this harness (120 identical samples). Wall-clock deltas around `await get_tree().process_frame` with `Engine.max_fps = 0` and vsync disabled are the honest measurement, and `RENDER_TOTAL_DRAW_CALLS_IN_FRAME` is the number that actually proves terrain is batched.
+- **Dump the sliced atlas to a PNG when tiles look wrong.** A margin or separation off by a few pixels shows up there and nowhere else — it's how the 5px/8px/305px numbers above were confirmed rather than guessed.
+
+**Needs a human:** walking out of the lair band with WASD and watching fog clear behind you, being stopped by the ridge, and feeling the road. Simulated input reaches neither `_unhandled_input` nor `Input.is_key_pressed` (see "Known constraint").
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -635,9 +709,13 @@ scripts/villain/            Necromancer.gd -- THE villain as data: position, hp,
                             VillainController.gd -- WASD hold-to-move + camera follow; takes the
                             villain and the camera as fields, looks nothing up
 scripts/world/              DayNightCycle.gd (phase clock, CanvasModulate tint, debug time scale)
+                            WorldMap.gd -- the 144x144 region: ONE TileMapLayer, walkability,
+                            road speeds, and the settlement-space <-> world-cell conversions
+                            FogOfWar.gd -- unexplored/remembered/visible, ONE node + a 144x144 image
                             Wolf.gd -- the first hostile creature
                             Roaming.gd -- wander helpers shared by the deer and the wolf
 tools/                      make_deer_sprite.gd, make_wolf_sprite.gd -- one-off art generators, not runtime code
+                            make_world_map.gd -- generates data/world_map.json; edit it, re-run, commit the JSON
 scripts/bounty/              BountyBoard.gd, Bounty.gd, Follower.gd
 scripts/threat/               ThreatSystem.gd
 scripts/events/                EventSystem.gd, RecruitGenerator.gd
@@ -650,6 +728,7 @@ data/followers.json           SUPERSEDED recruit templates -- only the off-timer
 data/races.json               Race roster from RACES.md: stats, labor skills, alignment, rarity, housing style, rivalries (loaded by RaceCatalog)
 data/buildings.json           Building catalog: costs, prerequisites, "locked" and "unique" flags, Barracks capacity
 data/recruitment.json         Recruit tuning: rarity-by-power table, stat-roll dice, exceptional chance, first-run categories
+data/world_map.json           GENERATED 144x144 terrain: legend (char -> tile/category/speed) + 144 row strings
 Official Sprites/            COMMISSIONED art -- buildings, nodes, all 16 race tokens, necromancer, icons
 Official Sprites/_originals/ Full-res backups; .gdignore keeps Godot out. Leave alone.
 art/, Buildings/, Characters/    Remaining placeholder sprites (see "Art provenance")

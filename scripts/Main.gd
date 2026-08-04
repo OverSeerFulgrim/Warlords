@@ -41,6 +41,9 @@ var villain: Necromancer
 var necromancer_token: NecromancerToken
 ## Reads WASD and drives him, and keeps the camera on him.
 var villain_controller: VillainController
+## The 144x144 region (rework R1). The settlement is a band inside it.
+var world_map: WorldMap
+var fog: FogOfWar
 var camera: GameCamera
 
 var current_event: Dictionary = {}
@@ -268,6 +271,10 @@ func _place_necromancer() -> void:
 ## regardless. Everything genuinely event-shaped (deposits, depletion, dawn)
 ## still goes through EventBus -- see _connect_signals().
 func _process(delta: float) -> void:
+	# Fog follows the villain. Called every frame but early-outs unless he has
+	# crossed a cell boundary, so this is a Vector2i compare in the common case.
+	if fog and villain:
+		fog.update_for(villain.position)
 	_refresh_priority_status()
 	_poll_timer += delta
 	if _poll_timer >= INSPECTOR_REFRESH_INTERVAL:
@@ -293,7 +300,9 @@ func _build_systems() -> void:
 	settlement = SettlementGrid.new()
 	settlement.name = "SettlementGrid"
 	add_child(settlement)
-	_build_ground_background()
+	# The world first: everything below is positioned inside it, and both the
+	# villain and the roamers need to be able to ask it about terrain.
+	_build_world_map()
 
 	followers_layer = Node2D.new()
 	followers_layer.name = "FollowersLayer"
@@ -320,6 +329,7 @@ func _build_systems() -> void:
 	# literal destinations WorkerSystem measures distance against.
 	resource_field = ResourceField.new()
 	resource_field.name = "ResourceField"
+	resource_field.world = world_map   # set before build(): the deer read it at spawn
 	settlement.add_child(resource_field)
 	resource_field.build(grid_w, grid_h)
 	# Small ring around the main building's cell (0,0) -- where workers idle
@@ -331,11 +341,12 @@ func _build_systems() -> void:
 	# shares the coordinate space of the grid and every other token; the villain
 	# object is plain data and lives in this field.
 	villain = Necromancer.new()
-	# A soft fence one cell outside the grid, so holding W can't walk him into
-	# empty space he can never find his way back from. The world map (R1) will
-	# replace this with real bounds.
-	var fence: float = float(SettlementGrid.CELL_SIZE)
-	villain.bounds = Rect2(Vector2(-fence, -fence), Vector2(grid_w + fence * 2.0, grid_h + fence * 2.0))
+	villain.world = world_map
+	# The fence is the world now, not a ring around the settlement. The map's
+	# blocking rim already stops him; this is the backstop if terrain ever fails
+	# to load.
+	if world_map:
+		villain.bounds = world_map.bounds_px()
 	necromancer_token = NecromancerToken.new()
 	necromancer_token.name = "NecromancerToken"
 	settlement.add_child(necromancer_token)
@@ -388,6 +399,7 @@ func _build_systems() -> void:
 	combat_system.worker_system = worker_system
 	combat_system.resource_field = resource_field
 	combat_system.villain = villain
+	combat_system.world = world_map
 	combat_system.day_night = day_night
 	add_child(combat_system)
 
@@ -406,6 +418,10 @@ func _build_camera() -> void:
 	var grid_h: float = SettlementGrid.GRID_HEIGHT * SettlementGrid.CELL_SIZE
 	camera.position = Vector2(grid_w * 0.5, grid_h * 0.5)
 	camera.zoom = Vector2(0.72, 0.72)
+	# Panning and zooming stop at the world's edge rather than sliding off into
+	# the void. Set before make_current so the first frame is already clamped.
+	if world_map:
+		camera.world_bounds = world_map.bounds_px()
 	add_child(camera)
 	camera.make_current()
 
@@ -418,21 +434,29 @@ func _build_camera() -> void:
 	villain_controller.camera = camera
 	add_child(villain_controller)
 
-func _build_ground_background() -> void:
-	# Simple tiled ground so the grid isn't a void behind the buildings.
-	# Lives as a child of `settlement` so it inherits the same offset.
-	const GROUND_PATH := "res://art/tile_ground_frozen.png"
-	if not ResourceLoader.exists(GROUND_PATH):
+## The world the settlement sits in. Replaces `_build_ground_background()`, which
+## was a Sprite2D per cell -- fine for the 10x8 grid, fatal at 144x144 (20,736
+## nodes). The terrain is one `TileMapLayer` now; see WorldMap.gd.
+##
+## A child of `settlement` so it shares the coordinate space workers walk in,
+## positioned so that world cell `lair_origin` lands on the settlement's own
+## (0,0). That is what keeps every existing position -- the forest, the graves,
+## the wolf's entry point, every click hit-test -- exactly where it was.
+func _build_world_map() -> void:
+	world_map = WorldMap.new()
+	world_map.name = "WorldMap"
+	settlement.add_child(world_map)
+	if not world_map.build():
+		push_error("Main: world map failed to load; the settlement will float in the void.")
 		return
-	var tex := load(GROUND_PATH)
-	for y in range(SettlementGrid.GRID_HEIGHT):
-		for x in range(SettlementGrid.GRID_WIDTH):
-			var tile := Sprite2D.new()
-			tile.texture = tex
-			tile.centered = false
-			tile.position = Vector2(x * SettlementGrid.CELL_SIZE, y * SettlementGrid.CELL_SIZE)
-			tile.z_index = -1  # always behind buildings
-			settlement.add_child(tile)
+
+	fog = FogOfWar.new()
+	fog.name = "FogOfWar"
+	settlement.add_child(fog)
+	fog.setup(world_map)
+	# The lair band starts revealed and stays visible -- see FogOfWar for why
+	# his own valley doesn't dim when he leaves it.
+	fog.reveal_permanently(world_map.lair_band)
 
 ## Stage 0 (Arrival) per FOUNDATION_SPEC section 10: the Throne of Bones, one
 ## Skeleton Worker, and nothing else. The Bone Pile and Dark Altar used to be
@@ -1361,6 +1385,16 @@ func _unhandled_input(event: InputEvent) -> void:
 ## demolish mode, and those two need first refusal on every click. Placement
 ## and demolish already returned before this is reached.
 func _inspect_at(world_pos: Vector2) -> bool:
+	# --- 0. Fog --------------------------------------------------------------
+	# The interaction half of "remembered ground shows no live contents": you
+	# cannot click what you cannot currently see. Terrain you have explored
+	# stays on screen as a memory; the wolf standing on it does not answer.
+	# Clicking into fog closes the panel, exactly like clicking bare ground --
+	# it is still a deliberate "show me nothing".
+	if fog and not fog.is_visible_at(world_pos):
+		_close_inspector()
+		return true
+
 	# --- 1. Characters -------------------------------------------------------
 	# Free-roaming tokens aren't cell-locked, so these are proximity tests
 	# against the unit's current position, not a grid lookup.

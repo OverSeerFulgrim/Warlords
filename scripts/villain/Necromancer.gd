@@ -100,9 +100,15 @@ var carried: Dictionary = {}
 ## system reading "the villain" already sees the field it will eventually need.
 var escort: Array = []
 
-## Optional soft fence, set by whoever owns the map (Main, from the settlement
-## grid; the world-map seeder in R1). Zero-size means unbounded.
+## Optional soft fence, set by whoever owns the map. Zero-size means unbounded.
+## Belt to `world`'s braces: the world map's blocking rim already stops him at
+## the edge, and this catches the case where there is no map at all (tests).
 var bounds: Rect2 = Rect2()
+
+## The terrain he walks. A **reference handed in** like everything else about
+## him -- he does not look it up, and a second villain on a second map would
+## simply hold a different one. Null-safe: with no world he walks on water.
+var world: WorldMap = null
 
 ## -1 / +1, last horizontal direction of travel. The token flips its sprite on
 ## it -- facing is simulation state for the same reason position is, since idle
@@ -158,7 +164,7 @@ func step(move_dir: Vector2, delta: float) -> void:
 		# Any input cancels pacing instantly -- no easing out of it, no walking
 		# the last step of a wander first. The player pressed a key; he moves.
 		_reset_idle(position)
-		var motion: Vector2 = move_dir.normalized() * move_speed_px() * delta
+		var motion: Vector2 = move_dir.normalized() * move_speed_px() * terrain_speed() * delta
 		_move_by(motion)
 		is_moving = true
 		return
@@ -207,8 +213,21 @@ func _pick_idle_target() -> void:
 	_idle_target = _idle_anchor + Vector2(cos(angle), sin(angle)) * dist
 	_idle_pause = randf_range(IDLE_PAUSE_MIN, IDLE_PAUSE_MAX)
 
+## What the ground under him does to his pace: 1.0 on open ground, more on a
+## road. Roads being faster is the map doc's §9 tradeoff -- worth a detour, and
+## worth the exposure that arrives with patrols in R3.
+func terrain_speed() -> float:
+	return world.speed_multiplier(position) if world else 1.0
+
+## Blocking terrain is refused, but **slid along rather than stuck against**
+## (see WorldMap.slide) -- walking a diagonal into a cliff should scrape past
+## it, not stop you dead. Idle pacing goes through here too, so he can't drift
+## into a lake while brooding.
 func _move_by(motion: Vector2) -> void:
-	position += motion
+	if world:
+		position = world.slide(position, motion)
+	else:
+		position += motion
 	if bounds.size.x > 0.0 and bounds.size.y > 0.0:
 		position = position.clamp(bounds.position, bounds.position + bounds.size)
 	if absf(motion.x) > 0.01:
@@ -334,6 +353,18 @@ func _hp_row() -> Dictionary:
 		row["color"] = Color(0.95, 0.70, 0.40)
 	return row
 
+## What he is standing on, and what it is doing to his pace. Reads as flavour
+## and works as a debug readout: "am I actually faster on this road" is
+## answerable by clicking him.
+func _ground_row() -> Dictionary:
+	if world == null:
+		return {"label": "Ground", "value": "—", "muted": true}
+	var speed: float = terrain_speed()
+	var value: String = world.terrain_name(position)
+	if speed > 1.0:
+		value += "  —  %d%% pace" % roundi(speed * 100.0)
+	return {"label": "Ground", "value": value}
+
 func activity_label() -> String:
 	if not is_alive():
 		return "Fallen"
@@ -353,6 +384,7 @@ func get_inspect_data() -> Dictionary:
 			{"label": "Activity", "value": activity_label()},
 			_hp_row(),
 			{"label": "Stats", "value": "Might %d" % might},
+			_ground_row(),
 			{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
 			{"label": "Escort", "value": "None — he walks alone" if escort.is_empty()
 				else "%d following" % escort_count()},

@@ -54,6 +54,16 @@ var _deer_roam_rect: Rect2
 var _grid_w: float = 0.0
 var _grid_h: float = 0.0
 
+## The world this field seeds into. Set by Main before build(). Only the deer
+## use it (to amble around blocking terrain); the fixed nodes are all inside the
+## guaranteed-walkable lair band, so nothing else needs to ask.
+##
+## **This is the lair-band seeder now** (rework §12), not "the map": everything
+## below is still positioned relative to the settlement grid, which is exactly
+## what keeps the forest, deposit, grove and graves where they have always been
+## relative to the Throne now that the Throne sits inside a 144x144 world.
+var world: WorldMap = null
+
 func _ready() -> void:
 	EventBus.dawn_started.connect(_on_dawn)
 
@@ -115,6 +125,7 @@ func _spawn_deer() -> void:
 		randf_range(_deer_roam_rect.position.y, _deer_roam_rect.position.y + _deer_roam_rect.size.y)
 	)
 	var deer := ResourceNode.make_deer(pos, _deer_roam_rect)
+	deer.world = world
 	_add(deer, SPRITE_DEER, "", 30.0)
 
 func _add(node: ResourceNode, alive_sprite: String, depleted_sprite: String, size: float) -> void:
