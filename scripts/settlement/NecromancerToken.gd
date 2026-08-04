@@ -39,16 +39,15 @@ var sprite: Sprite2D
 func _ready() -> void:
 	sprite = Sprite2D.new()
 	sprite.centered = true
-	# The portrait path lives on Necromancer, so the data object can name its
-	# own art in the inspection payload without asking a view for it.
-	if ResourceLoader.exists(Necromancer.PORTRAIT):
-		var tex: Texture2D = load(Necromancer.PORTRAIT)
+	# Map art is separate from the portrait used by inspection and the HUD.
+	if ResourceLoader.exists(Necromancer.MAP_SPRITE):
+		var tex: Texture2D = load(Necromancer.MAP_SPRITE)
 		sprite.texture = tex
 		var src: Vector2 = tex.get_size()
 		if src.x > 0.0:
 			sprite.scale = Vector2.ONE * (TOKEN_SIZE / src.x)
 	else:
-		push_warning("NecromancerToken: portrait not found at %s" % Necromancer.PORTRAIT)
+		push_warning("NecromancerToken: map sprite not found at %s" % Necromancer.MAP_SPRITE)
 	add_child(sprite)
 	# Drawn above buildings so he's never hidden behind the Throne he's
 	# standing next to.

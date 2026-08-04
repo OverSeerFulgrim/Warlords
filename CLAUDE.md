@@ -175,7 +175,7 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 
 ### Art provenance — what's commissioned and what's still placeholder
 
-`Official Sprites/` holds the **commissioned art**: transparent PNGs, 1024px square for buildings/nodes/icons and 1254px square for race tokens. This is the real art. Everything else in the project is a stand-in.
+`Official Sprites/` holds the **commissioned art**. Runtime character tokens, buildings, nodes and icons are 128px square; their full-resolution 1024px/1254px masters live in `_originals/`. The terrain atlas and four frame-sensitive animation/VFX sheets deliberately remain at source resolution. This is the real art. Everything else in the project is a stand-in.
 
 **Wired:**
 
@@ -186,7 +186,8 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 | Berry grove | `Berry_Grove_Full` → `Berry_Grove_Picked` when stripped | `ResourceField` consts |
 | Graves | `Grave_Undisturbed` → `Grave_Dug_Up` when robbed | `ResourceField` consts |
 | All 16 race tokens + Skeleton Worker | one per race | **`data/races.json` → `sprite`** |
-| Necromancer (HUD badge + map avatar) | `Necromancer_Portrait` | `Main.NECROMANCER_SPRITE`, `Necromancer.PORTRAIT` (the data object names its own portrait, so the inspection payload never asks a view for it) |
+| Necromancer (HUD badge + inspection) | `Necromancer_Portrait` | `Main.NECROMANCER_SPRITE`, `Necromancer.PORTRAIT` |
+| Necromancer (map avatar) | `Necromancer_Full_Body` | `Necromancer.MAP_SPRITE`, read only by `NecromancerToken` |
 | Dark Essence in the resource bar | `Icon_Dark_Essence` | `Main.ICON_DARK_ESSENCE` |
 
 **Race token art is data, not code.** `RaceCatalog.sprite(race_id)` reads it from `races.json`, so adding a race never means editing a Dictionary in `Main.gd`. `Main.SPECIES_SPRITES` survives *only* as a fallback for Ghoul and Wraith, which exist in the superseded `followers.json` templates and have no `races.json` row — don't add to it.
@@ -197,16 +198,20 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 
 `art/tile_ground_frozen.png` is **no longer used** — the world map's terrain layer replaced the settlement's tiled ground background.
 
-**Scaling.** Source art is 30–40× its on-screen size, so every use scales down. Two different mechanisms, both already in the codebase:
+**Scaling.** Runtime art remains larger than its on-screen target, and every consumer derives its scale from the loaded texture. Downsampling therefore changes memory use without changing the drawn size. Two mechanisms are already in the codebase:
 
 - **`Sprite2D` users** divide a target pixel width by the texture width — `Building._setup_sprite` (largest side → 64px = `CELL_SIZE`), `ResourceNode.setup_sprites` (per-node target: tree 38, grove 46, grave 34, deposit 58), and the tokens (worker 32, follower 40, necromancer 44).
 - **`Control` users** (the HUD badge and the Dark Essence icon) use a `TextureRect` with `EXPAND_IGNORE_SIZE` + a `custom_minimum_size`. Without `EXPAND_IGNORE_SIZE` a raw 1024px texture asks for a 1024px-tall container and blows the top bar open.
 
-Verified after the swap: every building renders 64×64, every node at its target, every token 32/40/44, and the top bar stayed 47px.
+The 35 eligible top-level PNGs were downsampled offline with premultiplied-alpha Lanczos filtering. Their decoded runtime footprint fell from 213.97 MiB to 32.18 MiB (top-level texture dimensions × 4 RGBA8 bytes); all 40 top-level source files were copied and hash-verified in `_originals/` first. `Terrain_Tileset_Snow.png`, `Orc_Animation_Sheet.png`, `Wolf_Animation_Sheet.png`, `Wolf_Pack_Animation_Sheet.png`, and `VFX_Sheet.png` are byte-identical to their backups.
 
-One latent bug closed on the way through: `ResourceNode` used to compute its scale once from the *alive* texture and keep it when swapping to the depleted one. Every pair happens to be 1024px so nothing visibly broke, but a stump of a different resolution to its tree would have rendered at the wrong size. Scale is now recomputed per texture in `_apply_scale_for()`.
+**Filtering.** `project.godot` explicitly selects Linear with mipmaps for canvas textures, and the 35 resampled imports set `mipmaps/generate=true`. The five protected atlas/frame-sheet imports remain unmipped. `WorldMap` still overrides its generated terrain atlas to Nearest in code, preventing sampling across its edge-to-edge tile seams.
 
-`Official Sprites/_originals/` holds full-resolution backups and carries a `.gdignore`, which makes Godot skip the whole directory — confirmed no `.import` files are generated in it and nothing in `.godot/` references it. Leave that file in place.
+Verified after the hygiene pass: every building renders 64×64, resource nodes remain tree 38 / grove 46 / grave 34 / deposit 58, tokens remain 32/40/44, and the top bar stayed 47px. A real 1400×760 renderer launch confirmed the world atlas remained correct, the Necromancer map token used `Necromancer_Full_Body`, and the HUD badge continued to use `Necromancer_Portrait`.
+
+One latent bug closed on the earlier art-wiring pass: `ResourceNode` used to compute its scale once from the *alive* texture and keep it when swapping to the depleted one. The pairs matched dimensions then, so nothing visibly broke, but a stump of a different resolution to its tree would have rendered at the wrong size. Scale is recomputed per texture in `_apply_scale_for()`.
+
+`Official Sprites/_originals/` holds matching full-resolution backups for all 40 top-level PNGs and carries a `.gdignore`, which makes Godot skip the whole directory — confirmed no `.import` files are generated in it and nothing in `.godot/` references it. Leave that file in place.
 
 ### The deer sprite
 
