@@ -27,6 +27,17 @@ export_presets.cfg
 # as part of the project's tooling.
 addons/ziva_agent/
 
+# addons/limboai is 120 MB of prebuilt behaviour-tree binaries, is NOT listed
+# in project.godot's `editor_plugins/enabled`, and nothing in scripts/ or
+# scenes/ references it -- same call as ziva_agent. `demo/` is its bundled
+# sample project (4.4 MB) and is likewise unused by the game. Reinstall
+# locally if you decide to actually adopt it.
+addons/limboai/
+/demo/
+
+# ---- LibreOffice lock files ----
+.~lock.*#
+
 # ---- Scratch / throwaway ----
 # Temporary smoke-test harnesses and image-inspection output. These get created
 # in the project root so Godot can load them as autoloads/scripts, and deleted
