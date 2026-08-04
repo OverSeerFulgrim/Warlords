@@ -39,6 +39,27 @@ const SETTLEMENT_H := 8
 ## deer's -3..+13 wander box. If any of those move, widen this.
 const BAND := Rect2i(12, 50, 26, 26)
 
+## West edge of the central ridge -- the frontier of the villain's valley, and
+## the thing "lair -> edge of local territory" is measured to. See
+## _paint_mountains() for why it is this far out.
+const RIDGE_X := 74
+
+## The northern pass through the ridge. **Deliberately not on the lair's
+## latitude (y 60).** It used to sit at y 56-66, which put the door directly in
+## front of the Necromancer's front gate and made the ridge free to cross: the
+## route east was a straight line and the wall may as well not have been there.
+## At y 36 you have to walk *to* the pass, which is what turns a wall into a
+## route decision -- and it is most of what buys WORLD_MAP_PLAN §3's 2-4 minute
+## lair-to-village target on a map only 144 cells wide.
+const GAP_N_Y := 36
+
+## The village core's west edge. Pushed east by the R1c tuning pass for the same
+## reason the ridge moved: WORLD_MAP_PLAN §3 wants the lair-to-village trip to
+## take 2-4 minutes, and the only geometry that buys that on a 144-cell map is
+## putting the two powers at opposite ends of it.
+const VILLAGE_X := 120
+const VILLAGE_Y := 55
+
 ## char -> tile in the 4x4 sheet, category, and how fast you cross it.
 const LEGEND := {
 	"g": {"tile": [0, 0], "category": "ground", "name": "Frozen grass"},
@@ -46,7 +67,7 @@ const LEGEND := {
 	"S": {"tile": [0, 2], "category": "ground", "name": "Stony snow-grass"},
 	"w": {"tile": [0, 3], "category": "ground", "name": "Deep snow"},
 	"d": {"tile": [1, 0], "category": "ground", "name": "Bare dirt"},
-	"D": {"tile": [1, 1], "category": "ground", "name": "Snow-edged dirt"},
+	"D": {"tile": [1, 1], "category": "ground", "name": "Snow-edged dirt"},   # transition tile -- see _paint_lordship; do not bulk-fill with it
 	"t": {"tile": [1, 2], "category": "road", "speed": 1.2, "name": "Worn track"},
 	"b": {"tile": [1, 3], "category": "ground", "name": "Log-strewn dirt"},
 	"c": {"tile": [2, 0], "category": "road", "speed": 1.35, "name": "Mossy cobblestone"},
@@ -58,6 +79,26 @@ const LEGEND := {
 	"r": {"tile": [3, 2], "category": "ground", "name": "Sealed ritual ground"},
 	"B": {"tile": [3, 3], "category": "ground", "name": "Bone-strewn ground"},
 }
+
+## WORLD_MAP_PLAN §6's four danger bands, as **data only**. Nothing consumes
+## these yet -- they are the hook R2's encounter and loot tables plug into, and
+## for now they drive one HUD readout so the player always knows how deep they
+## are.
+##
+## **Later entries win.** The list reads as "the whole map is contested
+## wilderness, except..." which is both the shortest way to write it and the
+## right default: anywhere the design has not claimed is Band 2.
+const BANDS := [
+	{"band": 2, "name": "Contested Wilderness", "rect": [0, 0, W, H]},
+	{"band": 1, "name": "Lair Surroundings", "rect": [BAND.position.x, BAND.position.y, BAND.size.x, BAND.size.y]},
+	{"band": 3, "name": "The Lord's Lands", "rect": [100, 45, 41, 46]},
+	{"band": 3, "name": "Church and Cemetery", "rect": [VILLAGE_X - 2, 98, 15, 14]},
+	{"band": 3, "name": "The Sealed Ground", "rect": [12, 100, 23, 23]},
+	{"band": 4, "name": "The Cursed Battlefield", "rect": [58, 12, 12, 10]},
+	{"band": 4, "name": "The Drowned Ruin", "rect": [60, 90, 14, 13]},
+	{"band": 4, "name": "The Outlaw Cave", "rect": [9, 24, 9, 9]},
+	{"band": 4, "name": "The Old Crypt", "rect": [96, 118, 11, 10]},
+]
 
 var grid: Array = []   # Array[PackedStringArray-ish] -- Array of Array[String]
 var rng := RandomNumberGenerator.new()
@@ -99,8 +140,14 @@ const PATCH_BREAK_CHANCE := 0.25
 func _patch_pick(x: int, y: int, options: Array) -> String:
 	if rng.randf() < PATCH_BREAK_CHANCE:
 		return _pick(options)
-	var patch := Vector2i(floori(float(x) / PATCH_CELLS), floori(float(y) / PATCH_CELLS))
-	return options[absi(hash(patch)) % options.size()]
+	var px: int = floori(float(x) / PATCH_CELLS)
+	var py: int = floori(float(y) / PATCH_CELLS)
+	# An explicit integer mix rather than `hash(Vector2i)`: the built-in came out
+	# correlated along one axis on this data, and the map rendered as vertical
+	# corduroy -- one-cell-wide bars of bare dirt running down the farmland. The
+	# two large primes are the standard spatial-hash pair.
+	var h: int = absi((px * 73856093) ^ (py * 19349663))
+	return options[h % options.size()]
 
 ## Snow thickens northward. Purely cosmetic variation -- it is FLAVOR for a cold
 ## hideout, not a climate system (CLAUDE.md's climate scope call still stands;
@@ -133,24 +180,24 @@ func _paint_north() -> void:
 func _paint_lordship() -> void:
 	for y in range(45, 91):
 		for x in range(100, 141):
-			grid[y][x] = _patch_pick(x, y, ["d", "d", "D", "e"])
+			grid[y][x] = _patch_pick(x, y, ["d", "d", "e", "b"])
 	# Village core, ~18x22 (§5). Dirt with a couple of cobbled streets rather
 	# than a cobbled field -- the streets are the fast bit, not the whole town.
-	for y in range(55, 78):
-		for x in range(108, 127):
-			grid[y][x] = _patch_pick(x, y, ["d", "D", "b"])
-	for x in range(108, 127):
-		_put(x, 66, "c")
-	for y in range(55, 78):
-		_put(117, y, "c")
-	# The manor's forecourt, south-east of the village.
+	for y in range(VILLAGE_Y, VILLAGE_Y + 23):
+		for x in range(VILLAGE_X, VILLAGE_X + 19):
+			grid[y][x] = _patch_pick(x, y, ["d", "b", "d", "e"])
+	for x in range(VILLAGE_X, VILLAGE_X + 19):
+		_put(x, VILLAGE_Y + 11, "c")
+	for y in range(VILLAGE_Y, VILLAGE_Y + 23):
+		_put(VILLAGE_X + 9, y, "c")
+	# The manor's forecourt, south of the village.
 	for y in range(80, 87):
-		for x in range(120, 131):
+		for x in range(VILLAGE_X + 4, VILLAGE_X + 15):
 			grid[y][x] = "c"
-	# Church and cemetery, south of the village (§4's sketch).
-	_blob(112, 104, 4, ["B", "B", "b"])
+	# Church and cemetery, further south again (§4's sketch).
+	_blob(VILLAGE_X + 4, 104, 4, ["B", "B", "b"])
 	for y in range(100, 108):
-		for x in range(108, 117):
+		for x in range(VILLAGE_X, VILLAGE_X + 9):
 			if rng.randf() < 0.4:
 				grid[y][x] = "d"
 
@@ -182,10 +229,18 @@ func _paint_mountains() -> void:
 	# gaps: the eastern track at y 56-66, and a southern pass at y 96-102. The
 	# gaps are the whole point -- a wall with a door is a route decision, a wall
 	# without one is a smaller map.
+	#
+	# **Moved east from x40 to x68 by the R1c travel-time tuning pass.** This
+	# ridge is the frontier of the Necromancer's valley, and WORLD_MAP_PLAN §3
+	# wants "lair -> edge of local territory" to take 45-75 seconds. At x40 the
+	# frontier sat 22 cells from the Throne, which is ~22s at any walk speed
+	# this project can use -- a third of the target. At x68 it is ~50 cells,
+	# which lands in band. The 20x20 *starting region* (§5) is unchanged; what
+	# grew is the contested wilderness between it and the ridge.
 	for y in range(20, 132):
-		if (y >= 56 and y <= 66) or (y >= 96 and y <= 102):
+		if (y >= GAP_N_Y and y <= GAP_N_Y + 10) or (y >= 96 and y <= 102):
 			continue
-		for x in range(40, 47):
+		for x in range(RIDGE_X, RIDGE_X + 7):
 			grid[y][x] = "m"
 	# Northern range.
 	for y in range(8, 21):
@@ -214,17 +269,27 @@ func _paint_roads() -> void:
 	for x in range(44, W - 4):       # Southern Road
 		_put(x, 118, "c")
 		_put(x, 119, "c")
-	for x in range(87, 127):         # Crossroads -> village
+	for x in range(87, VILLAGE_X + 19):   # Crossroads -> village
 		_put(x, 64, "k")
 		_put(x, 65, "k")
-	for x in range(38, 87):          # the lair's own track, east to the Old Road
+	# The lair's own track: east across the valley, north along the ridge, then
+	# through the pass to the Old Road. It bends because the ridge makes it
+	# bend -- a track that ignored the terrain would be a track through a
+	# mountain.
+	for x in range(38, 63):
 		_put(x, 60, "t")
 		_put(x, 61, "t")
+	for y in range(GAP_N_Y + 4, 62):
+		_put(62, y, "t")
+		_put(63, y, "t")
+	for x in range(62, 88):
+		_put(x, GAP_N_Y + 4, "t")
+		_put(x, GAP_N_Y + 5, "t")
 	for y in range(76, 119):         # south from the lair toward the ritual ground
 		_put(24, y, "t")
 		_put(25, y, "t")
 	for y in range(86, 119):         # manor spur down to the Southern Road
-		_put(125, y, "C")
+		_put(VILLAGE_X + 9, y, "C")
 
 ## The lair band is guaranteed walkable and guaranteed connected: no scree, no
 ## ice, nothing that could strand the settlement inside its own valley. The
@@ -267,6 +332,7 @@ func _write() -> void:
 		"height": H,
 		"lair_origin": [LAIR_ORIGIN.x, LAIR_ORIGIN.y],
 		"lair_band": [BAND.position.x, BAND.position.y, BAND.size.x, BAND.size.y],
+		"bands": BANDS,
 		"legend": LEGEND,
 		"rows": rows,
 	}

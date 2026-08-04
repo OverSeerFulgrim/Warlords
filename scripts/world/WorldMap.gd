@@ -83,6 +83,16 @@ var _cells: PackedByteArray = PackedByteArray()
 var _types: Array = []            # Array[Dictionary] -- name, category, atlas, speed
 var _walkable: PackedByteArray = PackedByteArray()
 var _speeds: PackedFloat32Array = PackedFloat32Array()
+## Average colour of each terrain type, sampled from the atlas at load. The
+## minimap draws these, so it can never drift from the art the way a
+## hand-written colour table would.
+var _map_colors: PackedColorArray = PackedColorArray()
+
+## WORLD_MAP_PLAN §6's danger bands, straight from the data file:
+## `{band: int, name: String, rect: Rect2i}`. **Data only** -- nothing consumes
+## the number yet; it is the hook R2's encounter and loot tables plug into, and
+## today it drives one HUD readout. Later entries win (see band_at).
+var bands: Array = []
 
 var terrain_layer: TileMapLayer
 
@@ -123,6 +133,15 @@ func _apply_data(data: Dictionary) -> void:
 	lair_origin = Vector2i(int(lo[0]), int(lo[1]))
 	var lb: Array = data.get("lair_band", [0, 0, width, height])
 	lair_band = Rect2i(int(lb[0]), int(lb[1]), int(lb[2]), int(lb[3]))
+
+	bands.clear()
+	for entry in data.get("bands", []):
+		var r: Array = entry.get("rect", [0, 0, width, height])
+		bands.append({
+			"band": int(entry.get("band", 2)),
+			"name": String(entry.get("name", "Wilderness")),
+			"rect": Rect2i(int(r[0]), int(r[1]), int(r[2]), int(r[3])),
+		})
 
 	# The legend maps one character to one terrain type. Order matters only in
 	# that the byte grid indexes into it, so it's resolved to a char -> index
@@ -195,6 +214,26 @@ func _build_tileset() -> TileSet:
 	ts.add_source(source, 0)
 	return ts
 
+## Average colour per terrain type, for the minimap. **Sampled from the atlas**
+## rather than written down: a hand-kept colour table is one more thing to
+## update when the art changes, and a minimap that disagrees with the ground is
+## worse than no minimap. Resizing a tile to 1x1 is the cheapest possible
+## average.
+func _sample_map_colors(atlas: Image) -> void:
+	_map_colors.resize(_types.size())
+	for i in range(_types.size()):
+		var a: Vector2i = _types[i]["atlas"]
+		var pixel: Image = atlas.get_region(
+			Rect2i(a.x * CELL_SIZE, a.y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+		pixel.resize(1, 1, Image.INTERPOLATE_BILINEAR)
+		_map_colors[i] = pixel.get_pixel(0, 0)
+
+func minimap_color_at(cell: Vector2i) -> Color:
+	var i: int = type_index_at(cell)
+	if i < 0 or i >= _map_colors.size():
+		return Color.BLACK
+	return _map_colors[i]
+
 func _build_atlas_texture() -> Texture2D:
 	var sheet: Texture2D = load(TILESET_PATH)
 	if sheet == null:
@@ -216,6 +255,7 @@ func _build_atlas_texture() -> Texture2D:
 			piece.resize(CELL_SIZE, CELL_SIZE, Image.INTERPOLATE_LANCZOS)
 			out.blit_rect(piece, Rect2i(0, 0, CELL_SIZE, CELL_SIZE),
 				Vector2i(col * CELL_SIZE, row * CELL_SIZE))
+	_sample_map_colors(out)
 	return ImageTexture.create_from_image(out)
 
 # ---------------- Queries ----------------------------------------------------
@@ -265,6 +305,18 @@ func speed_multiplier(point: Vector2) -> float:
 	if not in_bounds(cell):
 		return 1.0
 	return _speeds[_cells[cell.y * width + cell.x]]
+
+## Which of WORLD_MAP_PLAN §6's four danger bands a point falls in.
+## `{band, name}`. **Last match wins**, so the data file can read as "the whole
+## map is contested wilderness, except..." -- see the BANDS table in
+## tools/make_world_map.gd.
+func band_at(point: Vector2) -> Dictionary:
+	var cell: Vector2i = cell_at(point)
+	var found: Dictionary = {"band": 2, "name": "Contested Wilderness"}
+	for entry in bands:
+		if (entry["rect"] as Rect2i).has_point(cell):
+			found = entry
+	return found
 
 func terrain_name(point: Vector2) -> String:
 	var i: int = type_index_at(cell_at(point))

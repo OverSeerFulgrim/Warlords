@@ -61,7 +61,7 @@ const BASE_MIGHT: int = 6
 ## -- 1.4 crosses the 12-cell grid in about 8.5 seconds. Speed is in *cells* for
 ## the same reason walk_speed is (FOUNDATION_SPEC section 4): 1.0 = one grid
 ## cell per second, literally.
-const MOVE_SPEED_CELLS: float = 1.4
+const MOVE_SPEED_CELLS: float = 1.0
 
 ## How long without a movement key before the idle pacing resumes. **Tunable.**
 const IDLE_RESUME_SECONDS: float = 8.0

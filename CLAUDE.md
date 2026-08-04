@@ -19,7 +19,7 @@ A villain-power-fantasy roguelite settlement builder, in the lineage of *Against
 
 Multi-settlement, trade, alliances, and climate are explicitly **out of scope** until this loop is proven — see design doc Section 11.
 
-**The roguelite rework (`ROGUELITE_REWORK.md`, 2026-08) is the agreed direction beyond Stages 1–3** and supersedes GAME_OUTLINE Stages 4–5 and the timed-recruit-event model. Headlines: one region = one run (Slay-the-Spire structure — death ends the run, XP/unlocks/stash persist and add *variety, never power*); the Necromancer becomes a directly controlled, killable unit exploring a 144×144 world map (the one sanctioned exception to indirect control — followers stay uncommandable); recruitment gates on a five-axis reputation earned by deeds, not on a timer; victory is taking the human lord's manor; a between-runs Lair hub holds the stash, trophies, and chronicle. The Stage 1–3 settlement foundation is unchanged and is a prerequisite — it becomes the in-run base layer. Design constraint effective immediately: **no system may assume exactly one villain on the map** (villain state on per-villain objects, not global singletons) — this is the whole present-day cost of keeping the second class and multiplayer possible. Build order is `ROGUELITE_REWORK.md` §13 (R1–R6). **R1 is largely done**: the Necromancer is split into a data object + view, driven with WASD, followed by the camera, and killable (see "The villain splits"); and the 144×144 world exists with fixed-layout terrain, blocking, roads and fog of war (see "The world the Necromancer walks"). Still open in R1: the static village shell and the R1 exit criterion of walking lair→village→back inside the travel-time targets. Nothing from R2+ is built. The world-map spec lives in `Warlords_World_Map_Scale_and_Exploration_Plan.docx` (user-authored), adopted with the three amendments in the rework doc's §4.
+**The roguelite rework (`ROGUELITE_REWORK.md`, 2026-08) is the agreed direction beyond Stages 1–3** and supersedes GAME_OUTLINE Stages 4–5 and the timed-recruit-event model. Headlines: one region = one run (Slay-the-Spire structure — death ends the run, XP/unlocks/stash persist and add *variety, never power*); the Necromancer becomes a directly controlled, killable unit exploring a 144×144 world map (the one sanctioned exception to indirect control — followers stay uncommandable); recruitment gates on a five-axis reputation earned by deeds, not on a timer; victory is taking the human lord's manor; a between-runs Lair hub holds the stash, trophies, and chronicle. The Stage 1–3 settlement foundation is unchanged and is a prerequisite — it becomes the in-run base layer. Design constraint effective immediately: **no system may assume exactly one villain on the map** (villain state on per-villain objects, not global singletons) — this is the whole present-day cost of keeping the second class and multiplayer possible. Build order is `ROGUELITE_REWORK.md` §13 (R1–R6). **R1 is done**: the Necromancer is split into a data object + view, driven with WASD, followed by the camera, and killable ("The villain splits"); the 144×144 world exists with fixed-layout terrain, blocking, roads and fog of war ("The world the Necromancer walks"); and it is populated with a static village, a sealed rival region, danger-band data and orientation aids, with travel measured and tuned against `WORLD_MAP_PLAN.md` §3 ("Populating the world"). **R2 is next.** Nothing from it is built. The world-map spec lives in `Warlords_World_Map_Scale_and_Exploration_Plan.docx` (user-authored), adopted with the three amendments in the rework doc's §4.
 
 ## Engine & tooling
 
@@ -663,6 +663,84 @@ Notes worth keeping:
 
 **Needs a human:** walking out of the lair band with WASD and watching fog clear behind you, being stopped by the ridge, and feeling the road. Simulated input reaches neither `_unhandled_input` nor `Input.is_key_pressed` (see "Known constraint").
 
+### Populating the world, and tuning it to the clock (rework R1, second half)
+
+The world from R1's first half was terrain and fog with nothing in it. This adds the static village, the sealed rival ground, the danger bands, orientation, and — the actual exit criterion — **measured travel times tuned against `WORLD_MAP_PLAN.md` §3**. Still no encounters, loot or reputation; those are R2.
+
+#### The village is static, and its buildings are not `Building`s
+
+Per rework §4 amendment 2: six houses, a watchtower, the church, the cemetery and the manor, plus two patrol loops. No homes/market/inn model, no daily routines, no reaction to anything.
+
+**`WorldSite` is deliberately not a `Building`.** `Building` is a settlement citizen — it has a cost, a catalog entry, a `power_value`, a grid cell, and it emits `building_placed`. None of that is true of somebody else's house, and giving them the settlement's machinery would mean the player's Power score counted the human lord's manor. A world site is a sprite, a position and an inspection payload; content lives in `data/world_sites.json`, positioned in **world cells** (the settlement's own buildings stay in settlement cells and are none of this file's business).
+
+**`Patrol` is built on `Roaming`** — the same two static helpers the deer and the wolf use — so it rounds terrain the way they do and inherits the debug time scale for free. All it adds is a waypoint list instead of a random point in a rectangle. It walks; it does not react. When R3 makes patrols escalate with notoriety, the thing to add is *reaction* (a detection radius and a response); the walking is done.
+
+Both implement `get_inspect_data()` and nothing else, so they are clickable through the existing contract. `WorldSites.pick_at()` puts patrols above sites for the same reason characters outrank scenery everywhere: a man standing in front of a house is the thing you meant to click.
+
+#### The rival region ships sealed
+
+Amendment 1, as terrain plus one marker: the ritual-circle tile is painted at cells (21–23, 109–111), the 20×20 territory is reserved in the band table as "The Sealed Ground", and a dimmed `Dark_Altar` sprite stands on it reading *"something else sleeps here"*. No AI, no spawns, nothing to fight. The layout never needs rework when the Demonologist arrives as a playable class.
+
+#### Danger bands are data, and only data
+
+`data/world_map.json` gained a `bands` array — WORLD_MAP_PLAN §6's four bands as named rectangles. **Later entries win**, so the table reads as "the whole map is contested wilderness, except…", which is both the shortest way to write it and the right default: anywhere the design hasn't claimed is Band 2. `WorldMap.band_at()` is the only consumer, feeding one HUD readout. Nothing else reads the number — it is the hook R2's encounter and loot tables plug into.
+
+#### Orientation: two aids, because the bar collapses
+
+- **A minimap** in the command bar, at `MINIMAP_SIZE` 144 — the world's own cell count, so it's one pixel per cell and needs no scaling arithmetic. It draws a terrain image built **once** (coloured by `WorldMap.minimap_color_at`, which samples the actual tile art, so it can't drift from the ground) with **the very same fog `ImageTexture` the world draws** stretched over it. "Remembered terrain shows, unexplored doesn't" therefore needs no second copy of the fog state. Markers: the lair (a ring) and the Necromancer (a dot), plus the camera's view rect.
+  - **No live contents on it**, deliberately: no workers, no wolf, no deer, no patrols. Knowing where the wolf is from across the map would undo the fog. The lair and the villain aren't intelligence about the world; they're the answer to "where am I and which way is home".
+- **A text readout** under the HUD badge: `Cell 129, 76 · Band 3 — The Lord's Lands · Lair 107 cells W · Away 2m04s`. It exists because the command bar *collapses*, and 9216px of world is exactly the situation where the player must never be one keystroke from lost.
+
+#### Travel is instrumented, then measured, then tuned
+
+`TravelLog` (in-game) times the villain from leaving the lair band to reaching each registered landmark and back, in **game seconds** off `delta`, so it inherits the time scale — a 60× run reports the same numbers a 1× run does. Milestones go to the History log rather than raising alerts: pacing is something you read afterwards.
+
+`tools/measure_travel.tscn` is the repeatable version and **is committed**, not thrown away, because every knob that moves these numbers (walk speed, road bonus, where the village sits, where the ridge sits) is a constant someone will change later. It routes with `AStarGrid2D` and then **walks the villain for real** — repeated `Necromancer.step()` calls at a fixed delta — so the number includes terrain sliding, diagonal normalisation and the road multiplier, because it comes out of the movement code the player drives.
+
+It reports two routes per journey. **The wilderness route is the one judged against §3** (that section says "uninterrupted movement before … detours", and taking the road is a detour with a tradeoff — §9's "faster but exposed"); the road route is reported as the bonus it is.
+
+**Measured, after tuning:**
+
+| Journey | §3 target | Wilderness | On roads | Verdict |
+|---|---|---|---|---|
+| lair → nearby resource | 10–20s | **5s** (nearest) / 11s (furthest lair node) | — | near end under, by design — see below |
+| lair → first landmark | 20–40s | **25s** | 25s | in band |
+| lair → edge of local territory | 45–75s | **45s** | 45s | in band |
+| lair → the village | 2–4 min | **2m02s** | 1m57s | in band |
+| crossing the entire map | 3–5 min | **3m20s** | 3m12s | in band |
+
+**Four things changed to get there, and none of them silently:**
+
+1. **`Necromancer.MOVE_SPEED_CELLS` 1.4 → 1.0.** At 1.4 *every* row was FAST — the map crossing came in at 2m13s against a 3–5 minute target, the village at 1m18s against 2–4 minutes. A 144-cell map and a 3–5 minute crossing pin the walk speed at about 1.0 cells/sec; 1.4 was a guess made before the map existed. **The cost is real and worth knowing:** he is now only 11% faster than a Skeleton Worker cross-country, where R1's first half asked for "reads as faster". What preserves the feel is the road bonus — 1.35 cells/sec on cobblestone, comfortably faster than any labourer — so *roads* are now how the Necromancer outpaces his own dead. If that trade turns out wrong in play, the honest alternative is a smaller map, not a faster villain.
+2. **The central ridge moved from x40 to x74.** It is the frontier of the Necromancer's valley and therefore what "edge of local territory" is measured to; at x40 that frontier sat 22 cells out, which is ~22s at any usable speed — a third of the 45–75s target. The 20×20 *starting region* (§5) is unchanged; what grew is the contested wilderness between it and the ridge.
+3. **The ridge's northern pass moved from y56–66 to y36–46.** It used to sit on the lair's own latitude, which put the door directly in front of the front gate and made the ridge free to cross — the route east was a straight line and the wall may as well not have been there. Now you have to walk *to* the pass. That's what turns a wall into a route decision, and it is most of what buys the 2–4 minute village trip on a map only 144 cells wide.
+4. **The village core moved east (x108 → x120), manor at (129, 83).** The 2–4 minute target needs the two powers at opposite ends of the map. It stays inside §5's 35×45 human territory.
+
+**The one row still out of band, and why it isn't a bug.** The lair's own resources sit 5–11 seconds out. That is deliberate: workers walk them every trip, and a long haul would wreck the settlement economy's pacing — the far end (the grave past the forest, 11s) *is* in band, so the spread straddles the target rather than missing it. §3's row is really about sortie-scale resources, which R2 places; at 1.0 cells/sec the ring for those is **10–20 cells from the lair**, and that is the number R2 should seed against.
+
+#### Day/night pressure comes free, as predicted
+
+A village round trip is **4m04s** against a 30-minute day — 14% of the daylight, so roughly seven round trips fit in a day and leaving in the last few minutes of it does not. Verified mechanically by parking the clock two minutes from dusk and simulating a round trip's worth of travel: **dusk fell, the wolf spawned, and a meal tick was served, all while he was away.** No code connects travel to the day cycle; they interact because they share one clock.
+
+(One gotcha the test found: `MoraleSystem` correctly serves **no meal at all** when the roster is only skeletons, which is the Stage-0 state — so a meal-tick assertion has to put a living recruit on the roster first, or it silently tests nothing.)
+
+#### R1 exit criteria
+
+- ✅ **Walk from the lair to the village and back inside the travel-time targets** — 2m02s each way wilderness, 1m57s by road, both inside §3's 2–4 minutes; round trip 4m04s.
+- ✅ **Fog clearing as you go** — the 7-cell reveal travels with him, ground behind him drops to remembered, the lair band never dims.
+- ✅ **Day/night pressuring the trip** — dusk, the wolf and the meal tick all land inside a round trip's window.
+- ✅ Sealed rival region, static village shell, camera follow, controllable villain, 144×144 fixed layout.
+
+**Still needs a human at the keyboard:** whether leaving at the wrong hour *feels* like a real decision. The mechanics are confirmed; the pacing judgement isn't something a harness can make.
+
+#### Verification
+
+A 43-assertion scene harness covering all of the above: village content and every site and patrol waypoint standing on walkable ground; the watch actually walking (1014px in a minute of game time) and having no reaction methods at all; the sealed ground inspectable, on the ritual tile, in its reserved region, spawning nothing; bands loading with the lair at Band 1, open country defaulting to Band 2 and four deep-danger pockets; the minimap built one-pixel-per-cell, sharing the world's fog texture, and containing **no reference to any unit type** (the first version of that check failed on its own comments, which name the units it ignores — strip comments before scanning source); the travel clock starting on leaving the band and closing on return; the day/night interaction above; and the R1b invariants re-checked (seeded nodes still in the band, wolf still entering 11.7 cells from the Throne, terrain still one node, villain still out of the labour pool).
+
+The final run showed 42 of 43, with the odd one out being the harness's own bookkeeping — a follower injected to test the meal tick was no longer in the labour pool after 260 seconds of simulated dusk and wolf activity. The substantive assertion next to it (the villain is not in the pool) passed, and a clean check confirmed a freshly-added follower does enter the pool. Recorded rather than papered over.
+
+One art note that cost a screenshot to find: **`D` (snow-edged dirt) is a transition tile, not a field tile** — it carries a vertical snow band, so bulk-filling with it renders the farmland as corduroy. It stays in the legend for edge use and is out of every bulk fill.
+
 ### Foundation exit criteria (manual playtest checklist)
 
 Copied from FOUNDATION_SPEC §11 — Stages 1–3 count as proven when all of these hold **in one unbroken session**. Headless smoke tests have covered the mechanics in isolation; these are the integration checks that need a human at the keyboard.
@@ -697,6 +775,8 @@ scripts/settlement/         SettlementGrid.gd, Building.gd, FollowerToken.gd, Wo
 							  ResourceNode.gd, ResourceField.gd
 scripts/ui/                 InspectionPanel.gd -- the one click-to-inspect panel; defines the
                             get_inspect_data() contract every clickable implements
+                            Minimap.gd -- the region at 1px/cell; terrain image + the world's own fog
+                            texture. Shows no live contents, on purpose
 scripts/combat/             Combat.gd -- THE damage formula; reusable, knows nothing (bounties/raids call this)
                             Engagement.gd -- one fight's clock and participants
                             CombatSystem.gd -- policy: wolf spawning, targeting, emergent defence,
@@ -712,10 +792,16 @@ scripts/world/              DayNightCycle.gd (phase clock, CanvasModulate tint, 
                             WorldMap.gd -- the 144x144 region: ONE TileMapLayer, walkability,
                             road speeds, and the settlement-space <-> world-cell conversions
                             FogOfWar.gd -- unexplored/remembered/visible, ONE node + a 144x144 image
+                            WorldSite.gd  -- a static thing standing in the world; NOT a Building
+                            WorldSites.gd -- loads data/world_sites.json, owns sites + patrols, answers clicks
+                            Patrol.gd -- a human loop walker built on Roaming; scenery, it does not react
+                            TravelLog.gd -- times journeys against WORLD_MAP_PLAN section 3
                             Wolf.gd -- the first hostile creature
                             Roaming.gd -- wander helpers shared by the deer and the wolf
 tools/                      make_deer_sprite.gd, make_wolf_sprite.gd -- one-off art generators, not runtime code
                             make_world_map.gd -- generates data/world_map.json; edit it, re-run, commit the JSON
+                            measure_travel.gd/.tscn -- REPEATABLE: routed travel times vs WORLD_MAP_PLAN section 3.
+                            Re-run after touching walk speed, the road bonus, or the layout
 scripts/bounty/              BountyBoard.gd, Bounty.gd, Follower.gd
 scripts/threat/               ThreatSystem.gd
 scripts/events/                EventSystem.gd, RecruitGenerator.gd
@@ -728,7 +814,8 @@ data/followers.json           SUPERSEDED recruit templates -- only the off-timer
 data/races.json               Race roster from RACES.md: stats, labor skills, alignment, rarity, housing style, rivalries (loaded by RaceCatalog)
 data/buildings.json           Building catalog: costs, prerequisites, "locked" and "unique" flags, Barracks capacity
 data/recruitment.json         Recruit tuning: rarity-by-power table, stat-roll dice, exceptional chance, first-run categories
-data/world_map.json           GENERATED 144x144 terrain: legend (char -> tile/category/speed) + 144 row strings
+data/world_map.json           GENERATED 144x144 terrain: legend (char -> tile/category/speed), danger bands, 144 row strings
+data/world_sites.json         Static world content in WORLD cells: village, sealed ritual ground, landmarks, patrol routes
 Official Sprites/            COMMISSIONED art -- buildings, nodes, all 16 race tokens, necromancer, icons
 Official Sprites/_originals/ Full-res backups; .gdignore keeps Godot out. Leave alone.
 art/, Buildings/, Characters/    Remaining placeholder sprites (see "Art provenance")

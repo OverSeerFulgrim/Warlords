@@ -1,0 +1,149 @@
+{
+	"_comment": "Static world content for R1: the village, the sealed rival ground, and a few band-2 landmarks. Positions are WORLD CELLS (the settlement's own buildings use settlement cells and live in buildings.json). Nothing here has behaviour -- see scripts/world/WorldSite.gd and Patrol.gd. Sites do not block movement in R1; you walk through the village, you do not walk around it.",
+
+	"sites": [
+		{
+			"id": "manor",
+			"name": "The Lord's Manor",
+			"subtitle": "Human lordship — Band 3",
+			"cell": [129, 83],
+			"size": 96,
+			"landmark": true,
+			"sprite": "res://Buildings/Castle/castle_red.png",
+			"description": "Stone, banners, and a garrison that has never had to prove itself. Taking this is how a run ends well.",
+			"details": [
+				{"label": "Held by", "value": "The human lord"},
+				{"label": "Garrison", "value": "Unknown — nobody has counted"},
+				{"label": "", "value": "The victory condition lives here. There is nothing you can do about it yet.", "muted": true}
+			]
+		},
+		{
+			"id": "church",
+			"name": "The Church",
+			"subtitle": "Human lordship — Band 3",
+			"cell": [124, 102],
+			"size": 78,
+			"landmark": true,
+			"sprite": "res://Buildings/Tower/tower_blue.png",
+			"description": "A bell, a graveyard, and men who read omens for a living. When the world starts whispering your name, this is where it is heard first.",
+			"details": [
+				{"label": "Interest in you", "value": "None yet", "muted": true},
+				{"label": "", "value": "The church investigates in Era II. For now it rings for weddings.", "muted": true}
+			]
+		},
+		{
+			"id": "cemetery",
+			"name": "The Cemetery",
+			"subtitle": "Human lordship — Band 3",
+			"cell": [127, 105],
+			"size": 54,
+			"sprite": "res://Official Sprites/Grave_Undisturbed.png",
+			"description": "Consecrated ground, filled and tended. Every one of them is bones somebody would miss.",
+			"details": [
+				{"label": "Graves", "value": "More than you could carry"},
+				{"label": "", "value": "Robbing this is R2's business, and it will not go unnoticed.", "muted": true}
+			]
+		},
+		{ "id": "house_1", "name": "A Villager's House", "subtitle": "Village", "cell": [122, 60], "size": 58, "sprite": "res://Buildings/House/house_1_red.png",
+			"description": "Smoke from the chimney, a woodpile, a dog somewhere behind it. Nobody inside has heard of you.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "house_2", "name": "A Villager's House", "subtitle": "Village", "cell": [126, 61], "size": 58, "sprite": "res://Buildings/House/house_2_yellow.png",
+			"description": "Shuttered against the cold. A cart stands unhitched in the yard.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "house_3", "name": "A Villager's House", "subtitle": "Village", "cell": [133, 59], "size": 58, "sprite": "res://Buildings/House/house_1_green.png",
+			"description": "The furthest house from the crossroads, and the first anyone would miss.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "house_4", "name": "A Villager's House", "subtitle": "Village", "cell": [123, 71], "size": 58, "sprite": "res://Buildings/House/house_2_blue.png",
+			"description": "Washing frozen stiff on a line. Whoever hung it expected a better day.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "house_5", "name": "A Villager's House", "subtitle": "Village", "cell": [132, 72], "size": 58, "sprite": "res://Buildings/House/house_1_yellow.png",
+			"description": "Half workshop, half home, the way most of them are.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "house_6", "name": "A Villager's House", "subtitle": "Village", "cell": [136, 68], "size": 58, "sprite": "res://Buildings/House/house_2_green.png",
+			"description": "Built out beyond the last street, where the land was cheap.",
+			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
+		{ "id": "watchtower", "name": "The Village Watchtower", "subtitle": "Village", "cell": [121, 55], "size": 72, "sprite": "res://Buildings/Tower/tower_yellow.png",
+			"description": "It faces north up the Old Road, which is where trouble has always come from. It does not face west.",
+			"details": [
+				{"label": "Watches", "value": "The Old Road"},
+				{"label": "", "value": "Nobody is looking toward your valley. That is the whole of your safety.", "muted": true}] },
+
+		{
+			"id": "sealed_ritual_ground",
+			"name": "The Sealed Ritual Ground",
+			"subtitle": "Something else sleeps here — Band 3",
+			"cell": [22, 110],
+			"size": 88,
+			"landmark": true,
+			"modulate": "#6a6478",
+			"sprite": "res://Official Sprites/Dark_Altar.png",
+			"description": "A circle cut into the frozen ground, older than the lordship and colder than the weather. It is not yours, and it is not empty. Whatever was called here has been sealed under it, and something else sleeps here still.",
+			"details": [
+				{"label": "State", "value": "Sealed — dormant"},
+				{"label": "Yours?", "value": "No"},
+				{"label": "", "value": "The rival's territory ships sealed (ROGUELITE_REWORK §4 amendment 1): no AI, no spawns, nothing to fight. The Demonologist returns as a playable class, not as an enemy.", "muted": true}
+			]
+		},
+
+		{
+			"id": "broken_shrine",
+			"name": "The Broken Shrine",
+			"subtitle": "Contested Wilderness — Band 2",
+			"cell": [44, 48],
+			"size": 62,
+			"landmark": true,
+			"modulate": "#8d8a80",
+			"sprite": "res://Buildings/Tower/tower_green.png",
+			"description": "Toppled, scoured, and older than the road that ignores it. Somebody left offerings here once.",
+			"details": [
+				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites — this one sits in the ring where the first ones belong.", "muted": true}
+			]
+		},
+		{
+			"id": "abandoned_camp",
+			"name": "An Abandoned Camp",
+			"subtitle": "Contested Wilderness — Band 2",
+			"cell": [30, 83],
+			"size": 58,
+			"landmark": true,
+			"modulate": "#8d8a80",
+			"sprite": "res://Buildings/House/house_2_red.png",
+			"description": "A lean-to, a cold firepit, and nothing worth taking. Whoever camped here left in a hurry or did not leave at all.",
+			"details": [
+				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites.", "muted": true}
+			]
+		},
+		{
+			"id": "standing_stones",
+			"name": "The Standing Stones",
+			"subtitle": "Contested Wilderness — Band 2",
+			"cell": [50, 70],
+			"size": 54,
+			"landmark": true,
+			"sprite": "res://Official Sprites/Grave_Undisturbed.png",
+			"description": "Three of them, leaning, with the snow scoured off the western faces. Nobody in the village remembers who set them.",
+			"details": [
+				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites.", "muted": true}
+			]
+		}
+	],
+
+	"patrols": [
+		{
+			"name": "The Village Watch",
+			"subtitle": "Human lordship — patrol",
+			"sprite": "res://Official Sprites/Human_Outcast.png",
+			"speed": 0.7,
+			"description": "Two rounds a day, the same two rounds his father walked. He is looking for drunks and stray livestock.",
+			"waypoints": [[121, 57], [137, 57], [137, 75], [121, 75]]
+		},
+		{
+			"name": "The Road Patrol",
+			"subtitle": "Human lordship — patrol",
+			"sprite": "res://Official Sprites/Human_Outcast.png",
+			"speed": 0.85,
+			"description": "Walks the crossroads out and back. The lord pays for the road to be seen to be watched.",
+			"waypoints": [[90, 65], [136, 65]]
+		}
+	]
+}

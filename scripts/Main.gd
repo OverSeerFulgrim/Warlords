@@ -44,6 +44,10 @@ var villain_controller: VillainController
 ## The 144x144 region (rework R1). The settlement is a band inside it.
 var world_map: WorldMap
 var fog: FogOfWar
+## The village, the sealed rival ground, the band-2 landmarks, and the patrols.
+var world_sites: WorldSites
+## Times journeys against WORLD_MAP_PLAN §3. R1's exit criterion, instrumented.
+var travel_log: TravelLog
 var camera: GameCamera
 
 var current_event: Dictionary = {}
@@ -58,6 +62,10 @@ var time_scale_btn: Button
 var necro_badge: Button
 ## Camera-follow readout, under the badge. See _refresh_follow_state_label().
 var follow_state_label: Label
+## Where am I / how deep am I / which way is home. See _refresh_orientation().
+var orientation_label: Label
+var minimap: Minimap
+var minimap_hint: Label
 
 # ---------------- Alerts + history log (Town/History/Research tabs) ----------------
 var alert_stack: VBoxContainer
@@ -178,7 +186,10 @@ const ICON_DARK_ESSENCE := "res://Official Sprites/Icon_Dark_Essence.png"
 const FALLBACK_SPECIES_SPRITE := "res://Characters/Character - 128 x 128/character_001.png"
 
 const INFO_PANEL_WIDTH := 170.0
-const MINIMAP_SIZE := 78.0
+## One pixel per world cell. Was 78 while this was a blank placeholder; at the
+## world's own 144 the minimap is a 1:1 map of the region and needs no scaling
+## arithmetic to read.
+const MINIMAP_SIZE := 144.0
 
 ## Height of the whole bottom command bar (folder tabs + panel body).
 ##
@@ -275,6 +286,7 @@ func _process(delta: float) -> void:
 	# crossed a cell boundary, so this is a Vector2i compare in the common case.
 	if fog and villain:
 		fog.update_for(villain.position)
+	_refresh_orientation()
 	_refresh_priority_status()
 	_poll_timer += delta
 	if _poll_timer >= INSPECTOR_REFRESH_INTERVAL:
@@ -285,6 +297,38 @@ func _process(delta: float) -> void:
 		# Follow drops silently on a right-drag, so it's polled on the same slow
 		# tick as everything else that changes without announcing itself.
 		_refresh_follow_state_label()
+
+## Compass directions for the way-home readout. Eight of them: four is not
+## enough to steer by on a 144-cell map, sixteen is more precision than a text
+## line can carry.
+const COMPASS := ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
+
+## "Cell 42, 60  ·  Band 2 — Contested Wilderness  ·  Lair 24 cells W"
+##
+## Three questions the player has on the world map and cannot answer from the
+## viewport: where am I, how deep am I, and which way is home. The band half is
+## the only consumer of WORLD_MAP_PLAN §6's data today -- R2's encounter and
+## loot tables are the ones it exists for.
+func _refresh_orientation() -> void:
+	if orientation_label == null or world_map == null or villain == null:
+		return
+	var cell: Vector2i = world_map.cell_at(villain.position)
+	var band: Dictionary = world_map.band_at(villain.position)
+	var lair: Vector2 = world_map.cell_centre_px(
+		world_map.lair_origin + Vector2i(SettlementGrid.GRID_WIDTH / 2, SettlementGrid.GRID_HEIGHT / 2))
+	var to_lair: Vector2 = lair - villain.position
+	var cells_home: int = roundi(to_lair.length() / float(WorldMap.CELL_SIZE))
+	var text := "Cell %d, %d   ·   Band %d — %s" % [cell.x, cell.y, band["band"], band["name"]]
+	if cells_home <= 1:
+		text += "   ·   At the lair"
+	else:
+		var octant: int = wrapi(roundi(to_lair.angle() / (TAU / 8.0)), 0, 8)
+		text += "   ·   Lair %d cells %s" % [cells_home, COMPASS[octant]]
+	if travel_log and travel_log.elapsed() >= 0.0:
+		text += "   ·   Away %s" % TravelLog._fmt(travel_log.elapsed())
+	orientation_label.text = text
+	if minimap:
+		minimap.queue_redraw()
 
 ## Follow on: bright. Follow off: dim, and it names the key that brings it back.
 func _refresh_follow_state_label() -> void:
@@ -434,6 +478,14 @@ func _build_camera() -> void:
 	villain_controller.camera = camera
 	add_child(villain_controller)
 
+	travel_log = TravelLog.new()
+	travel_log.name = "TravelLog"
+	travel_log.world = world_map
+	travel_log.villain = villain
+	if world_sites:
+		travel_log.landmarks = world_sites.landmarks
+	add_child(travel_log)
+
 ## The world the settlement sits in. Replaces `_build_ground_background()`, which
 ## was a Sprite2D per cell -- fine for the 10x8 grid, fatal at 144x144 (20,736
 ## nodes). The terrain is one `TileMapLayer` now; see WorldMap.gd.
@@ -449,6 +501,13 @@ func _build_world_map() -> void:
 	if not world_map.build():
 		push_error("Main: world map failed to load; the settlement will float in the void.")
 		return
+
+	# Static world content. Before the fog, so it is under it in draw order --
+	# a village you haven't found must be hidden like anything else.
+	world_sites = WorldSites.new()
+	world_sites.name = "WorldSites"
+	settlement.add_child(world_sites)
+	world_sites.build(world_map)
 
 	fog = FogOfWar.new()
 	fog.name = "FogOfWar"
@@ -704,6 +763,16 @@ func _build_necro_badge(hud_root: Control) -> void:
 	hud_root.add_child(follow_state_label)
 	_refresh_follow_state_label()
 
+	# Orientation, always visible. The minimap answers this too, but it lives in
+	# the command bar, which collapses -- and 9216px of world is exactly the
+	# situation where the player must never be one keystroke away from lost.
+	orientation_label = Label.new()
+	orientation_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	orientation_label.position = Vector2(54, 64)
+	orientation_label.add_theme_font_size_override("font_size", 10)
+	orientation_label.modulate = Color(1, 1, 1, 0.72)
+	hud_root.add_child(orientation_label)
+
 ## Rolling stack of up to MAX_ALERTS recent notable events, top-right,
 ## opposite the necromancer badge. Each pin's full message is its
 ## tooltip_text (hover to read) rather than a click-to-reveal panel, since
@@ -857,11 +926,21 @@ func _build_bottom_shell(hud_root: Control) -> void:
 
 	bar_hbox.add_child(VSeparator.new())
 
-	var minimap_box := ColorRect.new()
-	minimap_box.custom_minimum_size = Vector2(MINIMAP_SIZE, MINIMAP_SIZE)
-	minimap_box.color = Color(0.09, 0.11, 0.15)
-	# Purely a visual placeholder for now -- no actual minimap rendering.
-	bar_hbox.add_child(minimap_box)
+	# The real minimap, replacing the ColorRect placeholder that stood here.
+	# MINIMAP_SIZE is the world's cell count on purpose: one pixel per cell.
+	var minimap_column := VBoxContainer.new()
+	minimap_column.add_theme_constant_override("separation", 2)
+	minimap = Minimap.new()
+	minimap.custom_minimum_size = Vector2(MINIMAP_SIZE, MINIMAP_SIZE)
+	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	minimap.setup(world_map, fog, villain, camera)
+	minimap_column.add_child(minimap)
+	minimap_hint = Label.new()
+	minimap_hint.add_theme_font_size_override("font_size", 9)
+	minimap_hint.modulate = Color(1, 1, 1, 0.55)
+	minimap_hint.text = "○ lair   ● you"
+	minimap_column.add_child(minimap_hint)
+	bar_hbox.add_child(minimap_column)
 
 ## Town tab content: the Build/Bounty/Economy category tabs plus each one's
 ## row of actions. Originally folded in every action button the old top-strip
@@ -1435,6 +1514,17 @@ func _inspect_at(world_pos: Vector2) -> bool:
 			_inspect(rp, _build_rally_actions)
 			return true
 
+	# --- 1c. Patrols and world sites -----------------------------------------
+	# Patrols sit with the characters (WorldSites.pick_at checks them first);
+	# the village buildings and landmarks rank below resource nodes for the same
+	# reason settlement buildings do -- a deer standing in front of a house is
+	# the thing on top.
+	if world_sites:
+		var hit_patrol = world_sites.pick_at(world_pos)
+		if hit_patrol is Patrol:
+			_inspect(hit_patrol)
+			return true
+
 	# --- 2. Resource nodes ---------------------------------------------------
 	# Above buildings because nodes sit mostly off-grid (the forest, the
 	# deposit, the graves) and a deer can wander across the settlement, so a
@@ -1443,6 +1533,13 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	if hit_node:
 		_inspect(hit_node)
 		return true
+
+	# --- 2b. World sites (village, sealed ground, landmarks) -----------------
+	if world_sites:
+		var hit_site = world_sites.pick_at(world_pos)
+		if hit_site:
+			_inspect(hit_site)
+			return true
 
 	# --- 3. Buildings --------------------------------------------------------
 	# Every building, not just the Throne and the Barracks -- those two simply
@@ -1946,6 +2043,12 @@ func _connect_signals() -> void:
 		_alert("THE NECROMANCER HAS FALLEN.", "bad")
 		push_warning("Villain down (%s, class '%s') — the run lifecycle is R4, so play continues."
 			% [v.combat_name(), v.class_id])
+	)
+	# Journey milestones. Logged rather than alerted: pacing information is
+	# something you read afterwards, not something that should interrupt a walk.
+	EventBus.travel_noted.connect(func(text: String, seconds: float):
+		var stamp: String = "" if seconds <= 0.0 else " [%s]" % TravelLog._fmt(seconds)
+		_log("[color=#9fb6c8]%s%s[/color]" % [text, stamp], "events")
 	)
 	EventBus.combat_started.connect(func(attacker: String, defender: String):
 		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")

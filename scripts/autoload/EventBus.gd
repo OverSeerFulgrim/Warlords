@@ -92,6 +92,11 @@ signal necromancer_feared(predator_name: String)
 ## Nothing ends the run on this yet: the run lifecycle is rework stage R4. For
 ## now Main logs it, loudly, so the moment is impossible to miss in testing.
 signal villain_died(villain, cause: String)
+## A journey milestone -- left the lair band, reached a landmark, came home.
+## Carries the elapsed game-seconds so the log can show pacing without
+## recomputing it. See TravelLog.gd: travel time is WORLD_MAP_PLAN §3's exit
+## criterion, so it is instrumented rather than eyeballed.
+signal travel_noted(text: String, elapsed_seconds: float)
 
 # Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
 ## Cast, moved, or re-ordered. Carries the new order and how many undead answered.

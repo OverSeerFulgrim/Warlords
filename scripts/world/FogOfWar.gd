@@ -30,6 +30,11 @@ class_name FogOfWar
 ## The interaction half of "no live contents" is one guard in `Main._inspect_at`,
 ## which refuses to pick anything in a cell that isn't currently visible.
 
+## Fires when any cell's state changed. The minimap draws this same texture on
+## top of its terrain image, so it redraws off this rather than polling -- and
+## it only fires when the villain crosses a cell boundary.
+signal changed
+
 enum State { UNEXPLORED, REMEMBERED, VISIBLE }
 
 ## How far the Necromancer sees. **Tunable.** WORLD_MAP_PLAN §12 puts *scouting*
@@ -93,6 +98,7 @@ func reveal_permanently(cells: Rect2i) -> void:
 			_set_state(i, State.VISIBLE)
 	_texture.update(_image)
 	queue_redraw()
+	changed.emit()
 
 ## Call every frame with the villain's position; it early-outs unless he has
 ## crossed into a new cell, which is what keeps this off the frame budget.
@@ -127,6 +133,12 @@ func _relight(centre: Vector2i) -> void:
 			_set_state(i, State.VISIBLE)
 	_texture.update(_image)
 	queue_redraw()
+	changed.emit()
+
+## The dimming mask itself, so the minimap can draw exactly the same fog over
+## its own terrain image instead of maintaining a second copy of the state.
+func fog_texture() -> Texture2D:
+	return _texture
 
 func _set_state(index: int, state: int) -> void:
 	if _state[index] == state:
