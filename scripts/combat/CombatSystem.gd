@@ -440,7 +440,10 @@ func _leave_carcass(wolf: Wolf) -> void:
 	var carcass := ResourceNode.make_carcass(wolf.position)
 	carcass.capacity = WOLF_CARCASS_BONES
 	carcass.remaining = WOLF_CARCASS_BONES
-	resource_field.add_node(carcass, ResourceField.SPRITE_CARCASS, "", 28.0)
+	# Drawn at the same size as the seeded carcasses, from their constant rather
+	# than a literal: sizes are content heights now, and a bare 28.0 here was a
+	# leftover canvas-width number that would have quietly meant something else.
+	resource_field.add_node(carcass, ResourceField.SPRITE_CARCASS, "", ResourceField.NODE_SIZE_CARCASS)
 	EventBus.wolf_killed.emit(wolf.position, WOLF_CARCASS_BONES)
 
 func _finish(e: Engagement) -> void:

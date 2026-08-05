@@ -25,8 +25,20 @@ var pick_radius: float = 32.0
 
 var _sprite: Sprite2D
 
-## `size_px` is the drawn width; every commissioned/pack sprite in this project
-## is far larger than its on-screen size and gets scaled down at use.
+## `size_px` is a **canvas width**, and is deliberately the last place in the
+## project that still means that.
+##
+## Everything on the settlement layer moved to content-height targeting (see
+## `Anchoring.scale_for_content_height`), because a canvas width described the
+## picture rather than the thing drawn on it. The world map has not, on purpose:
+## its sizes are seven per-entry numbers in `data/world_sites.json`, hand-tuned
+## against the R1c travel-time bands, and the rule change is not size-neutral --
+## the Kenney tower art puts 310px of tower on a 320px-tall canvas but only
+## 100px across, so `"size": 88` currently draws a 213px tower and would become
+## an 88px one. Converting means re-tuning all seven values and re-verifying the
+## world map, which is its own pass rather than a side effect of this one.
+## `Patrol.TOKEN_SIZE` is held back for the same reason -- patrols and sites
+## share a screen, and half-converting it would be worse than not converting it.
 func setup(data: Dictionary, world_position: Vector2, size_px: float) -> void:
 	site_id = String(data.get("id", ""))
 	display_name = String(data.get("name", "Ruin"))

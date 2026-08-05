@@ -22,10 +22,15 @@ var description: String = ""
 var sprite_path: String = ""
 var world: WorldMap = null
 
-## **56px, matching FollowerToken.** Not on the prompt's list, but a patrolman
-## left at 34 would have stood shorter than the Skeleton Workers he is supposed
-## to be a threat to eventually -- and he is the same kind of thing as a recruit
-## (a person), so he gets a person's size.
+## **56px of canvas width.** A patrolman is the same kind of thing as a recruit
+## (a person), so he gets a person's size -- left at 34 he would have stood
+## shorter than the Skeleton Workers he is eventually supposed to threaten.
+##
+## **Still a canvas width, deliberately.** The settlement layer moved to content
+## heights (`Anchoring.scale_for_content_height`); the world map has not, and
+## the reason is in `WorldSite.setup()`'s header -- patrols and world sites share
+## a screen and have to convert together. When they do, this becomes `58`, the
+## Medium body height from SPRITE_SPEC.md §3, exactly like `FollowerToken`.
 const TOKEN_SIZE: float = 56.0
 
 var _index: int = 0

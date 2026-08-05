@@ -61,16 +61,26 @@ const LEAVE_SPEED_PX: float = 96.0   # it does not linger once it's done
 const NECROMANCER_FEAR_RADIUS_PX: float = 150.0
 
 const SPRITE_PATH := "res://art/creature_wolf.png"
-## Bigger than a worker token (32) and matching the Necromancer (44). At the
-## default 0.72 zoom a 34px token renders at ~24 screen pixels of dark grey on
-## dark ground, which playtest simply could not find. The thing that eats your
-## labourers should be the most legible unit on the map.
+## **Content WIDTH in world px: 74 = 1.15 of a 64px tile.**
 ##
-## **70px, grown with everything else in the visual-scale pass.** It stays the
-## single largest unit on the map -- one pixel over the Necromancer's 68 -- and
-## that ordering is the deliberate decision above, not an accident to be
-## "corrected" later.
-const TOKEN_SIZE: float = 70.0
+## The one sizing exception in the project, and it is SPRITE_SPEC.md §3's, not
+## an oversight here: *"Quadruped is measured by width, not height. A wolf is
+## low and long."* Everything else -- every token, node and building -- targets
+## content **height** via `Anchoring.scale_for_content_height`; this is the
+## single call to the width variant, and §3 marks it load-bearing.
+##
+## Why width. At the default 0.72 zoom a 34px token rendered as ~24 screen
+## pixels of dark grey on dark ground, and playtest simply could not find it.
+## The thing that eats your labourers has to be the most legible unit on the
+## map, and legibility comes from the area it covers, not from standing tall.
+## At 74px wide it draws ~51px tall (0.80 tiles) -- shorter than the Necromancer
+## (67) and wider than him (47), which is exactly the trade §3 describes. **Do
+## not "correct" this to a height target to make the rule uniform.**
+##
+## Was `70.0` interpreted as a canvas width. The generated art fills its 32px
+## canvas edge to edge horizontally, so that happened to be close; the number
+## meant nothing the moment the placeholder is replaced with real art.
+const TOKEN_SIZE: float = 74.0
 
 enum State {
 	PROWL,    ## drifting around the roam rect looking for something
@@ -111,8 +121,8 @@ func _ready() -> void:
 	if ResourceLoader.exists(SPRITE_PATH):
 		var tex: Texture2D = load(SPRITE_PATH)
 		_sprite.texture = tex
-		if tex.get_size().x > 0.0:
-			_sprite.scale = Vector2.ONE * (TOKEN_SIZE / tex.get_size().x)
+		# Width, not height -- see TOKEN_SIZE. The only such call in the project.
+		_sprite.scale = Vector2.ONE * Anchoring.scale_for_content_width(tex, TOKEN_SIZE)
 		Anchoring.foot(_sprite)   # it stands on the ground it is hunting over
 	else:
 		push_warning("Wolf: sprite not found at %s" % SPRITE_PATH)
@@ -283,4 +293,5 @@ func get_inspect_data() -> Dictionary:
 
 ## Click-selection radius, matching the token conventions elsewhere.
 func hit_radius() -> float:
-	return TOKEN_SIZE * Anchoring.HIT_RADIUS_FRACTION
+	var drawn: Vector2 = Anchoring.drawn_content_size(_sprite)
+	return maxf(drawn.x, drawn.y) * Anchoring.HIT_RADIUS_FRACTION

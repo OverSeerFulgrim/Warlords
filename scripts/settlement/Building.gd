@@ -56,7 +56,7 @@ func _ready() -> void:
 	if max_hp > 0 and hp <= 0:
 		hp = max_hp
 
-## Longest side a building's art is drawn at, in world pixels. **104 = 1.6
+## **Content height a building's art is drawn at, in world pixels. 104 = 1.63
 ## tiles.** It was `CELL_SIZE` (64), which made every structure exactly as big
 ## as the square of ground it sat on -- correct as a footprint, wrong as a
 ## building. A keep should loom over its tile.
@@ -65,6 +65,14 @@ func _ready() -> void:
 ## *footprint* (one building, one tile, and the grid, walk speed and terrain
 ## atlas all depend on that number), while this is only how tall the picture is.
 ## Conflating them is what made the whole map read as miniature.
+##
+## **This used to be the longest side of the texture**, which put every building
+## in a box regardless of what was in it: the Kenney house sprites sit on a
+## 128x192 canvas with 141px of house in it, so a 104 cap drew a 76px house,
+## while the crypt (whose art fills its canvas) got the full 104. Reading the
+## number as a content height instead makes it mean one thing -- how tall the
+## structure stands -- and lets width follow the art. See
+## `Anchoring.scale_for_content_height`.
 const SPRITE_MAX_SIDE: float = 104.0
 
 func _setup_sprite() -> void:
@@ -79,16 +87,13 @@ func _setup_sprite() -> void:
 	# the Kenney fantasy House/Tower/Castle sprites reused for the other types
 	# are 2-7 cells wide/tall at native scale.
 	#
-	# **Scale to FIT the cap, in both directions.** This used to only ever scale
-	# *down* (`if largest_side > CELL_SIZE`), which happened to work while the
-	# cap was smaller than every source texture. With a 104px cap and 128px art
-	# it still would -- but "fit" is the actual intent, and a source asset that
-	# ever came in under the cap should be enlarged to match its neighbours
-	# rather than silently drawn tiny.
-	var src: Vector2 = tex.get_size()
-	var largest_side: float = maxf(src.x, src.y)
-	if largest_side > 0.0:
-		sprite.scale = Vector2.ONE * (SPRITE_MAX_SIDE / largest_side)
+	# **Scaled so the structure stands SPRITE_MAX_SIDE tall**, up or down. This
+	# used to fit the texture's longest *side* into the cap, which measured the
+	# canvas rather than the building -- a Kenney house on a 128x192 sheet came
+	# out 28px shorter than the commissioned Throne even though both were asked
+	# for the same number. Width now follows the art's own proportions, which is
+	# how a wide low Bone Pile ends up wide and low.
+	sprite.scale = Vector2.ONE * Anchoring.scale_for_content_height(tex, SPRITE_MAX_SIDE)
 	# **Bottom-centre of the cell, not top-left.** `centered = false` pinned the
 	# texture's top-left to the cell origin, so anything drawn larger than one
 	# tile grew down and right, across the neighbours. Buildings grow *upward*

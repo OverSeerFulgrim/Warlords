@@ -22,15 +22,16 @@ var worker  # Worker (untyped to avoid a hard script dependency loop)
 var sprite: Sprite2D
 var carry_label: Label
 
-## Workers read as smaller/plainer than Follower portraits on purpose -- the
-## trait-less, interchangeable labor unit, not the roster.
+## **Content height in world px: 58 = 0.90 of a 64px tile**, which is
+## SPRITE_SPEC.md §3's *Medium* body family. The Skeleton Worker is listed there
+## alongside Human/Orc/Gnoll: a skeleton is a person-sized thing, and it reads
+## as plainer than a recruit through its art, not through being drawn smaller.
 ##
-## **48px = 0.75 of a 64px tile.** Was 32, which measured at half a tile: every
-## object on the map was smaller than the ground it stood on, and playtest read
-## the whole scene as miniature. Sizes across the project are now expressed as
-## fractions of `CELL_SIZE` -- see CLAUDE.md's art provenance section for the
-## table.
-const SPRITE_TARGET_SIZE: float = 48.0
+## Was `48.0` interpreted as a *canvas width*. The token art puts 102px of
+## skeleton on a 128px canvas, so 48 of canvas drew 38px of skeleton -- 0.60
+## tiles, when the spec asks for 0.90. Every size in this project is a content
+## height now; see `Anchoring.scale_for_content_height`.
+const SPRITE_TARGET_SIZE: float = 58.0
 
 func _ready() -> void:
 	sprite = Sprite2D.new()
@@ -54,18 +55,18 @@ func setup(p_worker, texture: Texture2D) -> void:
 	worker = p_worker
 	if texture:
 		sprite.texture = texture
-		var src := texture.get_size()
-		if src.x > 0.0:
-			sprite.scale = Vector2.ONE * (SPRITE_TARGET_SIZE / src.x)
+		sprite.scale = Vector2.ONE * Anchoring.scale_for_content_height(texture, SPRITE_TARGET_SIZE)
 		# The worker's position is where he stands, not where his waist is.
 		Anchoring.foot(sprite)
 	position = worker.position
 
-## Click-selection radius. Derived from the drawn size so the hit area and the
-## art can never drift apart -- Main used to pass a hardcoded 16.0 here, which
-## would have left clicks landing beside a 48px worker.
+## Click-selection radius. Derived from the **drawn content**, not the size
+## constant: the constant is a height, and a hit circle built from a height
+## alone misses the sides of anything wider than it is tall. Main used to pass a
+## hardcoded 16.0 here, which would have left clicks landing beside the worker.
 func hit_radius() -> float:
-	return SPRITE_TARGET_SIZE * Anchoring.HIT_RADIUS_FRACTION
+	var drawn: Vector2 = Anchoring.drawn_content_size(sprite)
+	return maxf(drawn.x, drawn.y) * Anchoring.HIT_RADIUS_FRACTION
 
 func _process(_delta: float) -> void:
 	if worker == null:

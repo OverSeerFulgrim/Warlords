@@ -47,8 +47,14 @@ var claims: int = 0
 var _sprite: Sprite2D
 var _alive_texture: Texture2D
 var _depleted_texture: Texture2D
-## On-screen width in px this node should occupy; see setup_sprites().
-var _target_size: float = 32.0
+## On-screen height in world px of the node's **drawn content**; see
+## setup_sprites(). Was a canvas width, which meant it described the picture
+## rather than the tree.
+var _target_height: float = 32.0
+## Same, for the depleted art, because a stump is not a shorter tree -- it is a
+## different object at a different real-world size (1.5 tiles becomes 0.5). Most
+## nodes leave this equal to `_target_height`.
+var _depleted_target_height: float = 32.0
 ## Kept alongside the loaded textures purely so the inspection panel can show
 ## whichever art is currently on screen -- Texture2D has no path back to its
 ## res:// source once loaded.
@@ -96,11 +102,25 @@ func _pick_roam_target() -> void:
 func freeze(value: bool) -> void:
 	_frozen = value
 
-## `target_size` is the on-screen width in pixels the node should occupy,
-## regardless of how large the source art is -- the commissioned sprites are
-## 1024px square, so everything here is scaled down by ~0.03-0.06.
-func setup_sprites(alive_path: String, depleted_path: String, target_size: float) -> void:
-	_target_size = target_size
+## `target_height` is how tall the **thing drawn on the sprite** should be on
+## screen, in world pixels -- not how wide its canvas is. A pine and a grave sit
+## very differently inside their identical 128px frames, so a canvas target
+## described neither of them (the pine asked for 76 and drew 43).
+##
+## Width falls out of the art's own aspect ratio, which is correct: the stone
+## deposit is a wide flat outcrop and comes out roughly 82px across from a 45px
+## height target.
+## `depleted_height` defaults to the alive height; pass it only where the spent
+## state is a genuinely different-sized object, which so far is the pine (a
+## 1.5-tile tree leaves a 0.5-tile stump).
+func setup_sprites(
+	alive_path: String,
+	depleted_path: String,
+	target_height: float,
+	depleted_height: float = -1.0,
+) -> void:
+	_target_height = target_height
+	_depleted_target_height = target_height if depleted_height < 0.0 else depleted_height
 	_alive_sprite_path = alive_path
 	_depleted_sprite_path = depleted_path
 	_alive_texture = _load_texture(alive_path)
@@ -115,22 +135,26 @@ func current_sprite_path() -> String:
 		return _depleted_sprite_path
 	return _alive_sprite_path
 
-## Click-selection radius, in world pixels. Scales with the node's own on-screen
-## size so a 58px stone deposit is easier to hit than a 26px carcass, with a
-## floor so the smallest nodes stay clickable without pixel-hunting.
+## Click-selection radius, in world pixels. Derived from the node's **drawn
+## content**, not from its size target: the stone deposit is asked for 45px of
+## height and covers ~82px of ground, and a circle built from the height alone
+## would leave most of the outcrop unclickable. A floor keeps the smallest nodes
+## (a 26px carcass) hittable without pixel-hunting.
 func hit_radius() -> float:
-	return maxf(18.0, _target_size * 0.6)
+	var drawn: Vector2 = Anchoring.drawn_content_size(_sprite)
+	return maxf(18.0, maxf(drawn.x, drawn.y) * 0.6)
 
 ## Scale is recomputed from whichever texture is actually showing, rather than
 ## fixed once from the alive one. The alive and depleted art are not guaranteed
 ## to share dimensions -- and when they didn't, swapping in the depleted
 ## texture kept the alive texture's scale factor and rendered it at the wrong
-## size. Currently every pair happens to match at 1024px, so this is a latent
-## bug being closed rather than a visible one being fixed.
-func _apply_scale_for(tex: Texture2D) -> void:
+## size. Now they also don't share a *content* box even when the canvases match:
+## a stump occupies far less of its 128px frame than the pine it replaces, so
+## rescaling per texture is what keeps the stump reading as 0.5 tiles.
+func _apply_scale_for(tex: Texture2D, target_height: float) -> void:
 	if tex == null or tex.get_size().x <= 0.0:
 		return
-	_sprite.scale = Vector2.ONE * (_target_size / tex.get_size().x)
+	_sprite.scale = Vector2.ONE * Anchoring.scale_for_content_height(tex, target_height)
 	# A tree's position is the base of its trunk, not the middle of its canopy.
 	# Re-applied per texture because the depleted art can differ in height from
 	# the alive art, and the anchor is computed from whichever is showing.
@@ -271,7 +295,7 @@ func _refresh_visual() -> void:
 	if is_depleted():
 		if _depleted_texture:
 			_sprite.texture = _depleted_texture
-			_apply_scale_for(_depleted_texture)
+			_apply_scale_for(_depleted_texture, _depleted_target_height)
 			# The commissioned depleted sprites (stump, dug-up grave, picked
 			# grove) already read as spent on their own, so they're drawn at
 			# full colour. The old placeholders needed dimming because they
@@ -281,11 +305,11 @@ func _refresh_visual() -> void:
 			# No empty-state art: a killed deer / emptied carcass just goes
 			# away rather than lingering as a ghost sprite.
 			_sprite.texture = _alive_texture
-			_apply_scale_for(_alive_texture)
+			_apply_scale_for(_alive_texture, _target_height)
 			_sprite.modulate = Color(1, 1, 1, 0.0)
 		return
 	_sprite.texture = _alive_texture
-	_apply_scale_for(_alive_texture)
+	_apply_scale_for(_alive_texture, _target_height)
 	var fullness: float = float(remaining) / float(max(1, capacity))
 	# Floor at 0.45 alpha -- a nearly-empty node still has to be findable and
 	# clickable, it just shouldn't look untouched.

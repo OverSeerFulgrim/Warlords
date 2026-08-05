@@ -50,27 +50,38 @@ const SPRITE_DEER := "res://art/creature_deer.png"
 
 var nodes: Array = []  # Array[ResourceNode]
 
-## On-screen width per node type, in world pixels, against a 64px tile. These
-## were 38/46/58/34/26/30 -- every one of them under a tile, which is what made
-## playtest read the map as miniature (a pine tree was 0.59 of the ground it
-## grew out of). They are now expressed as fractions of `CELL_SIZE`:
+## **On-screen CONTENT height per node type**, in world pixels, against a 64px
+## tile. Width is whatever the art's own aspect ratio makes it, which is the
+## point: the stone deposit is a wide flat outcrop and comes out ~82px across
+## from a 45px height target, and that is correct.
 ##
-##   tree    76 = 1.2 tiles   a tree should be taller than its own footprint
-##   grove   66 = 1.03
-##   stone   88 = 1.4         the one node the whole workforce shares
-##   grave   50 = 0.78
-##   carcass 40 = 0.63        deliberately the smallest -- it is a scrap
-##   deer    54 = 0.84        reads as an animal you could carry, because you do
+##   tree     96 = 1.50 tiles   pines should tower over units
+##   stump    32 = 0.50         a stump is low; it is not a short tree
+##   grove    58 = 0.90
+##   grave    48 = 0.75
+##   stone    45 = 0.70         wide and flat -- ~82px of ground covered
+##   carcass  26 = 0.40         deliberately the smallest -- it is a scrap
+##   deer     58 = 0.90         and taller than the wolf, which is the read
+##                              SPRITE_SPEC §5 asks the two silhouettes to carry
+##
+## **These were canvas widths until the content-height pass, and that is why
+## they used to be meaningless.** Content fills 42%-100% of a canvas depending
+## on the asset, so dividing a target by `texture.get_size().x` produced a
+## different real size for every sprite: the tree asked for 76 and drew 46px of
+## actual tree, while the grave asked for 50 and drew 50. The old numbers
+## (76/66/88/50/40/54) were describing the picture, not the thing. See
+## `Anchoring.scale_for_content_height`.
 ##
 ## They live here rather than at the call sites so the whole scale of the map is
 ## one block you can read and retune. `ResourceNode.hit_radius()` derives from
-## whichever value it is handed, so click targets grow with the art.
-const NODE_SIZE_TREE: float = 76.0
-const NODE_SIZE_GROVE: float = 66.0
-const NODE_SIZE_STONE: float = 88.0
-const NODE_SIZE_GRAVE: float = 50.0
-const NODE_SIZE_CARCASS: float = 40.0
-const NODE_SIZE_DEER: float = 54.0
+## the drawn content, so click targets grow with the art.
+const NODE_SIZE_TREE: float = 96.0
+const NODE_SIZE_STUMP: float = 32.0
+const NODE_SIZE_GROVE: float = 58.0
+const NODE_SIZE_STONE: float = 45.0
+const NODE_SIZE_GRAVE: float = 48.0
+const NODE_SIZE_CARCASS: float = 26.0
+const NODE_SIZE_DEER: float = 58.0
 
 var _deer_roam_rect: Rect2
 var _grid_w: float = 0.0
@@ -119,7 +130,7 @@ func _build_forest(center: Vector2, cell: float) -> void:
 	for i in range(FOREST_TREE_COUNT):
 		var pos := center + Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
 		var tree := ResourceNode.make_tree(pos)
-		_add(tree, SPRITE_TREE, SPRITE_STUMP, NODE_SIZE_TREE)
+		_add(tree, SPRITE_TREE, SPRITE_STUMP, NODE_SIZE_TREE, NODE_SIZE_STUMP)
 	for i in range(FOREST_CARCASS_COUNT):
 		var pos := center + Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
 		var carcass := ResourceNode.make_carcass(pos)
@@ -150,17 +161,32 @@ func _spawn_deer() -> void:
 	deer.world = world
 	_add(deer, SPRITE_DEER, "", NODE_SIZE_DEER)
 
-func _add(node: ResourceNode, alive_sprite: String, depleted_sprite: String, size: float) -> void:
+## `depleted_height` is only passed where the spent state is a different-sized
+## object -- the pine, whose 1.5-tile trunk leaves a 0.5-tile stump. A picked
+## grove and a robbed grave stay the size they were.
+func _add(
+	node: ResourceNode,
+	alive_sprite: String,
+	depleted_sprite: String,
+	height: float,
+	depleted_height: float = -1.0,
+) -> void:
 	add_child(node)
-	node.setup_sprites(alive_sprite, depleted_sprite, size)
+	node.setup_sprites(alive_sprite, depleted_sprite, height, depleted_height)
 	nodes.append(node)
 
 ## Public version of _add, for nodes that appear during play rather than at
 ## seeding -- currently just the carcass a killed wolf leaves behind. Goes
 ## through here rather than letting the caller touch `nodes` directly, so the
 ## "nothing reaches into ResourceField.nodes" rule holds for creation too.
-func add_node(node: ResourceNode, alive_sprite: String, depleted_sprite: String, size: float) -> void:
-	_add(node, alive_sprite, depleted_sprite, size)
+func add_node(
+	node: ResourceNode,
+	alive_sprite: String,
+	depleted_sprite: String,
+	height: float,
+	depleted_height: float = -1.0,
+) -> void:
+	_add(node, alive_sprite, depleted_sprite, height, depleted_height)
 
 # ---------------- Dawn upkeep ----------------
 

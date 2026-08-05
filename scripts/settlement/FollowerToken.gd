@@ -19,11 +19,21 @@ class_name FollowerToken
 ## Both are currently unreachable from the UI (Stage 4 is hard-locked) but are
 ## kept wired for when it isn't.
 
-## On-screen width in world pixels. **56px = 0.88 of a 64px tile** -- a recruit
-## reads as a person rather than a chess piece, and stands taller than a
-## Skeleton Worker (48) without competing with the Necromancer (68). Was a
-## local `40.0` inside setup(); a const because the hit radius derives from it.
-const SPRITE_TARGET_SIZE: float = 56.0
+## **Content height in world px: 58 = 0.90 of a 64px tile** -- SPRITE_SPEC.md
+## §3's *Medium* body family, which is where most of the roster sits.
+##
+## Was `56.0` interpreted as a *canvas width*, which meant nothing: the race
+## tokens put between 94px (Halfling) and 119px (Troll) of character on the same
+## 128px canvas, and their content *widths* range from 53px to 112px, so
+## dividing by canvas width drew a Troll and a Halfling at wildly wrong relative
+## sizes. Content height at least makes every recruit the same *correct* size.
+##
+## **One constant is still a placeholder for per-family scaling.** SPRITE_SPEC
+## §3 puts Ogres/Trolls/Minotaurs at 1.30 tiles and Kobolds/Goblins/Halflings at
+## 0.62, and §9's interim step is to add `body_class` to `races.json` and look
+## the height up per race. That is now a pure data change -- the machinery it
+## needed is `Anchoring.scale_for_content_height`, and it exists.
+const SPRITE_TARGET_SIZE: float = 58.0
 
 var follower  # Follower (untyped to avoid a hard script dependency loop)
 var gate_point: Vector2
@@ -65,19 +75,18 @@ func setup(p_follower, texture: Texture2D, p_gate_point: Vector2) -> void:
 	gate_point = p_gate_point
 	if texture:
 		sprite.texture = texture
-		# Source art is 128px square; scale down to the token footprint so a
-		# handful of them read as a crowd rather than a wall of faces.
-		var src := texture.get_size()
-		if src.x > 0.0:
-			sprite.scale = Vector2.ONE * (SPRITE_TARGET_SIZE / src.x)
+		# Scaled so the *recruit* is 58px tall, whatever fraction of its 128px
+		# canvas the artist happened to fill.
+		sprite.scale = Vector2.ONE * Anchoring.scale_for_content_height(texture, SPRITE_TARGET_SIZE)
 		# Their position is where they stand -- see Anchoring.
 		Anchoring.foot(sprite)
 	star_label.visible = follower.is_exceptional
 	position = follower.position
 
-## Click-selection radius, derived from the drawn size. See WorkerToken.
+## Click-selection radius, derived from the drawn content. See WorkerToken.
 func hit_radius() -> float:
-	return SPRITE_TARGET_SIZE * Anchoring.HIT_RADIUS_FRACTION
+	var drawn: Vector2 = Anchoring.drawn_content_size(sprite)
+	return maxf(drawn.x, drawn.y) * Anchoring.HIT_RADIUS_FRACTION
 
 func _process(_delta: float) -> void:
 	if follower == null or _away:
