@@ -22,7 +22,11 @@ var description: String = ""
 var sprite_path: String = ""
 var world: WorldMap = null
 
-const TOKEN_SIZE: float = 34.0
+## **56px, matching FollowerToken.** Not on the prompt's list, but a patrolman
+## left at 34 would have stood shorter than the Skeleton Workers he is supposed
+## to be a threat to eventually -- and he is the same kind of thing as a recruit
+## (a person), so he gets a person's size.
+const TOKEN_SIZE: float = 56.0
 
 var _index: int = 0
 var _sprite: Sprite2D
@@ -49,6 +53,7 @@ func setup(data: Dictionary, points: PackedVector2Array, p_world: WorldMap) -> v
 	else:
 		push_warning("Patrol '%s': sprite not found at %s" % [patrol_name, sprite_path])
 	add_child(_sprite)
+	Anchoring.foot(_sprite)
 	z_index = 1
 	set_process(true)
 
@@ -73,7 +78,7 @@ func speed_px() -> float:
 	return speed_cells * float(SettlementGrid.CELL_SIZE)
 
 func hit_radius() -> float:
-	return TOKEN_SIZE * 0.6
+	return TOKEN_SIZE * Anchoring.HIT_RADIUS_FRACTION
 
 func get_inspect_data() -> Dictionary:
 	return {

@@ -65,7 +65,12 @@ const SPRITE_PATH := "res://art/creature_wolf.png"
 ## default 0.72 zoom a 34px token renders at ~24 screen pixels of dark grey on
 ## dark ground, which playtest simply could not find. The thing that eats your
 ## labourers should be the most legible unit on the map.
-const TOKEN_SIZE: float = 46.0
+##
+## **70px, grown with everything else in the visual-scale pass.** It stays the
+## single largest unit on the map -- one pixel over the Necromancer's 68 -- and
+## that ordering is the deliberate decision above, not an accident to be
+## "corrected" later.
+const TOKEN_SIZE: float = 70.0
 
 enum State {
 	PROWL,    ## drifting around the roam rect looking for something
@@ -108,6 +113,7 @@ func _ready() -> void:
 		_sprite.texture = tex
 		if tex.get_size().x > 0.0:
 			_sprite.scale = Vector2.ONE * (TOKEN_SIZE / tex.get_size().x)
+		Anchoring.foot(_sprite)   # it stands on the ground it is hunting over
 	else:
 		push_warning("Wolf: sprite not found at %s" % SPRITE_PATH)
 	add_child(_sprite)
@@ -120,7 +126,7 @@ func _ready() -> void:
 	_hp_bar.add_theme_color_override("font_color", Color(1.0, 0.45, 0.40))
 	_hp_bar.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_hp_bar.add_theme_constant_override("outline_size", 4)
-	_hp_bar.position = Vector2(-18, -40)
+	_hp_bar.position = Vector2(-18, -TOKEN_SIZE - 16.0)   # clear of its own head
 	add_child(_hp_bar)
 
 	z_index = 6  # above every other unit -- it is the thing you must not miss
@@ -277,4 +283,4 @@ func get_inspect_data() -> Dictionary:
 
 ## Click-selection radius, matching the token conventions elsewhere.
 func hit_radius() -> float:
-	return TOKEN_SIZE * 0.6
+	return TOKEN_SIZE * Anchoring.HIT_RADIUS_FRACTION

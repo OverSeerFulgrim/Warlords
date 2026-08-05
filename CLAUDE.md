@@ -200,14 +200,50 @@ It's labelled debug because it is one: a way to watch a 50-minute cycle or a gat
 
 **Scaling.** Runtime art remains larger than its on-screen target, and every consumer derives its scale from the loaded texture. Downsampling therefore changes memory use without changing the drawn size. Two mechanisms are already in the codebase:
 
-- **`Sprite2D` users** divide a target pixel width by the texture width — `Building._setup_sprite` (largest side → 64px = `CELL_SIZE`), `ResourceNode.setup_sprites` (per-node target: tree 38, grove 46, grave 34, deposit 58), and the tokens (worker 32, follower 40, necromancer 44).
-- **`Control` users** (the HUD badge and the Dark Essence icon) use a `TextureRect` with `EXPAND_IGNORE_SIZE` + a `custom_minimum_size`. Without `EXPAND_IGNORE_SIZE` a raw 1024px texture asks for a 1024px-tall container and blows the top bar open.
+- **`Sprite2D` users** divide a target pixel width by the texture width — `Building._setup_sprite`, `ResourceNode.setup_sprites`, and the unit tokens. See the size table below.
+- **`Control` users** (the HUD badge and the Dark Essence icon) use a `TextureRect` with `EXPAND_IGNORE_SIZE` + a `custom_minimum_size`. Without `EXPAND_IGNORE_SIZE` a raw 128px texture asks for a 128px-tall container and blows the top bar open.
 
-The 35 eligible top-level PNGs were downsampled offline with premultiplied-alpha Lanczos filtering. Their decoded runtime footprint fell from 213.97 MiB to 32.18 MiB (top-level texture dimensions × 4 RGBA8 bytes); all 40 top-level source files were copied and hash-verified in `_originals/` first. `Terrain_Tileset_Snow.png`, `Orc_Animation_Sheet.png`, `Wolf_Animation_Sheet.png`, `Wolf_Pack_Animation_Sheet.png`, and `VFX_Sheet.png` are byte-identical to their backups.
+The 35 eligible top-level PNGs were downsampled offline with premultiplied-alpha Lanczos filtering. Their decoded runtime footprint fell from **213.97 MiB to 32.18 MiB** (6.6×; top-level texture dimensions × 4 RGBA8 bytes, 11.36 MiB on disk); all 40 top-level source files were copied and hash-verified in `_originals/` first. `Terrain_Tileset_Snow.png`, `Orc_Animation_Sheet.png`, `Wolf_Animation_Sheet.png`, `Wolf_Pack_Animation_Sheet.png`, and `VFX_Sheet.png` are byte-identical to their backups — the terrain atlas because `WorldMap` slices it at a *measured* 5px margin / 8px gutters / 305px per tile, the three sheets and the VFX page because the deferred frame normalizer (`MODULAR_CHARACTER_ANIMATION_REVIEW.md` §8) needs source resolution.
 
-**Filtering.** `project.godot` explicitly selects Linear with mipmaps for canvas textures, and the 35 resampled imports set `mipmaps/generate=true`. The five protected atlas/frame-sheet imports remain unmipped. `WorldMap` still overrides its generated terrain atlas to Nearest in code, preventing sampling across its edge-to-edge tile seams.
+**Filtering.** `project.godot` selects **Linear with mipmaps** for canvas textures, and the 35 resampled imports set `mipmaps/generate=true`. Linear because this is not pixel art (`Human_Outcast.png` alone has 63,895 unique RGBA colours); mipmapped because 128px sources draw at 40–70px and that undersampling is what shimmers while a unit walks. The five protected sheets remain unmipped, and `WorldMap` still overrides its generated terrain atlas to Nearest in code — the atlas is packed edge-to-edge and Linear would sample across the tile seams.
 
-Verified after the hygiene pass: every building renders 64×64, resource nodes remain tree 38 / grove 46 / grave 34 / deposit 58, tokens remain 32/40/44, and the top bar stayed 47px. A real 1400×760 renderer launch confirmed the world atlas remained correct, the Necromancer map token used `Necromancer_Full_Body`, and the HUD badge continued to use `Necromancer_Portrait`.
+> **Two traps in that one setting, both of which cost real time.**
+>
+> 1. **Keys in `project.godot` are section-relative.** Inside `[rendering]` the key must be `textures/canvas_textures/default_texture_filter`. Written out in full as `rendering/textures/...` it silently defines `rendering/rendering/textures/...` — a setting nothing reads — and the filter quietly stays at its Linear-no-mipmaps default. It was written the long way first, and the fix is *only* visible by querying `ProjectSettings.get_setting()` at runtime; the file looks right.
+> 2. **The enum order is not the obvious one.** It is `Nearest, Linear, Linear Mipmap, Nearest Mipmap`, so **2 is Linear Mipmap** and 3 is Nearest Mipmap. Confirm with `ProjectSettings.get_property_list()`'s `hint_string` rather than assuming the CanvasItem node enum's ordering, which is different again.
+
+**Sizes, as fractions of a 64px tile.** Playtest read the whole map as miniature, and measurement agreed: at the default 0.72 zoom *every* object was smaller than the tile it stood on — a pine tree 0.59 of a tile, a Skeleton Worker 0.50, a deer 0.47. The fix is these constants, **never `SettlementGrid.CELL_SIZE`**, which is the shared unit across the settlement, the world map, walk speed and the terrain atlas's 64px resample target, and which R1c tuned five travel-time bands against.
+
+| Thing | Constant | px | tiles |
+|---|---|---|---|
+| Skeleton Worker | `WorkerToken.SPRITE_TARGET_SIZE` | 48 | 0.75 |
+| Follower / patrol | `FollowerToken.SPRITE_TARGET_SIZE`, `Patrol.TOKEN_SIZE` | 56 | 0.88 |
+| Necromancer | `NecromancerToken.TOKEN_SIZE` | 68 | 1.06 |
+| Wolf | `Wolf.TOKEN_SIZE` | 70 | 1.09 |
+| Buildings (longest side) | `Building.SPRITE_MAX_SIDE` | 104 | 1.63 |
+| Pine tree | `ResourceField.NODE_SIZE_TREE` | 76 | 1.19 |
+| Stone deposit | `NODE_SIZE_STONE` | 88 | 1.38 |
+| Berry grove | `NODE_SIZE_GROVE` | 66 | 1.03 |
+| Deer | `NODE_SIZE_DEER` | 54 | 0.84 |
+| Grave | `NODE_SIZE_GRAVE` | 50 | 0.78 |
+| Carcass | `NODE_SIZE_CARCASS` | 40 | 0.63 |
+
+Two orderings in that table are load-bearing rather than incidental. **The Necromancer is the largest humanoid** — he is the unit the player is always looking for. **The wolf is larger than him**, and that is the deliberate existing decision from the invisible-wolf playtest (see the combat section); do not "correct" it downward.
+
+**Anchoring** (`scripts/Anchoring.gd`). Everything used to be centre-anchored, which is invisible at 32px and obvious at 68: a unit's *middle* sat on its position, so its feet were half a tile underground. Two rules now, one file, because it is the same subtle line in six places:
+
+- `Anchoring.foot()` — the sprite's bottom edge lands on the node's origin. Units, trees, deer, world sites. A unit's position is **where it stands**.
+- `Anchoring.cell_base()` — the sprite stands on the bottom-centre of its grid cell. Buildings. They used to be `centered = false` with the texture's top-left pinned to the cell, so drawing anything past one tile grew it **down and right over the neighbours**; now they grow *upward* out of their footprint. A 104px sprite on a 64px cell still spills ~20px each side horizontally — but symmetrically, and nothing spills below the cell line.
+
+`Sprite2D.offset` is in *texture* pixels and applied *before* `scale`, which is what makes one assignment survive every rescale.
+
+**Click targets derive from the same constants.** `hit_radius()` is `size × Anchoring.HIT_RADIUS_FRACTION` on every token, and `ResourceNode.hit_radius()` already worked this way. `Main._closest_token_hit` used to be handed a hardcoded 16.0 for workers and 20.0 for followers — fine at 32/40px, silently wrong the moment the art grew — and now reads the radius off the token instead. The fraction is **0.45, not 0.6**: at 0.6 the Necromancer claimed an 82px circle on a 64px tile, and standing on the Throne made the Throne unclickable from anywhere in its own cell, taking the Keep menu with it. Every unit still has a larger target than before this pass. Note the pick order is unchanged and still deliberate — **characters outrank buildings**, so a villain parked on the Throne does shadow its centre; walk him off, which is what direct control is for.
+
+**Y-sorting is on**, on `settlement` and on each of the four child layers it has to reach through (`WorkersLayer`, `FollowersLayer`, `ResourceField`, `WorldSites`) — Godot only descends into children that are themselves Y-sorted. Bigger sprites overlap far more than 32px ones did, so a worker behind a tree now goes behind it. **Two units deliberately opt out by keeping a higher `z_index`**, and both are recorded playtest fixes rather than oversights: the Necromancer (5) must never be hidden behind the Throne he stands on, and the wolf (6) must never be hidden by anything. Godot sorts by `z_index` first and only then by Y, so they simply never enter the sort. Fog (100) and terrain (−10) are unaffected for the same reason.
+
+**Known residual, and it is an art fix not a code one:** the commissioned 128px tokens carry 6–14px of transparent padding below the figure, so `foot()` lands the texture *box* on the ground and the figure floats ~4–5px above it. Trimming that padding is exactly what §8's frame normalizer does for the animation sheets; it is deliberately not worked around with a per-texture alpha scan at load.
+
+Verified by a 37-assertion harness plus real 1400×760 renderer launches: every size and tile-fraction above; the Throne drawing at 104×104 with its base on the cell line, centred, growing 40px above the cell and nothing below it; feet on the ground for worker, villain and tree; clicking a worker (including 20px off-centre, which the old 16px radius would have missed), the Throne, a tree, a grave, the deer and the Necromancer each selecting that thing; the top bar still 47px and the inspector still at x=60; the terrain atlas still Nearest with all 20,736 cells painted; the canvas filter resolving to 2 at runtime; the map token on `Necromancer_Full_Body` while the inspection payload and HUD badge stay on `Necromancer_Portrait`; and Y-sorting visibly ordering overlapping trees and a deer in front of one.
 
 One latent bug closed on the earlier art-wiring pass: `ResourceNode` used to compute its scale once from the *alive* texture and keep it when swapping to the depleted one. The pairs matched dimensions then, so nothing visibly broke, but a stump of a different resolution to its tree would have rendered at the wrong size. Scale is recomputed per texture in `_apply_scale_for()`.
 
@@ -811,6 +847,8 @@ scripts/bounty/              BountyBoard.gd, Bounty.gd, Follower.gd
 scripts/threat/               ThreatSystem.gd
 scripts/events/                EventSystem.gd, RecruitGenerator.gd
 scripts/missions/            MissionSystem.gd
+scripts/Anchoring.gd      Where a sprite sits relative to its position (feet on the ground; buildings
+                          on their cell's base) + the shared click-radius fraction. Six callers
 scripts/GameCamera.gd     Pan (right-drag or ARROW keys -- not WASD, that's the villain)/zoom Camera2D
 addons/godot_mcp/           Third-party MCP bridge plugin (mkdevkit, MIT) — Godot-editor side
 data/events.json               15 MVP random events

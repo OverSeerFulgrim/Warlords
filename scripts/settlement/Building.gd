@@ -56,28 +56,47 @@ func _ready() -> void:
 	if max_hp > 0 and hp <= 0:
 		hp = max_hp
 
+## Longest side a building's art is drawn at, in world pixels. **104 = 1.6
+## tiles.** It was `CELL_SIZE` (64), which made every structure exactly as big
+## as the square of ground it sat on -- correct as a footprint, wrong as a
+## building. A keep should loom over its tile.
+##
+## Deliberately a separate constant rather than `CELL_SIZE`: the cell is the
+## *footprint* (one building, one tile, and the grid, walk speed and terrain
+## atlas all depend on that number), while this is only how tall the picture is.
+## Conflating them is what made the whole map read as miniature.
+const SPRITE_MAX_SIDE: float = 104.0
+
 func _setup_sprite() -> void:
 	if sprite_path == "" or not ResourceLoader.exists(sprite_path):
 		return
 	var tex := load(sprite_path)
 	var sprite := Sprite2D.new()
 	sprite.texture = tex
-	sprite.centered = false  # align to the same top-left grid convention as `position`
 	# Every building is 1x1 on the grid for the prototype (see CLAUDE.md "Next
 	# milestones" re: multi-cell footprints), but the source art wasn't
-	# authored at a uniform size -- the Kenney fantasy House/Tower/Castle
-	# sprites reused for the new building types are 2-7 cells wide/tall at
-	# native scale. Scale down (never up) so nothing sprawls past its own
-	# tile, matching the same target_size/src.x pattern FollowerToken already
-	# uses for portraits. Reads SettlementGrid.CELL_SIZE rather than
-	# redefining the constant here, so there's one source of truth for it.
+	# authored at a uniform size -- the commissioned pieces are 128px square and
+	# the Kenney fantasy House/Tower/Castle sprites reused for the other types
+	# are 2-7 cells wide/tall at native scale.
+	#
+	# **Scale to FIT the cap, in both directions.** This used to only ever scale
+	# *down* (`if largest_side > CELL_SIZE`), which happened to work while the
+	# cap was smaller than every source texture. With a 104px cap and 128px art
+	# it still would -- but "fit" is the actual intent, and a source asset that
+	# ever came in under the cap should be enlarged to match its neighbours
+	# rather than silently drawn tiny.
 	var src: Vector2 = tex.get_size()
-	var largest_side: float = max(src.x, src.y)
-	if largest_side > SettlementGrid.CELL_SIZE:
-		var scale_factor: float = SettlementGrid.CELL_SIZE / largest_side
-		sprite.scale = Vector2.ONE * scale_factor
+	var largest_side: float = maxf(src.x, src.y)
+	if largest_side > 0.0:
+		sprite.scale = Vector2.ONE * (SPRITE_MAX_SIDE / largest_side)
+	# **Bottom-centre of the cell, not top-left.** `centered = false` pinned the
+	# texture's top-left to the cell origin, so anything drawn larger than one
+	# tile grew down and right, across the neighbours. Buildings grow *upward*
+	# out of their footprint, which is also what makes them read as standing on
+	# the grid rather than floating over it.
 	sprite.modulate = sprite_tint
 	add_child(sprite)
+	Anchoring.cell_base(sprite, float(SettlementGrid.CELL_SIZE))
 
 func _process(delta: float) -> void:
 	_tick_timer += delta

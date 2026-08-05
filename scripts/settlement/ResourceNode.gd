@@ -131,6 +131,10 @@ func _apply_scale_for(tex: Texture2D) -> void:
 	if tex == null or tex.get_size().x <= 0.0:
 		return
 	_sprite.scale = Vector2.ONE * (_target_size / tex.get_size().x)
+	# A tree's position is the base of its trunk, not the middle of its canopy.
+	# Re-applied per texture because the depleted art can differ in height from
+	# the alive art, and the anchor is computed from whichever is showing.
+	Anchoring.foot(_sprite)
 
 func _load_texture(path: String) -> Texture2D:
 	if path == "" or not ResourceLoader.exists(path):

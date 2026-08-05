@@ -343,6 +343,19 @@ func _refresh_follow_state_label() -> void:
 func _build_systems() -> void:
 	settlement = SettlementGrid.new()
 	settlement.name = "SettlementGrid"
+	# **Y-sorting, enabled where it doesn't fight an existing decision.**
+	# Sprites are 1.5-2x larger since the visual-scale pass, so they overlap far
+	# more than 32px ones did and a worker standing behind a tree needs to go
+	# behind it. Godot sorts by z_index FIRST and only then by y, and it only
+	# reaches into child containers that are themselves y-sorted -- hence the
+	# same flag on every layer below.
+	#
+	# Two units deliberately opt out by keeping a higher z_index, and both are
+	# recorded playtest fixes rather than oversights: the Necromancer (z 5) must
+	# never be hidden behind the Throne he stands on, and the wolf (z 6) must
+	# never be hidden by anything at all -- see CLAUDE.md's combat section on
+	# the wolf nobody could find. Y-sorting them would re-open both bugs.
+	settlement.y_sort_enabled = true
 	add_child(settlement)
 	# The world first: everything below is positioned inside it, and both the
 	# villain and the roamers need to be able to ask it about terrain.
@@ -350,6 +363,7 @@ func _build_systems() -> void:
 
 	followers_layer = Node2D.new()
 	followers_layer.name = "FollowersLayer"
+	followers_layer.y_sort_enabled = true
 	settlement.add_child(followers_layer)
 
 	var grid_w: float = SettlementGrid.GRID_WIDTH * SettlementGrid.CELL_SIZE
@@ -366,6 +380,7 @@ func _build_systems() -> void:
 
 	workers_layer = Node2D.new()
 	workers_layer.name = "WorkersLayer"
+	workers_layer.y_sort_enabled = true
 	settlement.add_child(workers_layer)
 
 	# The map's harvestable resources. A child of `settlement` so it shares the
@@ -373,6 +388,7 @@ func _build_systems() -> void:
 	# literal destinations WorkerSystem measures distance against.
 	resource_field = ResourceField.new()
 	resource_field.name = "ResourceField"
+	resource_field.y_sort_enabled = true
 	resource_field.world = world_map   # set before build(): the deer read it at spawn
 	settlement.add_child(resource_field)
 	resource_field.build(grid_w, grid_h)
@@ -506,6 +522,7 @@ func _build_world_map() -> void:
 	# a village you haven't found must be hidden like anything else.
 	world_sites = WorldSites.new()
 	world_sites.name = "WorldSites"
+	world_sites.y_sort_enabled = true
 	settlement.add_child(world_sites)
 	world_sites.build(world_map)
 
@@ -1484,12 +1501,12 @@ func _inspect_at(world_pos: Vector2) -> bool:
 		_inspect(necromancer_token, _build_necromancer_actions)
 		return true
 
-	var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos, 20.0)
+	var hit_follower: Follower = _closest_token_hit(follower_tokens, world_pos)
 	if hit_follower:
 		_inspect(hit_follower)
 		return true
 
-	var hit_worker: Worker = _closest_token_hit(worker_tokens, world_pos, 16.0)
+	var hit_worker: Worker = _closest_token_hit(worker_tokens, world_pos)
 	if hit_worker:
 		_inspect(hit_worker)
 		return true
@@ -1602,15 +1619,22 @@ func _close_inspector() -> void:
 ##
 ## Tokens that are hidden (away on a bounty/mission) are skipped: they're off
 ## the map, so there's nothing there to click.
-func _closest_token_hit(tokens: Dictionary, world_pos: Vector2, radius: float):
+##
+## **The radius comes from the token, not from a number passed in here.** It
+## used to be a hardcoded 20.0 for followers and 16.0 for workers, which was
+## fine while they were drawn at 40 and 32 -- and became wrong the moment the
+## art grew, leaving clicks landing beside a unit the player was aiming at.
+## `hit_radius()` derives from the same target-size constant that scales the
+## sprite, so the two can no longer drift apart.
+func _closest_token_hit(tokens: Dictionary, world_pos: Vector2):
 	var best = null
-	var best_dist := radius
+	var best_dist := INF
 	for key in tokens.keys():
 		var token: Node2D = tokens[key]
-		if token and not token.visible:
+		if token == null or not token.visible:
 			continue
 		var d: float = key.position.distance_to(world_pos)
-		if d <= best_dist:
+		if d <= token.hit_radius() and d < best_dist:
 			best_dist = d
 			best = key
 	return best

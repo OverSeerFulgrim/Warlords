@@ -22,9 +22,14 @@ class_name NecromancerToken
 ## exclusion is structural rather than a flag, and `Necromancer` extends
 ## RefCounted directly rather than Laborer to keep it that way.
 
-## Drawn at this size on the map. Larger than a worker (32) or a follower (40):
+## Drawn at this size on the map. Larger than a worker (48) or a follower (56):
 ## he is the one unit the player is always looking for.
-const TOKEN_SIZE: float = 44.0
+##
+## **68px is slightly over a full 64px tile** -- deliberately the largest
+## *humanoid* on the map. The wolf is larger still (70), and that is not an
+## oversight: see CLAUDE.md's combat section on the playtest where a wolf spawned
+## and the player never found it.
+const TOKEN_SIZE: float = 68.0
 
 ## The villain this token draws. Set by `setup()`; never written back to.
 var villain: Necromancer = null
@@ -46,6 +51,9 @@ func _ready() -> void:
 		var src: Vector2 = tex.get_size()
 		if src.x > 0.0:
 			sprite.scale = Vector2.ONE * (TOKEN_SIZE / src.x)
+		# He stands where his position is. At 68px a centred sprite would put
+		# his waist on the ground.
+		Anchoring.foot(sprite)
 	else:
 		push_warning("NecromancerToken: map sprite not found at %s" % Necromancer.MAP_SPRITE)
 	add_child(sprite)
@@ -73,7 +81,7 @@ func _process(_delta: float) -> void:
 ## `villain.position`, not this node's -- a view is always a frame stale, and
 ## clicking a ghost is the exact bug `Main._closest_token_hit` was fixed for.
 func hit_radius() -> float:
-	return TOKEN_SIZE * 0.6
+	return TOKEN_SIZE * Anchoring.HIT_RADIUS_FRACTION
 
 # ---------------- Inspection (see InspectionPanel.gd for the contract) -------
 

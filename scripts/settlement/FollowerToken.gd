@@ -19,6 +19,12 @@ class_name FollowerToken
 ## Both are currently unreachable from the UI (Stage 4 is hard-locked) but are
 ## kept wired for when it isn't.
 
+## On-screen width in world pixels. **56px = 0.88 of a 64px tile** -- a recruit
+## reads as a person rather than a chess piece, and stands taller than a
+## Skeleton Worker (48) without competing with the Necromancer (68). Was a
+## local `40.0` inside setup(); a const because the hit radius derives from it.
+const SPRITE_TARGET_SIZE: float = 56.0
+
 var follower  # Follower (untyped to avoid a hard script dependency loop)
 var gate_point: Vector2
 
@@ -37,7 +43,7 @@ func _ready() -> void:
 	# home should read identically to a skeleton doing it.
 	carry_label = Label.new()
 	carry_label.add_theme_font_size_override("font_size", 10)
-	carry_label.position = Vector2(-18, -40)
+	carry_label.position = Vector2(-18, -SPRITE_TARGET_SIZE - 14.0)
 	carry_label.visible = false
 	add_child(carry_label)
 
@@ -48,7 +54,7 @@ func _ready() -> void:
 	star_label.text = "★"
 	star_label.add_theme_font_size_override("font_size", 12)
 	star_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-	star_label.position = Vector2(6, -34)
+	star_label.position = Vector2(6, -SPRITE_TARGET_SIZE - 8.0)
 	star_label.visible = false
 	add_child(star_label)
 
@@ -59,14 +65,19 @@ func setup(p_follower, texture: Texture2D, p_gate_point: Vector2) -> void:
 	gate_point = p_gate_point
 	if texture:
 		sprite.texture = texture
-		# Portraits come in at ~128px source; scale down to a small token
-		# footprint so a handful of them read as a crowd, not a wall of faces.
-		var target_size := 40.0
+		# Source art is 128px square; scale down to the token footprint so a
+		# handful of them read as a crowd rather than a wall of faces.
 		var src := texture.get_size()
 		if src.x > 0.0:
-			sprite.scale = Vector2.ONE * (target_size / src.x)
+			sprite.scale = Vector2.ONE * (SPRITE_TARGET_SIZE / src.x)
+		# Their position is where they stand -- see Anchoring.
+		Anchoring.foot(sprite)
 	star_label.visible = follower.is_exceptional
 	position = follower.position
+
+## Click-selection radius, derived from the drawn size. See WorkerToken.
+func hit_radius() -> float:
+	return SPRITE_TARGET_SIZE * Anchoring.HIT_RADIUS_FRACTION
 
 func _process(_delta: float) -> void:
 	if follower == null or _away:

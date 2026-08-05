@@ -49,6 +49,9 @@ func setup(data: Dictionary, world_position: Vector2, size_px: float) -> void:
 	if data.has("modulate"):
 		_sprite.modulate = Color(String(data["modulate"]))
 	add_child(_sprite)
+	# A house stands on the ground at its position, like everything else. At
+	# village sizes a centred sprite buries the lower half of the building.
+	Anchoring.foot(_sprite)
 	# Under the units (workers are z 0, the villain 5, the wolf 6) but over
 	# terrain: a patrol walking past a house should pass in front of it.
 	z_index = -1

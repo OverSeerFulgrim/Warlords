@@ -50,6 +50,28 @@ const SPRITE_DEER := "res://art/creature_deer.png"
 
 var nodes: Array = []  # Array[ResourceNode]
 
+## On-screen width per node type, in world pixels, against a 64px tile. These
+## were 38/46/58/34/26/30 -- every one of them under a tile, which is what made
+## playtest read the map as miniature (a pine tree was 0.59 of the ground it
+## grew out of). They are now expressed as fractions of `CELL_SIZE`:
+##
+##   tree    76 = 1.2 tiles   a tree should be taller than its own footprint
+##   grove   66 = 1.03
+##   stone   88 = 1.4         the one node the whole workforce shares
+##   grave   50 = 0.78
+##   carcass 40 = 0.63        deliberately the smallest -- it is a scrap
+##   deer    54 = 0.84        reads as an animal you could carry, because you do
+##
+## They live here rather than at the call sites so the whole scale of the map is
+## one block you can read and retune. `ResourceNode.hit_radius()` derives from
+## whichever value it is handed, so click targets grow with the art.
+const NODE_SIZE_TREE: float = 76.0
+const NODE_SIZE_GROVE: float = 66.0
+const NODE_SIZE_STONE: float = 88.0
+const NODE_SIZE_GRAVE: float = 50.0
+const NODE_SIZE_CARCASS: float = 40.0
+const NODE_SIZE_DEER: float = 54.0
+
 var _deer_roam_rect: Rect2
 var _grid_w: float = 0.0
 var _grid_h: float = 0.0
@@ -97,17 +119,17 @@ func _build_forest(center: Vector2, cell: float) -> void:
 	for i in range(FOREST_TREE_COUNT):
 		var pos := center + Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
 		var tree := ResourceNode.make_tree(pos)
-		_add(tree, SPRITE_TREE, SPRITE_STUMP, 38.0)
+		_add(tree, SPRITE_TREE, SPRITE_STUMP, NODE_SIZE_TREE)
 	for i in range(FOREST_CARCASS_COUNT):
 		var pos := center + Vector2(randf_range(-spread, spread), randf_range(-spread, spread))
 		var carcass := ResourceNode.make_carcass(pos)
-		_add(carcass, SPRITE_CARCASS, "", 26.0)
+		_add(carcass, SPRITE_CARCASS, "", NODE_SIZE_CARCASS)
 
 func _build_stone_deposit(pos: Vector2) -> void:
-	_add(ResourceNode.make_stone_deposit(pos), SPRITE_STONE, "", 58.0)
+	_add(ResourceNode.make_stone_deposit(pos), SPRITE_STONE, "", NODE_SIZE_STONE)
 
 func _build_berry_grove(pos: Vector2) -> void:
-	_add(ResourceNode.make_berry_grove(pos), SPRITE_BERRY, SPRITE_BERRY_PICKED, 46.0)
+	_add(ResourceNode.make_berry_grove(pos), SPRITE_BERRY, SPRITE_BERRY_PICKED, NODE_SIZE_GROVE)
 
 ## "One by the road, one at the forest's far edge" -- the road-side grave sits
 ## north of the settlement (the approach side), the other past the forest to
@@ -117,7 +139,7 @@ func _build_graves(cell: float) -> void:
 	var road_grave := Vector2(_grid_w * 0.25, -cell * 2.2)
 	var forest_grave := Vector2(_grid_w + cell * 5.4, _grid_h * 0.35 - cell * 2.0)
 	for pos in [road_grave, forest_grave]:
-		_add(ResourceNode.make_grave(pos), SPRITE_GRAVE, SPRITE_GRAVE_SPENT, 34.0)
+		_add(ResourceNode.make_grave(pos), SPRITE_GRAVE, SPRITE_GRAVE_SPENT, NODE_SIZE_GRAVE)
 
 func _spawn_deer() -> void:
 	var pos := Vector2(
@@ -126,7 +148,7 @@ func _spawn_deer() -> void:
 	)
 	var deer := ResourceNode.make_deer(pos, _deer_roam_rect)
 	deer.world = world
-	_add(deer, SPRITE_DEER, "", 30.0)
+	_add(deer, SPRITE_DEER, "", NODE_SIZE_DEER)
 
 func _add(node: ResourceNode, alive_sprite: String, depleted_sprite: String, size: float) -> void:
 	add_child(node)
