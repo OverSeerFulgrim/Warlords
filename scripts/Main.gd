@@ -112,9 +112,13 @@ var _rally_placement_mode: bool = false
 ## three separate panels this file used to carry (keep_menu_panel,
 ## barracks_panel, necromancer_panel), each with its own toggle and populate
 ## function. The Keep's and Barracks' *menus* survive as action builders below
-## (_build_keep_actions / _build_barracks_actions); what's gone is three
+## (InspectorActions.keep_actions / barracks_actions); what's gone is three
 ## different ideas of what a header looks like.
 var inspector: InspectionPanel
+
+## The action buttons that panel shows for the Keep, Barracks, Necromancer and
+## rally point. See scripts/ui/InspectorActions.gd.
+var inspector_actions: InspectorActions
 
 ## Seconds between the HUD's slow poll -- refreshing whatever the inspector is
 ## showing, and re-checking whether an open recruit offer has become
@@ -550,6 +554,11 @@ func _build_inspection_panel(hud_root: Control) -> void:
 	inspector.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	inspector.position = Vector2(INSPECTOR_X, 96)
 	hud_root.add_child(inspector)
+
+	inspector_actions = InspectorActions.new()
+	inspector_actions.name = "InspectorActions"
+	add_child(inspector_actions)
+	inspector_actions.setup(undead_command, inspector, villain_controller)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -1057,7 +1066,7 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	# is a pure view and therefore always a frame stale. Same correctness
 	# TokenLayer.closest_token_hit() was fixed for.
 	if villain and world_pos.distance_to(villain.position) <= necromancer_token.hit_radius():
-		_inspect(necromancer_token, _build_necromancer_actions)
+		_inspect(necromancer_token, inspector_actions.necromancer_actions)
 		return true
 
 	var hit_follower: Follower = token_layer.follower_at(world_pos)
@@ -1087,7 +1096,7 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	if undead_command and undead_command.is_active():
 		var rp: RallyPoint = undead_command.rally_point
 		if world_pos.distance_to(rp.position) <= rp.hit_radius():
-			_inspect(rp, _build_rally_actions)
+			_inspect(rp, inspector_actions.rally_actions)
 			return true
 
 	# --- 1c. Patrols and world sites -----------------------------------------
@@ -1123,22 +1132,12 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	var cell: Vector2i = settlement.cell_from_world(world_pos)
 	var building: Building = settlement.cells.get(cell)
 	if building:
-		_inspect(building, _actions_for_building(building))
+		_inspect(building, inspector_actions.actions_for_building(building))
 		return true
 
 	# --- 4. Ground -----------------------------------------------------------
 	_close_inspector()
 	return true
-
-## Which action-button builder (if any) a building contributes. The Keep and
-## the Barracks are the only two with menus; everything else is pure
-## information, which is why this is a two-line check rather than a registry.
-func _actions_for_building(building: Building) -> Callable:
-	if building.is_main_building:
-		return _build_keep_actions
-	if building.category == "housing_intake":
-		return _build_barracks_actions
-	return Callable()
 
 ## Opens the inspector on `source` and mirrors its header into the bottom-bar
 ## info strip, so the two never disagree about what's selected.
@@ -1169,109 +1168,17 @@ func _close_inspector() -> void:
 func _menu_open_y() -> float:
 	return hud_top_bar.top_height() + 12.0
 
-# ---------------- Inspection panel action builders ----------------
+# ---------------- Inspector action handlers ----------------
 #
-# These are the *only* things about a clickable that don't come from its own
-# get_inspect_data(): buttons, which call handlers that live on this node. Each
-# is handed the panel's action VBox to fill. See InspectionPanel's header for
-# why the split is drawn here.
-
-## The old Keep menu, now the Throne's action block.
-func _build_keep_actions(box: VBoxContainer) -> void:
-	_add_button(box, "Recruit Worker (5 Bones)", _recruit_worker)
-
-	# Not a real feature yet -- a visible placeholder so clicking the Keep
-	# already shows where building upgrades will eventually live, per the
-	# "possibly get upgrades down the road" design note, rather than that
-	# needing a whole new menu discovered from scratch later.
-	var upgrades_label := Label.new()
-	upgrades_label.text = "Upgrades -- coming soon"
-	upgrades_label.modulate = Color(1, 1, 1, 0.5)
-	box.add_child(upgrades_label)
-
-	box.add_child(HSeparator.new())
-	var surrender := Button.new()
-	surrender.text = "Surrender"
-	surrender.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
-	surrender.tooltip_text = "Abandon this run and start over."
-	surrender.pressed.connect(_surrender_and_restart)
-	box.add_child(surrender)
+# The buttons themselves are built by scripts/ui/InspectorActions.gd. What
+# stays here is what a press implies that only this node can do: reloading the
+# run, arbitrating the rally placement mode against the build and demolish
+# modes, and paying for a house (which writes to the history log).
 
 func _surrender_and_restart() -> void:
 	_close_inspector()
 	GameState.reset()
 	get_tree().reload_current_scene()
-
-## His spellbook. Command Undead is the first real entry -- everything else is
-## still the "visible promise" treatment (a real disabled Button, so the shape
-## of the future feature is legible).
-func _build_necromancer_actions(box: VBoxContainer) -> void:
-	var cast := Button.new()
-	cast.text = "Command Undead" if not undead_command.is_active() else "Command Undead — move rally point"
-	cast.tooltip_text = "Plant a rally point. Every skeleton marches to it and stops gathering."
-	cast.pressed.connect(_enter_rally_placement_mode)
-	box.add_child(cast)
-
-	if undead_command.is_active():
-		var dismiss := Button.new()
-		dismiss.text = "Dismiss the rally point"
-		dismiss.tooltip_text = "Release the dead back to the gathering priorities."
-		dismiss.pressed.connect(func():
-			undead_command.dismiss()
-			inspector.refresh()
-		)
-		box.add_child(dismiss)
-
-	var more := Button.new()
-	more.text = "Further spells — coming soon"
-	more.disabled = true
-	box.add_child(more)
-
-	box.add_child(HSeparator.new())
-	# The camera escape hatch, given a button as well as a key. The key (F) is
-	# the fast path; this is the discoverable one, and it's how you find out the
-	# key exists.
-	var follow := Button.new()
-	follow.text = "Stop following (F)" if villain_controller.following else "Follow him (F)"
-	follow.tooltip_text = "Keep the camera centred on the Necromancer. Any right-drag or arrow-key pan drops out of it."
-	follow.pressed.connect(func():
-		villain_controller.toggle_follow()
-		hud_top_bar.refresh_follow_state()
-		inspector.refresh()
-	)
-	box.add_child(follow)
-
-## Order buttons for the rally point itself. Lives here rather than on
-## RallyPoint for the usual reason -- these call into UndeadCommand, and the
-## inspectable object is deliberately data-only. See InspectionPanel's header.
-func _build_rally_actions(box: VBoxContainer) -> void:
-	var current: int = undead_command.rally_point.order if undead_command.is_active() else -1
-	for order in [RallyPoint.Order.DEFEND, RallyPoint.Order.PATROL, RallyPoint.Order.ATTACK]:
-		var o: int = order  # explicit re-bind for the closure
-		var b := Button.new()
-		b.text = RallyPoint.order_name(o)
-		b.tooltip_text = RallyPoint.ORDER_BLURB.get(o, "")
-		b.disabled = o == current
-		b.pressed.connect(func():
-			undead_command.set_order(o)
-			inspector.refresh()
-		)
-		box.add_child(b)
-
-	box.add_child(HSeparator.new())
-	var move := Button.new()
-	move.text = "Move the rally point"
-	move.pressed.connect(_enter_rally_placement_mode)
-	box.add_child(move)
-
-	var dismiss := Button.new()
-	dismiss.text = "Dismiss — back to work"
-	dismiss.add_theme_color_override("font_color", Color(0.95, 0.75, 0.5))
-	dismiss.pressed.connect(func():
-		undead_command.dismiss()
-		_close_inspector()
-	)
-	box.add_child(dismiss)
 
 func _enter_rally_placement_mode() -> void:
 	if _pending_building_id != "":
@@ -1293,89 +1200,7 @@ func _place_rally_point(world_pos: Vector2) -> void:
 	var order: int = undead_command.rally_point.order if undead_command.is_active() else RallyPoint.Order.DEFEND
 	undead_command.cast(world_pos, order)
 	_cancel_rally_placement()
-	_inspect(undead_command.rally_point, _build_rally_actions)
-
-## The old Barracks panel, now the Barracks' action block. Lists who is living
-## there with the labor skills that decide what they're actually good for --
-## the player needs those side by side to answer "is this dwarf worth a house?".
-## The occupancy count itself is a details row now (Building.get_inspect_data),
-## not repeated here.
-func _build_barracks_actions(box: VBoxContainer) -> void:
-	if GameState.followers.is_empty():
-		var empty := Label.new()
-		empty.text = "No residents yet. Recruits will arrive."
-		empty.add_theme_font_size_override("font_size", 11)
-		empty.modulate = Color(1, 1, 1, 0.6)
-		box.add_child(empty)
-
-	# Two sections: people still occupying a slot, and people who've moved out.
-	# The settled list stays visible because morale keeps mattering after
-	# they're housed -- a housed recruit still eats and can still desert.
-	_add_roster_section(box, "In the Barracks", false, true)
-	_add_roster_section(box, "Settled in town", true, false)
-
-	# FOUNDATION_SPEC section 9: "Upgrade button: present, hard-locked --
-	# greyed 'Locked' state, no tooltip cost. Unlock is a roadmap milestone,
-	# not a hidden requirement." So this is a real, visible, disabled Button
-	# with no handler attached -- not a Label dressed up as one, because the
-	# promise being made is specifically "there will be a button here".
-	box.add_child(HSeparator.new())
-	var upgrade := Button.new()
-	upgrade.text = "Upgrade — Locked"
-	upgrade.disabled = true
-	box.add_child(upgrade)
-
-## One roster block. `housed` selects which half of the roster to list;
-## `with_fund_button` adds the fund-a-house action, which only makes sense for
-## people who haven't got one yet.
-func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with_fund_button: bool) -> void:
-	var members: Array = GameState.followers.filter(func(f): return f.is_housed == housed)
-	if members.is_empty():
-		return
-	var head := Label.new()
-	head.text = heading
-	head.add_theme_font_size_override("font_size", 11)
-	head.modulate = Color(1, 1, 1, 0.55)
-	box.add_child(head)
-
-	for f in members:
-		# Stacked rather than one wide row: the inspection panel is ~330px, and
-		# the old single-line layout assumed a panel that sized itself to
-		# whatever it held. The full stat block survives -- it just wraps.
-		var entry := VBoxContainer.new()
-		entry.add_theme_constant_override("separation", 1)
-
-		var info := Label.new()
-		info.add_theme_font_size_override("font_size", 11)
-		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		info.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
-		info.text = "%s — %s (%s)  M%d G%d I%d L%d  W%d M%d F%d  morale %d/10  [%s]" % [
-			f.label(), f.species, f.category,
-			f.might, f.guile, f.influence, f.loyalty,
-			f.woodcutting, f.mining, f.foraging,
-			f.morale, f.status_label(),
-		]
-		# Morale colour beats the exceptional gold when someone is in trouble --
-		# a starving star recruit is news, and the star is still in their name.
-		if f.morale <= MoraleSystem.DEPARTURE_MORALE:
-			info.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
-		elif f.morale <= MoraleSystem.MISCHIEF_MORALE:
-			info.add_theme_color_override("font_color", Color(0.95, 0.70, 0.40))
-		elif f.is_exceptional:
-			info.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-		entry.add_child(info)
-
-		if with_fund_button:
-			var target: Follower = f  # explicit re-bind for the closure
-			var fund := Button.new()
-			var cost := SettlementGrid.HOUSE_COST
-			fund.text = "Fund house (%d wood, %d stone)" % [cost["wood"], cost["stone"]]
-			fund.tooltip_text = "They pick the spot themselves, by race. Frees a Barracks slot."
-			fund.disabled = not GameState.can_afford_cost(cost)
-			fund.pressed.connect(func(): _fund_house(target))
-			entry.add_child(fund)
-
-		box.add_child(entry)
+	_inspect(undead_command.rally_point, inspector_actions.rally_actions)
 
 ## Pays for a recruit's house. Where it lands is the recruit's call, not the
 ## player's -- see HousePlanner.
@@ -1507,7 +1332,20 @@ func _connect_signals() -> void:
 	# tab's button reports the press and Main.gd does the work -- the same
 	# handler the Keep menu's identical button uses.
 	economy_tab.recruit_worker_pressed.connect(_recruit_worker)
-	hud_top_bar.badge_pressed.connect(func(): _inspect(necromancer_token, _build_necromancer_actions))
+	# The inspector's buttons report; this node decides. Rally placement in
+	# particular has to cancel any build or demolish mode first, which is why it
+	# can't live in the module -- see _enter_rally_placement_mode().
+	inspector_actions.recruit_worker_pressed.connect(_recruit_worker)
+	inspector_actions.surrender_requested.connect(_surrender_and_restart)
+	inspector_actions.rally_placement_requested.connect(_enter_rally_placement_mode)
+	inspector_actions.fund_house_requested.connect(_fund_house)
+	inspector_actions.close_requested.connect(_close_inspector)
+	inspector_actions.follow_toggle_requested.connect(func():
+		villain_controller.toggle_follow()
+		hud_top_bar.refresh_follow_state()
+		inspector.refresh()
+	)
+	hud_top_bar.badge_pressed.connect(func(): _inspect(necromancer_token, inspector_actions.necromancer_actions))
 	hud_top_bar.debug_speed_changed.connect(func(scale: float):
 		_log("Debug: game speed set to %dx." % int(scale), "events")
 	)
