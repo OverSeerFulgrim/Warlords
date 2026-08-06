@@ -54,16 +54,9 @@ var current_event: Dictionary = {}
 var event_panel: PanelContainer
 
 # ---------------- Top resource bar ----------------
-var top_panel: PanelContainer  # kept so menus below can size themselves off its actual height
-var lbl_resources_left: Label
-var lbl_resources_right: Label
-var lbl_dark_essence: Label    # sits right of the Dark Essence icon
-var time_scale_btn: Button
-var necro_badge: Button
-## Camera-follow readout, under the badge. See _refresh_follow_state_label().
-var follow_state_label: Label
-## Where am I / how deep am I / which way is home. See _refresh_orientation().
-var orientation_label: Label
+## Resource strip, day/clock, debug speed button, necromancer badge, and the
+## follow-state / orientation readouts. See scripts/ui/HudTopBar.gd.
+var hud_top_bar: HudTopBar
 var minimap: Minimap
 var minimap_hint: Label
 
@@ -171,16 +164,6 @@ const SPECIES_SPRITES := {
 	"Goblin": "res://assets/placeholder/modular/character_022.png",
 }
 
-## The player's own portrait -- commissioned, used for both the HUD badge and
-## the on-map avatar (NecromancerToken has its own copy of this path).
-const NECROMANCER_SPRITE := "res://assets/official/characters/Necromancer_Portrait.png"
-
-## Icon for Dark Essence in the top resource bar. Currently the *only* resource
-## with an icon: the other four (Wood/Stone/Bones/Food) have no commissioned
-## art yet, so the bar is deliberately one icon plus four text labels rather
-## than a half-finished icon set. Revisit when the rest arrive.
-const ICON_DARK_ESSENCE := "res://assets/official/icons/Icon_Dark_Essence.png"
-
 ## Last-resort portrait if a follower has neither a races.json sprite nor a
 ## SPECIES_SPRITES entry. Reaching this means a data gap, not a normal path.
 const FALLBACK_SPECIES_SPRITE := "res://assets/placeholder/modular/character_001.png"
@@ -241,7 +224,7 @@ func _throne_world_centre() -> Vector2:
 ## panels where possible: the bottom bar is a known constant, the top strip is
 ## whatever it laid out to.
 func _sync_camera_insets() -> void:
-	camera.ui_top_inset = top_panel.size.y if top_panel else 0.0
+	camera.ui_top_inset = hud_top_bar.top_height() if hud_top_bar else 0.0
 	camera.ui_bottom_inset = float(BOTTOM_BAR_HEIGHT)
 
 func _frame_camera_on_throne() -> void:
@@ -249,7 +232,7 @@ func _frame_camera_on_throne() -> void:
 	camera.center_on(_throne_world_centre())
 
 ## Control sizes aren't final on the frame they're created, so the first
-## framing uses a top_panel height of 0 and is a few pixels out. Re-running it
+## framing uses a top-bar height of 0 and is a few pixels out. Re-running it
 ## after two frames -- once layout has settled -- gets it exact. Deliberately
 ## not awaited by _ready(): this runs to its first await, lets _ready finish,
 ## then resumes.
@@ -286,7 +269,7 @@ func _process(delta: float) -> void:
 	# crossed a cell boundary, so this is a Vector2i compare in the common case.
 	if fog and villain:
 		fog.update_for(villain.position)
-	_refresh_orientation()
+	hud_top_bar.refresh_orientation()
 	_refresh_priority_status()
 	_poll_timer += delta
 	if _poll_timer >= INSPECTOR_REFRESH_INTERVAL:
@@ -296,47 +279,7 @@ func _process(delta: float) -> void:
 		_refresh_open_offer()
 		# Follow drops silently on a right-drag, so it's polled on the same slow
 		# tick as everything else that changes without announcing itself.
-		_refresh_follow_state_label()
-
-## Compass directions for the way-home readout. Eight of them: four is not
-## enough to steer by on a 144-cell map, sixteen is more precision than a text
-## line can carry.
-const COMPASS := ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
-
-## "Cell 42, 60  ·  Band 2 — Contested Wilderness  ·  Lair 24 cells W"
-##
-## Three questions the player has on the world map and cannot answer from the
-## viewport: where am I, how deep am I, and which way is home. The band half is
-## the only consumer of WORLD_MAP_PLAN §6's data today -- R2's encounter and
-## loot tables are the ones it exists for.
-func _refresh_orientation() -> void:
-	if orientation_label == null or world_map == null or villain == null:
-		return
-	var cell: Vector2i = world_map.cell_at(villain.position)
-	var band: Dictionary = world_map.band_at(villain.position)
-	var lair: Vector2 = world_map.cell_centre_px(
-		world_map.lair_origin + Vector2i(SettlementGrid.GRID_WIDTH / 2, SettlementGrid.GRID_HEIGHT / 2))
-	var to_lair: Vector2 = lair - villain.position
-	var cells_home: int = roundi(to_lair.length() / float(WorldMap.CELL_SIZE))
-	var text := "Cell %d, %d   ·   Band %d — %s" % [cell.x, cell.y, band["band"], band["name"]]
-	if cells_home <= 1:
-		text += "   ·   At the lair"
-	else:
-		var octant: int = wrapi(roundi(to_lair.angle() / (TAU / 8.0)), 0, 8)
-		text += "   ·   Lair %d cells %s" % [cells_home, COMPASS[octant]]
-	if travel_log and travel_log.elapsed() >= 0.0:
-		text += "   ·   Away %s" % TravelLog._fmt(travel_log.elapsed())
-	orientation_label.text = text
-	if minimap:
-		minimap.queue_redraw()
-
-## Follow on: bright. Follow off: dim, and it names the key that brings it back.
-func _refresh_follow_state_label() -> void:
-	if follow_state_label == null or villain_controller == null:
-		return
-	follow_state_label.text = villain_controller.follow_status_text()
-	follow_state_label.modulate = (Color(0.75, 0.90, 0.75)
-		if villain_controller.following else Color(1, 1, 1, 0.45))
+		hud_top_bar.refresh_follow_state()
 
 # ---------------- Systems ----------------
 
@@ -664,15 +607,19 @@ func _build_ui() -> void:
 	# impossible to answer. The floating panels are built last now so they sit
 	# above the bar, and _show_event_panel() also keeps the event panel inside
 	# the visible band so it never covers the bar in the first place.
-	_build_top_bar(hud_root)
-	_build_necro_badge(hud_root)
+	hud_top_bar = HudTopBar.new()
+	hud_top_bar.name = "HudTopBar"
+	add_child(hud_top_bar)
+	hud_top_bar.build(hud_root, _panel_style(), settlement, day_night, world_map,
+		villain, villain_controller, travel_log)
 	_build_alert_stack(hud_root)
 	_build_placement_hint(hud_root)
 	_build_bottom_shell(hud_root)
+	hud_top_bar.set_minimap(minimap)   # born in the bottom shell, above
 	_build_inspection_panel(hud_root)
 	_build_event_panel(hud_root)
 
-	_update_stats_label()
+	hud_top_bar.refresh_stats()
 	_populate_build_row()
 	_build_priority_rows()
 	_select_folder_tab("town")
@@ -686,109 +633,6 @@ func _panel_style() -> StyleBoxFlat:
 	style.content_margin_top = 8
 	style.content_margin_bottom = 8
 	return style
-
-## Thin single-row resource strip along the very top: Dark Essence/Wood/
-## Stone/Bones on the left, Threat/Power/Throne hp on the right, matching the
-## design-mockup pass. No per-resource icons yet (the art pack has icons for
-## some resources but not all -- see Necromancer_Reference.md -- so text-only
-## for now to avoid a mismatched partial icon set; a follow-up art pass can
-## add them once the layout itself is confirmed live in-editor).
-func _build_top_bar(hud_root: Control) -> void:
-	top_panel = PanelContainer.new()
-	top_panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	top_panel.add_theme_stylebox_override("panel", _panel_style())
-	hud_root.add_child(top_panel)
-
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	top_panel.add_child(row)
-
-	lbl_resources_left = Label.new()
-	lbl_resources_left.add_theme_font_size_override("font_size", 14)
-	row.add_child(lbl_resources_left)
-
-	# Dark Essence gets an icon; the other four are still text. The source art
-	# is 1024px square, so it's scaled into a fixed 20x20 box by the
-	# TextureRect rather than by a Sprite2D scale factor -- Controls size
-	# themselves, and EXPAND_IGNORE_SIZE is what stops the raw 1024px asking
-	# for a 1024px-tall top bar.
-	var essence_icon := TextureRect.new()
-	if ResourceLoader.exists(ICON_DARK_ESSENCE):
-		essence_icon.texture = load(ICON_DARK_ESSENCE)
-	else:
-		push_warning("Main: Dark Essence icon not found at %s" % ICON_DARK_ESSENCE)
-	essence_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	essence_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	essence_icon.custom_minimum_size = Vector2(20, 20)
-	essence_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	essence_icon.tooltip_text = "Dark Essence"
-	row.add_child(essence_icon)
-
-	lbl_dark_essence = Label.new()
-	lbl_dark_essence.add_theme_font_size_override("font_size", 14)
-	row.add_child(lbl_dark_essence)
-
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
-
-	lbl_resources_right = Label.new()
-	lbl_resources_right.add_theme_font_size_override("font_size", 14)
-	row.add_child(lbl_resources_right)
-
-	# Debug speed control, far right of the top bar. Deliberately labelled as
-	# debug -- it's a development affordance for watching a 50-minute cycle or
-	# a gathering trip without waiting, not a player-facing game-speed feature.
-	# See DayNightCycle.cycle_time_scale() for how the scaling actually reaches
-	# every system.
-	time_scale_btn = Button.new()
-	time_scale_btn.tooltip_text = "Debug: cycle game speed (1x / 10x / 60x)"
-	time_scale_btn.pressed.connect(_on_time_scale_pressed)
-	row.add_child(time_scale_btn)
-
-## Clickable player portrait, top-left under the resource bar. It and the on-map
-## token are two doors to one room: both open his entry in the shared inspection
-## panel, which now reads real state (hp, Might, carry, escort) off the
-## `Necromancer` data object rather than the placeholder rows it used to carry.
-func _build_necro_badge(hud_root: Control) -> void:
-	necro_badge = Button.new()
-	necro_badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	necro_badge.position = Vector2(10, 40)
-	necro_badge.custom_minimum_size = Vector2(40, 40)
-	necro_badge.tooltip_text = "The Necromancer"
-	if ResourceLoader.exists(NECROMANCER_SPRITE):
-		var icon := TextureRect.new()
-		icon.texture = load(NECROMANCER_SPRITE)
-		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		necro_badge.add_child(icon)
-	# The HUD badge and the on-map avatar open the same panel -- two doors to
-	# one room, same as the Keep menu having a top-bar and a click-the-building
-	# entry point.
-	necro_badge.pressed.connect(func(): _inspect(necromancer_token, _build_necromancer_actions))
-	hud_root.add_child(necro_badge)
-
-	# Follow state, small, immediately under the badge -- the one bit of camera
-	# mode the player has to be able to read at a glance, since a right-drag
-	# silently drops out of it.
-	follow_state_label = Label.new()
-	follow_state_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	follow_state_label.position = Vector2(54, 50)
-	follow_state_label.add_theme_font_size_override("font_size", 10)
-	hud_root.add_child(follow_state_label)
-	_refresh_follow_state_label()
-
-	# Orientation, always visible. The minimap answers this too, but it lives in
-	# the command bar, which collapses -- and 9216px of world is exactly the
-	# situation where the player must never be one keystroke away from lost.
-	orientation_label = Label.new()
-	orientation_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	orientation_label.position = Vector2(54, 64)
-	orientation_label.add_theme_font_size_override("font_size", 10)
-	orientation_label.modulate = Color(1, 1, 1, 0.72)
-	hud_root.add_child(orientation_label)
 
 ## Rolling stack of up to MAX_ALERTS recent notable events, top-right,
 ## opposite the necromancer badge. Each pin's full message is its
@@ -1643,7 +1487,7 @@ func _closest_token_hit(tokens: Dictionary, world_pos: Vector2):
 ## height, with a small margin -- used to position the inspection panel each
 ## time it opens, rather than a hardcoded number.
 func _menu_open_y() -> float:
-	return top_panel.size.y + 12.0
+	return hud_top_bar.top_height() + 12.0
 
 # ---------------- Inspection panel action builders ----------------
 #
@@ -1712,7 +1556,7 @@ func _build_necromancer_actions(box: VBoxContainer) -> void:
 	follow.tooltip_text = "Keep the camera centred on the Necromancer. Any right-drag or arrow-key pan drops out of it."
 	follow.pressed.connect(func():
 		villain_controller.toggle_follow()
-		_refresh_follow_state_label()
+		hud_top_bar.refresh_follow_state()
 		inspector.refresh()
 	)
 	box.add_child(follow)
@@ -1972,10 +1816,13 @@ func _dispatch_random_mission() -> void:
 # ---------------- Signals / log ----------------
 
 func _connect_signals() -> void:
-	GameState.resources_changed.connect(func(): _update_stats_label())
-	GameState.reputation_changed.connect(func(_a): _update_stats_label())
-	GameState.threat_changed.connect(func(_a, _b): _update_stats_label())
-	GameState.power_changed.connect(func(_a): _update_stats_label())
+	# The HUD strip connects its own read-only refreshes (see HudTopBar.gd). What
+	# stays here is what it can't decide for itself: opening the inspection panel
+	# is the inspect path's business, and the history log is Main's.
+	hud_top_bar.badge_pressed.connect(func(): _inspect(necromancer_token, _build_necromancer_actions))
+	hud_top_bar.debug_speed_changed.connect(func(scale: float):
+		_log("Debug: game speed set to %dx." % int(scale), "events")
+	)
 	GameState.game_won.connect(func():
 		_log("[color=gold]*** VICTORY: your settlement has become a true power. ***[/color]", "events")
 		_alert("Victory! Your settlement has become a true power.", "good")
@@ -2001,14 +1848,12 @@ func _connect_signals() -> void:
 	)
 	EventBus.dawn_started.connect(func(day: int):
 		_log("[color=lightblue]Dawn of day %d -- berries regrow, game wanders in.[/color]" % day, "events")
-		_update_stats_label()  # the top bar carries the Day/Night readout
+		hud_top_bar.refresh_stats()  # the top bar carries the Day/Night readout
 	)
 	EventBus.dusk_started.connect(func(day: int):
 		_log("[color=#8899cc]Dusk falls on day %d.[/color]" % day, "events")
-		_update_stats_label()
+		hud_top_bar.refresh_stats()
 	)
-	# Fires on Dawn/Daylight/Dusk/Night word changes only, not per frame.
-	EventBus.day_phase_changed.connect(func(_label: String): _update_stats_label())
 
 	# ---- Meals / morale (MoraleSystem) ----
 	EventBus.meal_served.connect(func(phase: String, fed: int, shorted: int):
@@ -2145,16 +1990,15 @@ func _connect_signals() -> void:
 	EventBus.crusade_survived.connect(func(): _log("[color=gold]Crusade survived![/color]", "events"))
 	EventBus.event_triggered.connect(_on_event_triggered)
 	EventBus.build_failed.connect(func(reason): _log("[color=orange]%s[/color]" % reason, "alerts"))
-	EventBus.building_placed.connect(func(_b, _c): _update_stats_label(); _populate_build_row())
+	EventBus.building_placed.connect(func(_b, _c): hud_top_bar.refresh_stats(); _populate_build_row())
 	EventBus.building_removed.connect(func(b, _c):
-		_update_stats_label()
+		hud_top_bar.refresh_stats()
 		_populate_build_row()
 		# Demolishing what you're looking at. queue_free() is deferred, so the
 		# panel's own is_instance_valid() guard wouldn't notice until next frame.
 		if inspector.current_source() == b:
 			_close_inspector()
 	)
-	EventBus.main_building_damaged.connect(func(_b): _update_stats_label())
 
 func _on_bounty_completed(b: Bounty, f: Follower, success: bool) -> void:
 	if success:
@@ -2234,7 +2078,7 @@ func _position_event_panel() -> void:
 
 func _place_event_panel_using(panel_size: Vector2) -> void:
 	var view: Vector2 = get_viewport_rect().size
-	var band_top: float = (top_panel.size.y if top_panel else 0.0) + 8.0
+	var band_top: float = hud_top_bar.top_height() + 8.0
 	var band_bottom: float = view.y - float(BOTTOM_BAR_HEIGHT) - 8.0
 	var y: float = band_top + maxf(0.0, (band_bottom - band_top - panel_size.y) * 0.5)
 	event_panel.position = Vector2(
@@ -2267,33 +2111,6 @@ func _resolve_event_choice(idx: int) -> void:
 	_log("Chose: %s" % current_event.get("choices", [])[idx].get("label", "?"), "events")
 	event_panel.visible = false
 	current_event = {}
-
-func _update_stats_label() -> void:
-	var home_hp_str := ""
-	var main_building := settlement.get_main_building() if settlement else null
-	if main_building:
-		home_hp_str = "   Throne: %d/%d hp" % [main_building.hp, main_building.max_hp]
-	# Mundane resources first, in the order the foundation loop cares about
-	# them (Wood/Stone build, Bones raise workers, Food feeds living recruits).
-	# Dark Essence trails behind its icon -- locked at 0 for the whole
-	# foundation build, but visible as the roadmap promise that Stage 4
-	# unlocks it.
-	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d" % [
-		GameState.wood, GameState.stone, GameState.bones, GameState.food
-	]
-	if lbl_dark_essence:
-		lbl_dark_essence.text = str(GameState.dark_essence)
-	var clock_str := "%s   " % day_night.phase_label() if day_night else ""
-	lbl_resources_right.text = "%sThreat: %d (tier %d)   Power: %d%s" % [
-		clock_str, GameState.threat, GameState.threat_tier, GameState.power, home_hp_str
-	]
-	if time_scale_btn and day_night:
-		time_scale_btn.text = day_night.time_scale_label()
-
-func _on_time_scale_pressed() -> void:
-	var scale: float = day_night.cycle_time_scale()
-	_update_stats_label()
-	_log("Debug: game speed set to %dx." % int(scale), "events")
 
 ## Every existing _log() call site now tags a category ("events", "alerts",
 ## "characters", or a space-separated combination) so the History tab's
