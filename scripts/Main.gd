@@ -82,24 +82,19 @@ var collapse_tab_btn: Button       # sits left of the Town tab; toggles bar_pane
 var build_tab_btn: Button
 var bounty_tab_btn: Button
 var economy_tab_btn: Button
-var build_row: HBoxContainer
 var bounty_row: HBoxContainer
 ## Gathering-priority list, workforce summary and the tab's action buttons.
 ## See scripts/ui/EconomyTab.gd.
 var economy_tab: EconomyTab
 
-# ---------------- Build menu / click-to-place ----------------
-var build_hint_label: Label
-var _pending_building_id: String = ""  # "" = not in placement mode
-
-# ---------------- Demolish mode (Town > Build row) ----------------
-# Player-facing removal, distinct from any hidden dev/testing tooling. Reuses
-# the placement-mode click-to-target UX, inverted: toggle the mode, then
-# click an existing building on the map to remove it. No resource refund
-# (confirmed with the user) -- SettlementGrid.remove_building() already
-# refuses the main building; see _try_demolish().
-var demolish_tab_btn: Button
-var _demolish_mode: bool = false
+# ---------------- Build menu / click-to-place / demolish ----------------
+## The buildable row, the Demolish toggle, and the two click-to-target modes
+## they arm. This node keeps the *arbitration* between modes (see
+## _unhandled_input); the module keeps their state and what a click does.
+## Demolition is player-facing removal with no resource refund (confirmed with
+## the user) -- SettlementGrid.remove_building() already refuses the main
+## building. See scripts/ui/BuildMenu.gd.
+var build_menu: BuildMenu
 
 # ---------------- Command Undead (click-to-place a rally point) ----------------
 # A third click-to-target mode, sharing the shape of the other two: arm it,
@@ -451,7 +446,7 @@ func _seed_starting_state() -> void:
 
 ## Places a catalog building directly (no cost check, no player-driven
 ## click-to-place) -- used only for game-start seeding. Player construction
-## goes through the build menu / _try_place_pending() instead.
+## goes through the build menu / BuildMenu.try_place() instead.
 func _place_from_catalog(id: String, cell: Vector2i) -> void:
 	var data: Dictionary = BuildingCatalog.get_building(id)
 	if data.is_empty():
@@ -492,7 +487,7 @@ func _build_ui() -> void:
 	_build_event_panel(hud_root)
 
 	hud_top_bar.refresh_stats()
-	_populate_build_row()
+	build_menu.populate()
 	economy_tab.build_priority_rows()
 	_select_folder_tab("town")
 	_select_category_tab("build")
@@ -518,12 +513,10 @@ func _build_alert_stack(hud_root: Control) -> void:
 	hud_root.add_child(alert_stack)
 
 func _build_placement_hint(hud_root: Control) -> void:
-	build_hint_label = Label.new()
-	build_hint_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	build_hint_label.position = Vector2(10, 88)
-	build_hint_label.add_theme_font_size_override("font_size", 12)
-	build_hint_label.visible = false
-	hud_root.add_child(build_hint_label)
+	build_menu = BuildMenu.new()
+	build_menu.name = "BuildMenu"
+	add_child(build_menu)
+	build_menu.build_hint(hud_root)
 
 ## The panel is TOP_LEFT-anchored and positioned by hand, because PRESET_CENTER
 ## anchors a panel's *top-left corner* to the screen centre -- it grows down and
@@ -734,11 +727,9 @@ func _build_cmd_town(command_area: VBoxContainer) -> void:
 
 	# Build: was a separate popup menu (build_menu_panel) toggled by a
 	# "Build..." button; now an inline row of buildable entries, refreshed by
-	# _populate_build_row() whenever the settlement changes (a new Workshop
+	# BuildMenu.populate() whenever the settlement changes (a new Workshop
 	# can unlock Blacksmith/Barracks appearing here).
-	build_row = HBoxContainer.new()
-	build_row.add_theme_constant_override("separation", 6)
-	cmd_town.add_child(build_row)
+	build_menu.build_row_into(cmd_town, settlement)
 
 	# Bounty tab: the two Post Bounty buttons are hard-locked for the
 	# foundation build (Stage 4 -- see GAME_OUTLINE). The tab itself stays,
@@ -861,7 +852,7 @@ func _restyle_category_tab(btn: Button, active: bool) -> void:
 	btn.add_theme_color_override("font_color", Color(0.85, 0.7, 0.3) if active else Color(0.8, 0.8, 0.8))
 
 func _select_category_tab(tab: String) -> void:
-	build_row.visible = tab == "build"
+	build_menu.set_tab_visible(tab == "build")
 	bounty_row.visible = tab == "bounty"
 	economy_tab.set_tab_visible(tab == "economy")
 	_restyle_category_tab(build_tab_btn, tab == "build")
@@ -886,129 +877,28 @@ func _add_locked_placeholder(parent: Control, text: String) -> void:
 	lbl.modulate = Color(1, 1, 1, 0.5)
 	parent.add_child(lbl)
 
-## Refreshes the Build tab's inline row of buildable entries. Called once at
-## startup and again whenever a building is placed (a new Workshop can unlock
-## Blacksmith/Barracks appearing here, per BuildingCatalog's `requires` gate).
-func _populate_build_row() -> void:
-	if not build_row:
-		return
-	for child in build_row.get_children():
-		child.queue_free()
-	var ids: Array = BuildingCatalog.buildable_ids(settlement)
-	if ids.is_empty():
-		var lbl := Label.new()
-		lbl.text = "(nothing available)"
-		build_row.add_child(lbl)
-	else:
-		for id in ids:
-			var bid: String = id  # explicit re-bind for the closure below, same pattern used elsewhere in this file
-			var data: Dictionary = BuildingCatalog.get_building(bid)
-			var cost_str := _format_cost(data.get("cost", {}))
-			var b := Button.new()
-			b.text = data.get("display_name", bid)
-			b.tooltip_text = cost_str if cost_str != "" else "free"
-			b.pressed.connect(func(): _enter_placement_mode(bid))
-			build_row.add_child(b)
-
-	# Demolish sits at the end of the row, separated from the buildable list,
-	# so it doesn't read as just another thing to build. Toggle button, not a
-	# one-shot action -- pressing it enters demolish mode; the actual removal
-	# happens on the next map click (see _try_demolish()).
-	build_row.add_child(VSeparator.new())
-	demolish_tab_btn = Button.new()
-	demolish_tab_btn.text = "Demolish"
-	demolish_tab_btn.tooltip_text = "Click, then select a building on the map to remove it. No resource refund."
-	demolish_tab_btn.pressed.connect(_toggle_demolish_mode)
-	build_row.add_child(demolish_tab_btn)
-	_restyle_demolish_button()
-
-func _format_cost(cost: Dictionary) -> String:
-	var parts: Array = []
-	for kind in cost.keys():
-		parts.append("%d %s" % [cost[kind], kind])
-	return ", ".join(parts)
-
-func _enter_placement_mode(building_id: String) -> void:
-	if _demolish_mode:
-		_toggle_demolish_mode()  # the three click-to-target modes are mutually exclusive
-	_cancel_rally_placement()
-	# The inspector would sit there describing something you're no longer
-	# looking at, and its Close button would be a click that doesn't place a
-	# building. Placement mode owns the screen.
-	_close_inspector()
-	_pending_building_id = building_id
-	var data: Dictionary = BuildingCatalog.get_building(building_id)
-	build_hint_label.text = "Placing %s -- click an empty tile (Esc to cancel)" % data.get("display_name", building_id)
-	build_hint_label.visible = true
-
-func _cancel_placement() -> void:
-	_pending_building_id = ""
-	build_hint_label.visible = false
-
-## Toggles demolish mode on/off. Cancels any pending placement first (the two
-## click-to-target modes can't both be active), and restyles the Demolish
-## button so it's visually obvious the mode is armed.
-func _toggle_demolish_mode() -> void:
-	if _pending_building_id != "":
-		_cancel_placement()
-	_cancel_rally_placement()
-	_demolish_mode = not _demolish_mode
-	_restyle_demolish_button()
-	if _demolish_mode:
-		_close_inspector()  # same reasoning as _enter_placement_mode
-		build_hint_label.text = "Demolishing -- click a building to remove it (Esc to cancel)"
-		build_hint_label.visible = true
-	else:
-		build_hint_label.visible = false
-
-func _restyle_demolish_button() -> void:
-	if not demolish_tab_btn:
-		return
-	demolish_tab_btn.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45) if _demolish_mode else Color(0.85, 0.6, 0.6))
-
-## Removes whatever's on `cell`, if anything. Mirrors _try_place_pending()'s
-## shape: empty tile clicked -> silently stay in demolish mode (no message
-## needed, same as clicking an occupied tile during placement); building
-## found -> remove it via SettlementGrid.remove_building(), which already
-## refuses the main building (Throne of Bones) -- surfaced here as a log +
-## alert rather than a silent no-op. No resource refund, per explicit user
-## confirmation. Exits demolish mode after a successful removal, same as
-## placement mode exiting after a successful build.
-func _try_demolish(cell: Vector2i) -> void:
-	if not settlement.cells.has(cell):
-		return
-	var building: Building = settlement.cells[cell]
-	if building.is_main_building:
-		_log("[color=orange]The %s can't be demolished.[/color]" % building.display_name, "alerts")
-		_alert("The %s can't be demolished." % building.display_name, "warn")
-		return
-	var demolished_name := building.display_name
-	if settlement.remove_building(cell):
-		_log("Demolished %s at %s." % [demolished_name, cell], "events")
-	_toggle_demolish_mode()
-
 func _unhandled_input(event: InputEvent) -> void:
-	if _pending_building_id != "":
+	if build_menu.is_placing():
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			_cancel_placement()
+			build_menu.cancel_placement()
 			get_viewport().set_input_as_handled()
 			return
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var world_pos: Vector2 = settlement.get_global_mouse_position()
 			var cell: Vector2i = settlement.cell_from_world(world_pos)
-			_try_place_pending(cell)
+			build_menu.try_place(cell)
 			get_viewport().set_input_as_handled()
 		return
 
-	if _demolish_mode:
+	if build_menu.is_demolishing():
 		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			_toggle_demolish_mode()
+			build_menu.toggle_demolish_mode()
 			get_viewport().set_input_as_handled()
 			return
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			var world_pos: Vector2 = settlement.get_global_mouse_position()
 			var cell: Vector2i = settlement.cell_from_world(world_pos)
-			_try_demolish(cell)
+			build_menu.try_demolish(cell)
 			get_viewport().set_input_as_handled()
 		return
 
@@ -1182,18 +1072,17 @@ func _surrender_and_restart() -> void:
 	get_tree().reload_current_scene()
 
 func _enter_rally_placement_mode() -> void:
-	if _pending_building_id != "":
-		_cancel_placement()
-	if _demolish_mode:
-		_toggle_demolish_mode()
+	if build_menu.is_placing():
+		build_menu.cancel_placement()
+	if build_menu.is_demolishing():
+		build_menu.toggle_demolish_mode()
 	_close_inspector()
 	_rally_placement_mode = true
-	build_hint_label.text = "Command Undead — click where the dead should rally (Esc to cancel)"
-	build_hint_label.visible = true
+	build_menu.show_hint("Command Undead — click where the dead should rally (Esc to cancel)")
 
 func _cancel_rally_placement() -> void:
 	_rally_placement_mode = false
-	build_hint_label.visible = false
+	build_menu.hide_hint()
 
 func _place_rally_point(world_pos: Vector2) -> void:
 	# Keeps whatever order is already in force when the point is moved, so
@@ -1217,33 +1106,6 @@ func _fund_house(follower) -> void:
 	# Immediate rather than waiting on the poll: the player just pressed the
 	# button that emptied this slot, so the panel has to agree straight away.
 	inspector.refresh()
-
-func _try_place_pending(cell: Vector2i) -> void:
-	var id := _pending_building_id
-	var data: Dictionary = BuildingCatalog.get_building(id)
-	if data.is_empty():
-		_cancel_placement()
-		return
-	if not settlement.can_place(cell):
-		EventBus.build_failed.emit("That tile is occupied.")
-		return
-	var cost: Dictionary = data.get("cost", {})
-	if not GameState.can_afford_cost(cost):
-		EventBus.build_failed.emit("Not enough resources for %s (%s)." % [data.get("display_name", id), _format_cost(cost)])
-		return
-	# can_afford_cost() already guards this, so spend_resource() "should"
-	# always succeed here -- but checking its return value anyway means a
-	# future change that lets the two drift out of sync (e.g. a resource
-	# type that can go negative, or a cost check that doesn't match spend
-	# semantics 1:1) fails loud instead of silently handing out a free building.
-	for kind in cost.keys():
-		if not GameState.spend_resource(kind, cost[kind]):
-			push_warning("Main: spend_resource('%s', %d) failed after can_afford_cost passed -- aborting placement." % [kind, cost[kind]])
-			return
-	var building := Building.make_from_data(id, data)
-	settlement.place_building(building, cell)
-	_log("Placed %s at %s." % [building.display_name, cell], "events")
-	_cancel_placement()
 
 # ---------------- Worker recruitment ----------------
 
@@ -1346,6 +1208,22 @@ func _connect_signals() -> void:
 		hud_top_bar.refresh_follow_state()
 		inspector.refresh()
 	)
+	# The build menu owns its two modes' state; this node stays the only thing
+	# that can see all three click-to-target modes at once, so dropping rally
+	# placement when a build or demolish is armed is arbitrated here.
+	build_menu.rally_cancel_requested.connect(_cancel_rally_placement)
+	build_menu.inspector_close_requested.connect(_close_inspector)
+	build_menu.placed.connect(func(display_name: String, cell: Vector2i):
+		_log("Placed %s at %s." % [display_name, cell], "events")
+	)
+	build_menu.demolished.connect(func(display_name: String, cell: Vector2i):
+		_log("Demolished %s at %s." % [display_name, cell], "events")
+	)
+	build_menu.demolish_refused.connect(func(display_name: String):
+		_log("[color=orange]The %s can't be demolished.[/color]" % display_name, "alerts")
+		_alert("The %s can't be demolished." % display_name, "warn")
+	)
+
 	# The event panel draws itself; the history log is still written here.
 	event_panel_ui.event_opened.connect(func(event: Dictionary):
 		_log("[b]EVENT: %s[/b] -- %s" % [event.get("title", "?"), event.get("description", "")], "events")
@@ -1499,7 +1377,6 @@ func _connect_signals() -> void:
 			% predator, "events")
 	)
 
-	EventBus.recruit_housed.connect(func(_f, _cell): _populate_build_row())
 	EventBus.follower_recruited.connect(func(f):
 		var star := " [color=gold](exceptional)[/color]" if f.is_exceptional else ""
 		_log("[color=lightgreen]%s the %s (%s %s) has joined you.[/color]%s" % [
@@ -1524,10 +1401,10 @@ func _connect_signals() -> void:
 	)
 	EventBus.crusade_survived.connect(func(): _log("[color=gold]Crusade survived![/color]", "events"))
 	EventBus.build_failed.connect(func(reason): _log("[color=orange]%s[/color]" % reason, "alerts"))
-	EventBus.building_placed.connect(func(_b, _c): hud_top_bar.refresh_stats(); _populate_build_row())
+	EventBus.building_placed.connect(func(_b, _c): hud_top_bar.refresh_stats(); build_menu.populate())
 	EventBus.building_removed.connect(func(b, _c):
 		hud_top_bar.refresh_stats()
-		_populate_build_row()
+		build_menu.populate()
 		# Demolishing what you're looking at. queue_free() is deferred, so the
 		# panel's own is_instance_valid() guard wouldn't notice until next frame.
 		if inspector.current_source() == b:
