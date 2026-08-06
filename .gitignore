@@ -54,6 +54,15 @@ _imgtool.gd
 # for them in git. The generator is the source of truth, not the output.
 experiments/
 
+# Debug character renders written by the sprite/animation inspection passes.
+# These were committed once by accident and deleted in CLEANUP_PLAN.md Pass 2 --
+# ignored so the next debug run can't put them back.
+_debug_char*/
+
+# Staging area for things on their way out during the restructure passes.
+# Nothing in here is ever meant to reach a commit.
+_to_delete/
+
 # ---- OS junk ----
 Thumbs.db
 ehthumbs.db
