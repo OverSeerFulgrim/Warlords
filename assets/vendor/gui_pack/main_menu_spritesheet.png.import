@@ -7,7 +7,7 @@ valid=false
 
 [deps]
 
-source_file="res://GUI/main_menu_spritesheet.png"
+source_file="res://assets/vendor/gui_pack/main_menu_spritesheet.png"
 
 [params]
 
