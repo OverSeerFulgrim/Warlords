@@ -63,7 +63,15 @@ Warlords/
 Two rules make this tree stay clean:
 
 1. **`official/` vs `placeholder/` is the load-bearing split.** "What's real art?" becomes a folder question, not an archaeology question. When commissioned art replaces a placeholder, the placeholder file is deleted in the same commit.
-2. **`vendor/` is cold storage.** Nothing in it is wired at runtime except what's been promoted into `placeholder/kenney/`. AI sessions never need to explore it.
+2. **`vendor/` is cold storage.** Nothing in it is wired at runtime except what's been promoted into `placeholder/` (`kenney/` or `modular/`). AI sessions never need to explore it.
+
+**As built (Pass 3 deltas from the tree above):** `placeholder/modular/` holds the six
+modular-character PNGs that `Main.SPECIES_SPRITES` / `FALLBACK_SPECIES_SPRITE` actually use, so
+rule 2 holds; `placeholder/generated/` also took the project-authored placeholder art that Pass 2
+kept; `vendor/roguelike_pack/` holds the Kenney roguelike sheets; `vendor/tilemaps_pack/Expansion/`
+is the explicit home for the concept tiles (their `.import` files are now generated and committed);
+and the pack's `Documentation/` (license, readme, preview) lives with it in
+`vendor/modular_characters/`.
 
 ---
 
@@ -72,7 +80,11 @@ Two rules make this tree stay clean:
 - `git checkout -b restructure` — do the whole plan on a branch; merge to `main` when the harness passes at the end.
 - `git tag pre-restructure` on main, so "the old layout" is one checkout away forever.
 
-## Pass 1 — The docs diet (1 session; biggest win, zero risk)
+## Pass 1 — The docs diet (1 session; biggest win, zero risk) — ✅ DONE
+
+**Result:** CLAUDE.md cut from 137KB to ~7KB (orientation only); ~20 root docs moved into
+`docs/{design,art,prompts}/` and the old narrative carved into dated `docs/history/` files.
+
 
 No code changes, no paths to break — markdown only.
 
@@ -85,7 +97,11 @@ No code changes, no paths to break — markdown only.
 
 **Done when:** CLAUDE.md ≤ 8KB; every old section findable in `docs/history/`; game still boots (nothing should have changed, but run the headless boot anyway — it's free).
 
-## Pass 2 — Asset triage: delete the dead weight (1 session)
+## Pass 2 — Asset triage: delete the dead weight (1 session) — ✅ DONE
+
+**Result:** duplicate full-res art, committed debug renders, `ORCLORD/`, `demo/`, `_debug_char*/`
+and the unreferenced Kenney building variants deleted; grep confirmed empty and boot stayed clean.
+
 
 Deletions only — no moves, so no path updates. Verify with grep before each deletion group: `grep -rn "res://<folder>" scripts/ data/ scenes/` must come back empty.
 
@@ -103,7 +119,12 @@ Deletions only — no moves, so no path updates. Verify with grep before each de
 
 **Done when:** grep for each deleted path returns nothing; headless boot is clean; `git status` shows only deletions.
 
-## Pass 3 — Asset reorganization: the moves (1–2 sessions)
+## Pass 3 — Asset reorganization: the moves (1–2 sessions) — ✅ DONE
+
+**Result:** all art moved into `assets/official|placeholder|vendor/` (1244 renames, 57 reference
+paths rewritten); old-prefix grep empty, import clean, headless boot clean, 40/40 sprite-scale
+assertions pass, settlement screenshot unchanged. `vendor/` is genuinely cold storage — the six
+runtime-wired modular-character PNGs were promoted to `assets/placeholder/modular/`.
 
 This is the only risky pass, so it's driven by a checklist, not by memory:
 
