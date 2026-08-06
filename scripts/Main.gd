@@ -50,8 +50,8 @@ var world_sites: WorldSites
 var travel_log: TravelLog
 var camera: GameCamera
 
-var current_event: Dictionary = {}
-var event_panel: PanelContainer
+## The floating event / recruit-offer panel. See scripts/ui/EventPanelUI.gd.
+var event_panel_ui: EventPanelUI
 
 # ---------------- Top resource bar ----------------
 ## Resource strip, day/clock, debug speed button, necromancer badge, and the
@@ -242,7 +242,7 @@ func _process(delta: float) -> void:
 		_poll_timer = 0.0
 		if inspector and inspector.is_open():
 			inspector.refresh()
-		_refresh_open_offer()
+		event_panel_ui.refresh_open_offer()
 		# Follow drops silently on a right-drag, so it's polled on the same slow
 		# tick as everything else that changes without announcing itself.
 		hud_top_bar.refresh_follow_state()
@@ -477,7 +477,7 @@ func _build_ui() -> void:
 	# bar, were tinted by its translucent background (they looked *disabled*),
 	# and had their clicks swallowed by it. A recruit offer became genuinely
 	# impossible to answer. The floating panels are built last now so they sit
-	# above the bar, and _show_event_panel() also keeps the event panel inside
+	# above the bar, and EventPanelUI also keeps the event panel inside
 	# the visible band so it never covers the bar in the first place.
 	hud_top_bar = HudTopBar.new()
 	hud_top_bar.name = "HudTopBar"
@@ -525,17 +525,24 @@ func _build_placement_hint(hud_root: Control) -> void:
 	build_hint_label.visible = false
 	hud_root.add_child(build_hint_label)
 
-## Deliberately TOP_LEFT-anchored and positioned by hand in _show_event_panel().
-## PRESET_CENTER anchors the panel's *top-left corner* to the screen centre --
-## it grows down and right from there rather than being centred on it -- which
-## is how its choice buttons ended up under the bottom command bar.
+## The panel is TOP_LEFT-anchored and positioned by hand, because PRESET_CENTER
+## anchors a panel's *top-left corner* to the screen centre -- it grows down and
+## right from there rather than being centred on it -- which is how its choice
+## buttons ended up under the bottom command bar.
+##
+## Where it may sit is this node's business, not the module's: the usable band
+## depends on the top strip's laid-out height and the command bar's, so the band
+## is handed in as a provider.
 func _build_event_panel(hud_root: Control) -> void:
-	event_panel = PanelContainer.new()
-	event_panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	event_panel.custom_minimum_size = Vector2(280, 0)
-	event_panel.add_theme_stylebox_override("panel", _panel_style())
-	event_panel.visible = false
-	hud_root.add_child(event_panel)
+	event_panel_ui = EventPanelUI.new()
+	event_panel_ui.name = "EventPanelUI"
+	add_child(event_panel_ui)
+	event_panel_ui.build(hud_root, _panel_style(), event_system, func() -> Vector2:
+		return Vector2(
+			hud_top_bar.top_height() + 8.0,
+			get_viewport_rect().size.y - float(BOTTOM_BAR_HEIGHT) - 8.0
+		)
+	)
 
 ## One panel, reused by every inspectable thing. It positions itself under the
 ## top resource bar each time it opens (see _inspect), same as the three panels
@@ -867,12 +874,6 @@ func _select_info(unit_name: String, klass: String, status: String) -> void:
 	info_name_label.text = unit_name
 	info_class_label.text = klass
 	info_status_label.text = status
-
-func _add_button(parent: Control, text: String, callback: Callable) -> void:
-	var b := Button.new()
-	b.text = text
-	b.pressed.connect(callback)
-	parent.add_child(b)
 
 ## A greyed, non-interactive stand-in for a roadmap-locked action -- a Label,
 ## not a disabled Button, so there's nothing to click and no implied "this
@@ -1345,6 +1346,18 @@ func _connect_signals() -> void:
 		hud_top_bar.refresh_follow_state()
 		inspector.refresh()
 	)
+	# The event panel draws itself; the history log is still written here.
+	event_panel_ui.event_opened.connect(func(event: Dictionary):
+		_log("[b]EVENT: %s[/b] -- %s" % [event.get("title", "?"), event.get("description", "")], "events")
+	)
+	event_panel_ui.choice_resolved.connect(func(label: String):
+		_log("Chose: %s" % label, "events")
+	)
+	event_panel_ui.offer_room_found.connect(func(title: String):
+		_log("[color=lightgreen]A Barracks slot opened — %s can be taken in after all.[/color]"
+			% title, "events characters")
+		_alert("Room found for %s." % title, "good")
+	)
 	hud_top_bar.badge_pressed.connect(func(): _inspect(necromancer_token, inspector_actions.necromancer_actions))
 	hud_top_bar.debug_speed_changed.connect(func(scale: float):
 		_log("Debug: game speed set to %dx." % int(scale), "events")
@@ -1510,7 +1523,6 @@ func _connect_signals() -> void:
 		_alert("CRUSADE INCOMING.", "warn")
 	)
 	EventBus.crusade_survived.connect(func(): _log("[color=gold]Crusade survived![/color]", "events"))
-	EventBus.event_triggered.connect(_on_event_triggered)
 	EventBus.build_failed.connect(func(reason): _log("[color=orange]%s[/color]" % reason, "alerts"))
 	EventBus.building_placed.connect(func(_b, _c): hud_top_bar.refresh_stats(); _populate_build_row())
 	EventBus.building_removed.connect(func(b, _c):
@@ -1531,101 +1543,6 @@ func _on_bounty_completed(b: Bounty, f: Follower, success: bool) -> void:
 
 func _on_mission_resolved(m: Dictionary, _party: Array, outcome: String) -> void:
 	_log("Mission '%s' resolved: %s." % [m.get("title", "?"), outcome], "characters events")
-
-func _on_event_triggered(event: Dictionary) -> void:
-	current_event = event
-	_log("[b]EVENT: %s[/b] -- %s" % [event.get("title", "?"), event.get("description", "")], "events")
-	_render_event_panel(event)
-	_show_event_panel()
-
-## Split out from _on_event_triggered so an *open* offer can be re-rendered in
-## place when the world changes underneath it -- see _refresh_open_offer().
-func _render_event_panel(event: Dictionary) -> void:
-	for child in event_panel.get_children():
-		event_panel.remove_child(child)
-		child.queue_free()
-	var box := VBoxContainer.new()
-	event_panel.add_child(box)
-
-	# Title and description used to be log-only, which was survivable when
-	# events were flat flavor text. A recruit offer's stat block is the whole
-	# decision, so it has to be on the panel you're deciding from.
-	var title := Label.new()
-	title.text = event.get("title", "?")
-	title.add_theme_font_size_override("font_size", 15)
-	box.add_child(title)
-
-	var desc := Label.new()
-	desc.text = event.get("description", "")
-	desc.add_theme_font_size_override("font_size", 11)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.custom_minimum_size = Vector2(260, 0)
-	box.add_child(desc)
-	box.add_child(HSeparator.new())
-
-	var choices: Array = event.get("choices", [])
-	for i in range(choices.size()):
-		var choice: Dictionary = choices[i]
-		var idx := i
-		_add_button(box, choice.get("label", "..."), func(): _resolve_event_choice(idx))
-
-func _show_event_panel() -> void:
-	event_panel.visible = true
-	# Above every other HUD element, including the bottom bar. Belt and braces
-	# with the build order in _build_ui -- a decision the player has to answer
-	# must never be the thing that ends up underneath something else.
-	event_panel.move_to_front()
-	_position_event_panel()
-
-## Centres the panel in the **visible map band** -- between the top resource
-## strip and the bottom command bar -- rather than in the raw window, and
-## clamps it so a tall offer never spills over the command bar. Same band logic
-## the camera framing uses.
-##
-## Runs over two frames because a Control's size isn't final until layout has
-## settled; the first pass uses the minimum size so it is never wildly wrong in
-## the meantime.
-func _position_event_panel() -> void:
-	_place_event_panel_using(event_panel.get_combined_minimum_size())
-	await get_tree().process_frame
-	if event_panel.visible:
-		_place_event_panel_using(event_panel.size)
-
-func _place_event_panel_using(panel_size: Vector2) -> void:
-	var view: Vector2 = get_viewport_rect().size
-	var band_top: float = hud_top_bar.top_height() + 8.0
-	var band_bottom: float = view.y - float(BOTTOM_BAR_HEIGHT) - 8.0
-	var y: float = band_top + maxf(0.0, (band_bottom - band_top - panel_size.y) * 0.5)
-	event_panel.position = Vector2(
-		maxf(8.0, (view.x - panel_size.x) * 0.5),
-		clampf(y, band_top, maxf(band_top, band_bottom - panel_size.y))
-	)
-
-## A recruit offer is a live decision, not a snapshot. It used to freeze its
-## choices at the moment it fired, so a player who funded a house to make room
-## while the offer was on screen was still stuck with the two turn-away
-## variants -- the freed slot did nothing until the offer expired. Polled
-## rather than wired to a signal because occupancy moves for several unrelated
-## reasons (housing, desertion, another recruit, demolishing the Barracks) and
-## EventSystem.refresh_recruit_offer() is a no-op unless the answer actually
-## changed.
-func _refresh_open_offer() -> void:
-	if not event_panel.visible or current_event.is_empty():
-		return
-	if not event_system.refresh_recruit_offer(current_event):
-		return
-	_render_event_panel(current_event)
-	_position_event_panel()
-	if current_event.get("has_room", false):
-		_log("[color=lightgreen]A Barracks slot opened — %s can be taken in after all.[/color]"
-			% current_event.get("title", "the recruit"), "events characters")
-		_alert("Room found for %s." % current_event.get("title", "a recruit"), "good")
-
-func _resolve_event_choice(idx: int) -> void:
-	event_system.resolve_event(current_event, idx)
-	_log("Chose: %s" % current_event.get("choices", [])[idx].get("label", "?"), "events")
-	event_panel.visible = false
-	current_event = {}
 
 ## Every existing _log() call site now tags a category ("events", "alerts",
 ## "characters", or a space-separated combination) so the History tab's
