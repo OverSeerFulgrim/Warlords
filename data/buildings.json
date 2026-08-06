@@ -19,7 +19,7 @@
     "tick_interval": 5.0,
     "power_value": 3,
     "requires": "",
-    "sprite_path": "res://Official Sprites/Bone_Pile.png"
+    "sprite_path": "res://assets/official/buildings/Bone_Pile.png"
   },
 
   "dark_altar": {
@@ -33,7 +33,7 @@
     "power_value": 6,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Official Sprites/Dark_Altar.png"
+    "sprite_path": "res://assets/official/buildings/Dark_Altar.png"
   },
 
   "bone_crypt": {
@@ -45,7 +45,7 @@
     "power_value": 4,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Buildings/House/house_1_blue.png"
+    "sprite_path": "res://assets/placeholder/kenney/House/house_1_blue.png"
   },
 
   "charnel_pit": {
@@ -57,7 +57,7 @@
     "power_value": 4,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Buildings/House/house_2_green.png"
+    "sprite_path": "res://assets/placeholder/kenney/House/house_2_green.png"
   },
 
   "haunted_spire": {
@@ -69,7 +69,7 @@
     "power_value": 4,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://art/building_crypt_kenney.png"
+    "sprite_path": "res://assets/placeholder/kenney/building_crypt_kenney.png"
   },
 
   "war_camp": {
@@ -81,7 +81,7 @@
     "power_value": 4,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Buildings/House/house_1_red.png"
+    "sprite_path": "res://assets/placeholder/kenney/House/house_1_red.png"
   },
 
   "burrow_warren": {
@@ -93,7 +93,7 @@
     "power_value": 4,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Buildings/House/house_2_yellow.png"
+    "sprite_path": "res://assets/placeholder/kenney/House/house_2_yellow.png"
   },
 
   "workshop": {
@@ -103,7 +103,7 @@
     "cost": { "wood": 10, "stone": 10 },
     "power_value": 5,
     "requires": "",
-    "sprite_path": "res://Buildings/Tower/tower_yellow.png"
+    "sprite_path": "res://assets/placeholder/kenney/Tower/tower_yellow.png"
   },
 
   "blacksmith": {
@@ -113,7 +113,7 @@
     "cost": { "wood": 6, "stone": 12 },
     "power_value": 7,
     "requires": "workshop",
-    "sprite_path": "res://Buildings/Tower/tower_red.png"
+    "sprite_path": "res://assets/placeholder/kenney/Tower/tower_red.png"
   },
 
   "barracks": {
@@ -125,7 +125,7 @@
     "unique": true,
     "power_value": 4,
     "requires": "",
-    "sprite_path": "res://Official Sprites/Barracks.png"
+    "sprite_path": "res://assets/official/buildings/Barracks.png"
   },
 
   "recruit_house": {
@@ -136,7 +136,7 @@
     "power_value": 2,
     "requires": "",
     "locked": true,
-    "sprite_path": "res://Buildings/House/house_1_blue.png"
+    "sprite_path": "res://assets/placeholder/kenney/House/house_1_blue.png"
   },
 
   "throne_of_bones": {
@@ -147,6 +147,6 @@
     "power_value": 10,
     "max_hp": 40,
     "requires": "",
-    "sprite_path": "res://Official Sprites/Throne_of_Bones.png"
+    "sprite_path": "res://assets/official/buildings/Throne_of_Bones.png"
   }
 }

@@ -32,21 +32,21 @@ const CROWDING_PENALTY_PX: float = 200.0
 ## tree becomes an actual stump and a robbed grave an actual dug-up pit rather
 ## than the same image dimmed. Still placeholder: the stone deposit (Kenney
 ## materials icon) and the deer (generated, see tools/make_deer_sprite.gd).
-const SPRITE_TREE := "res://Official Sprites/Pine_Tree.png"
-const SPRITE_STUMP := "res://Official Sprites/Pine_Stump.png"
-const SPRITE_BERRY := "res://Official Sprites/Berry_Grove_Full.png"
+const SPRITE_TREE := "res://assets/official/nodes/Pine_Tree.png"
+const SPRITE_STUMP := "res://assets/official/nodes/Pine_Stump.png"
+const SPRITE_BERRY := "res://assets/official/nodes/Berry_Grove_Full.png"
 ## The grove regrows at dawn, so "picked" is a *state*, not an end state --
 ## ResourceNode swaps back to the full sprite the moment remaining goes above 0.
-const SPRITE_BERRY_PICKED := "res://Official Sprites/Berry_Grove_Picked.png"
-const SPRITE_GRAVE := "res://Official Sprites/Grave_Undisturbed.png"
-const SPRITE_GRAVE_SPENT := "res://Official Sprites/Grave_Dug_Up.png"
+const SPRITE_BERRY_PICKED := "res://assets/official/nodes/Berry_Grove_Picked.png"
+const SPRITE_GRAVE := "res://assets/official/nodes/Grave_Undisturbed.png"
+const SPRITE_GRAVE_SPENT := "res://assets/official/nodes/Grave_Dug_Up.png"
 
 ## Still placeholders -- no official art for these two yet. The stone deposit
 ## reuses the Kenney materials icon and wild game reuses the generated deer
 ## (see tools/make_deer_sprite.gd), same as before this pass.
-const SPRITE_STONE := "res://Icons/Materials/materials_005_stone.png"
-const SPRITE_CARCASS := "res://art/icon_bones_kenney.png"
-const SPRITE_DEER := "res://art/creature_deer.png"
+const SPRITE_STONE := "res://assets/placeholder/kenney/materials_005_stone.png"
+const SPRITE_CARCASS := "res://assets/placeholder/kenney/icon_bones_kenney.png"
+const SPRITE_DEER := "res://assets/placeholder/generated/creature_deer.png"
 
 var nodes: Array = []  # Array[ResourceNode]
 

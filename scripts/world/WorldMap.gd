@@ -45,7 +45,7 @@ const DATA_PATH := "res://data/world_map.json"
 ## gutters, so each tile is 305px -- measured off the file, not assumed.
 ## Everything else in the project scales commissioned art down at use; this does
 ## the same, once, into a 4x64 atlas (see _build_tileset).
-const TILESET_PATH := "res://Official Sprites/Terrain_Tileset_Snow.png"
+const TILESET_PATH := "res://assets/official/terrain/Terrain_Tileset_Snow.png"
 const SHEET_COLUMNS: int = 4
 const SHEET_ROWS: int = 4
 const SHEET_MARGIN: int = 5

@@ -36,7 +36,7 @@ func _ready() -> void:
 
 func _check_helper() -> void:
 	print("\n-- Anchoring.content_rect --")
-	var tex: Texture2D = load("res://Official Sprites/Pine_Tree.png")
+	var tex: Texture2D = load("res://assets/official/nodes/Pine_Tree.png")
 	var box: Rect2 = Anchoring.content_rect(tex)
 	_eq("pine content box is the alpha bbox, not the canvas", box.size, Vector2(78, 120))
 	_ok("pine canvas is 128x128, so the box is genuinely smaller",
@@ -49,7 +49,7 @@ func _check_helper() -> void:
 	_close("scale_for_content_height(96) puts 96px of tree on screen", box.size.y * s, 96.0)
 	_close("...and lets width follow the art", box.size.x * s, 78.0 * 96.0 / 120.0)
 
-	var stone: Texture2D = load("res://Icons/Materials/materials_005_stone.png")
+	var stone: Texture2D = load("res://assets/placeholder/kenney/materials_005_stone.png")
 	var stone_box: Rect2 = Anchoring.content_rect(stone)
 	var ss: float = Anchoring.scale_for_content_height(stone, 45.0)
 	_close("the wide flat stone outcrop comes out ~82px across from a 45px height",
@@ -128,7 +128,7 @@ func _check_tokens() -> void:
 
 	var worker := WorkerToken.new()
 	add_child(worker)
-	worker.sprite.texture = load("res://Official Sprites/Skeleton_Worker.png")
+	worker.sprite.texture = load("res://assets/official/characters/Skeleton_Worker.png")
 	worker.sprite.scale = Vector2.ONE * Anchoring.scale_for_content_height(
 		worker.sprite.texture, WorkerToken.SPRITE_TARGET_SIZE)
 	Anchoring.foot(worker.sprite)
@@ -159,11 +159,11 @@ func _check_tokens() -> void:
 func _check_buildings() -> void:
 	print("\n-- Buildings (content height, one cap for all art) --")
 	var paths := {
-		"Throne of Bones": "res://Official Sprites/Throne_of_Bones.png",
-		"Barracks": "res://Official Sprites/Barracks.png",
-		"Bone Pile": "res://Official Sprites/Bone_Pile.png",
-		"recruit house": "res://Buildings/House/house_1_blue.png",
-		"Workshop tower": "res://Buildings/Tower/tower_red.png",
+		"Throne of Bones": "res://assets/official/buildings/Throne_of_Bones.png",
+		"Barracks": "res://assets/official/buildings/Barracks.png",
+		"Bone Pile": "res://assets/official/buildings/Bone_Pile.png",
+		"recruit house": "res://assets/placeholder/kenney/House/house_1_blue.png",
+		"Workshop tower": "res://assets/placeholder/kenney/Tower/tower_red.png",
 	}
 	for name: String in paths.keys():
 		var b := Building.new()

@@ -13,9 +13,9 @@ extends RefCounted
 ## generated deer sprite -- the goal is only that a goblin warren and a
 ## minotaur's lodge don't read as the same building.
 
-const HOUSE_SQUAT := "res://Buildings/House/house_1_%s.png"
-const HOUSE_TALL := "res://Buildings/House/house_2_%s.png"
-const DEFAULT_SPRITE := "res://Buildings/House/house_1_blue.png"
+const HOUSE_SQUAT := "res://assets/placeholder/kenney/House/house_1_%s.png"
+const HOUSE_TALL := "res://assets/placeholder/kenney/House/house_2_%s.png"
+const DEFAULT_SPRITE := "res://assets/placeholder/kenney/House/house_1_blue.png"
 
 ## race_id -> [shape_template, colour, tint]
 const STYLES := {

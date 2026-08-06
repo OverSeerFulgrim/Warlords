@@ -60,7 +60,7 @@ const LEAVE_SPEED_PX: float = 96.0   # it does not linger once it's done
 ## flavor line the first time one gets close.
 const NECROMANCER_FEAR_RADIUS_PX: float = 150.0
 
-const SPRITE_PATH := "res://art/creature_wolf.png"
+const SPRITE_PATH := "res://assets/placeholder/generated/creature_wolf.png"
 ## **Content WIDTH in world px: 74 = 1.15 of a 64px tile.**
 ##
 ## The one sizing exception in the project, and it is SPRITE_SPEC.md §3's, not

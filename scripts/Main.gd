@@ -164,26 +164,26 @@ var worker_keep_zone: Rect2         # deposit point + idle-wander area around th
 ##
 ## Don't add to this. Add a `sprite` to races.json instead.
 const SPECIES_SPRITES := {
-	"Skeleton": "res://Characters/Character - 128 x 128/character_024.png",
-	"Ghoul": "res://Characters/Character - 128 x 128/character_036.png",
-	"Wraith": "res://Characters/Character - 128 x 128/character_020.png",
-	"Orc": "res://Characters/Character - 128 x 128/character_023.png",
-	"Goblin": "res://Characters/Character - 128 x 128/character_022.png",
+	"Skeleton": "res://assets/vendor/modular_characters/Character - 128 x 128/character_024.png",
+	"Ghoul": "res://assets/vendor/modular_characters/Character - 128 x 128/character_036.png",
+	"Wraith": "res://assets/vendor/modular_characters/Character - 128 x 128/character_020.png",
+	"Orc": "res://assets/vendor/modular_characters/Character - 128 x 128/character_023.png",
+	"Goblin": "res://assets/vendor/modular_characters/Character - 128 x 128/character_022.png",
 }
 
 ## The player's own portrait -- commissioned, used for both the HUD badge and
 ## the on-map avatar (NecromancerToken has its own copy of this path).
-const NECROMANCER_SPRITE := "res://Official Sprites/Necromancer_Portrait.png"
+const NECROMANCER_SPRITE := "res://assets/official/characters/Necromancer_Portrait.png"
 
 ## Icon for Dark Essence in the top resource bar. Currently the *only* resource
 ## with an icon: the other four (Wood/Stone/Bones/Food) have no commissioned
 ## art yet, so the bar is deliberately one icon plus four text labels rather
 ## than a half-finished icon set. Revisit when the rest arrive.
-const ICON_DARK_ESSENCE := "res://Official Sprites/Icon_Dark_Essence.png"
+const ICON_DARK_ESSENCE := "res://assets/official/icons/Icon_Dark_Essence.png"
 
 ## Last-resort portrait if a follower has neither a races.json sprite nor a
 ## SPECIES_SPRITES entry. Reaching this means a data gap, not a normal path.
-const FALLBACK_SPECIES_SPRITE := "res://Characters/Character - 128 x 128/character_001.png"
+const FALLBACK_SPECIES_SPRITE := "res://assets/vendor/modular_characters/Character - 128 x 128/character_001.png"
 
 const INFO_PANEL_WIDTH := 170.0
 ## One pixel per world cell. Was 78 while this was a blank placeholder; at the

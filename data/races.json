@@ -20,7 +20,7 @@
 
   "skeleton_worker": {
     "display_name": "Skeleton Worker",
-    "sprite": "res://Official Sprites/Skeleton_Worker.png",
+    "sprite": "res://assets/official/characters/Skeleton_Worker.png",
     "category": "Labor",
     "alignment": "Undead",
     "rarity": "player-made",
@@ -36,7 +36,7 @@
 
   "orc": {
     "display_name": "Orc",
-    "sprite": "res://Official Sprites/Orc.png",
+    "sprite": "res://assets/official/characters/Orc.png",
     "category": "Warrior",
     "alignment": "Evil",
     "rarity": "Common",
@@ -52,7 +52,7 @@
 
   "hobgoblin": {
     "display_name": "Hobgoblin",
-    "sprite": "res://Official Sprites/Hobgoblin.png",
+    "sprite": "res://assets/official/characters/Hobgoblin.png",
     "category": "Warrior",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -68,7 +68,7 @@
 
   "ogre": {
     "display_name": "Ogre",
-    "sprite": "res://Official Sprites/Ogre.png",
+    "sprite": "res://assets/official/characters/Ogre.png",
     "category": "Warrior",
     "alignment": "Chaotic",
     "rarity": "Uncommon",
@@ -84,7 +84,7 @@
 
   "troll": {
     "display_name": "Troll",
-    "sprite": "res://Official Sprites/Troll.png",
+    "sprite": "res://assets/official/characters/Troll.png",
     "category": "Warrior",
     "alignment": "Chaotic",
     "rarity": "Rare",
@@ -100,7 +100,7 @@
 
   "gray_dwarf": {
     "display_name": "Gray Dwarf",
-    "sprite": "res://Official Sprites/Gray_Dwarf.png",
+    "sprite": "res://assets/official/characters/Gray_Dwarf.png",
     "category": "Economy",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -116,7 +116,7 @@
 
   "kobold": {
     "display_name": "Kobold",
-    "sprite": "res://Official Sprites/Kobold.png",
+    "sprite": "res://assets/official/characters/Kobold.png",
     "category": "Economy",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -132,7 +132,7 @@
 
   "minotaur": {
     "display_name": "Minotaur",
-    "sprite": "res://Official Sprites/Minotaur.png",
+    "sprite": "res://assets/official/characters/Minotaur.png",
     "category": "Economy",
     "alignment": "Neutral",
     "rarity": "Uncommon",
@@ -148,7 +148,7 @@
 
   "mountain_dwarf": {
     "display_name": "Mountain Dwarf",
-    "sprite": "res://Official Sprites/Mountain_Dwarf.png",
+    "sprite": "res://assets/official/characters/Mountain_Dwarf.png",
     "category": "Economy",
     "alignment": "Good",
     "rarity": "Rare",
@@ -164,7 +164,7 @@
 
   "gnome": {
     "display_name": "Gnome",
-    "sprite": "res://Official Sprites/Gnome.png",
+    "sprite": "res://assets/official/characters/Gnome.png",
     "category": "Research",
     "alignment": "Neutral",
     "rarity": "Uncommon",
@@ -180,7 +180,7 @@
 
   "dark_elf": {
     "display_name": "Dark Elf",
-    "sprite": "res://Official Sprites/Dark_Elf.png",
+    "sprite": "res://assets/official/characters/Dark_Elf.png",
     "category": "Research",
     "alignment": "Evil",
     "rarity": "Uncommon",
@@ -196,7 +196,7 @@
 
   "high_elf": {
     "display_name": "High Elf",
-    "sprite": "res://Official Sprites/High_Elf.png",
+    "sprite": "res://assets/official/characters/High_Elf.png",
     "category": "Research",
     "alignment": "Good",
     "rarity": "Rare",
@@ -212,7 +212,7 @@
 
   "goblin": {
     "display_name": "Goblin",
-    "sprite": "res://Official Sprites/Goblin.png",
+    "sprite": "res://assets/official/characters/Goblin.png",
     "category": "Foraging",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -228,7 +228,7 @@
 
   "gnoll": {
     "display_name": "Gnoll",
-    "sprite": "res://Official Sprites/Gnoll.png",
+    "sprite": "res://assets/official/characters/Gnoll.png",
     "category": "Foraging",
     "alignment": "Chaotic",
     "rarity": "Common",
@@ -244,7 +244,7 @@
 
   "halfling": {
     "display_name": "Halfling",
-    "sprite": "res://Official Sprites/Halfling.png",
+    "sprite": "res://assets/official/characters/Halfling.png",
     "category": "Foraging",
     "alignment": "Good",
     "rarity": "Rare",
@@ -260,7 +260,7 @@
 
   "human_outcast": {
     "display_name": "Human Outcast",
-    "sprite": "res://Official Sprites/Human_Outcast.png",
+    "sprite": "res://assets/official/characters/Human_Outcast.png",
     "category": "Versatile",
     "alignment": "Neutral",
     "rarity": "Uncommon",

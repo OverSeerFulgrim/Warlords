@@ -20,7 +20,7 @@ extends SceneTree
 ## Kept in the repo rather than run-and-deleted so the placeholder can be
 ## tweaked (colour, antler shape, size) without re-deriving the whole thing.
 
-const OUT_PATH := "res://art/creature_deer.png"
+const OUT_PATH := "res://assets/placeholder/generated/creature_deer.png"
 const SIZE := 32
 
 # Deer faces left. Colours picked to sit alongside the Kenney palette already

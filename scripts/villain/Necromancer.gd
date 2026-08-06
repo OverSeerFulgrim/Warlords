@@ -42,10 +42,10 @@ extends RefCounted
 const CLASS_ID := "necromancer"
 
 ## Commissioned portrait used by the inspection payload and HUD badge.
-const PORTRAIT := "res://Official Sprites/Necromancer_Portrait.png"
+const PORTRAIT := "res://assets/official/characters/Necromancer_Portrait.png"
 
 ## Full-body art used only by the settlement map token.
-const MAP_SPRITE := "res://Official Sprites/Necromancer_Full_Body.png"
+const MAP_SPRITE := "res://assets/official/characters/Necromancer_Full_Body.png"
 
 # ---------------- Tunables (ROGUELITE_REWORK section 15 lists these as open) --
 

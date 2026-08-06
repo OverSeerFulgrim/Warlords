@@ -26,7 +26,7 @@ extends SceneTree
 ## placeholder stays tweakable. Nothing depends on this file at runtime, only on
 ## its output PNG.
 
-const OUT_PATH := "res://art/creature_wolf.png"
+const OUT_PATH := "res://assets/placeholder/generated/creature_wolf.png"
 const SIZE := 32
 
 # Wolf faces left, matching the deer so the two read consistently when both are
