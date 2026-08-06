@@ -164,11 +164,11 @@ var worker_keep_zone: Rect2         # deposit point + idle-wander area around th
 ##
 ## Don't add to this. Add a `sprite` to races.json instead.
 const SPECIES_SPRITES := {
-	"Skeleton": "res://assets/vendor/modular_characters/Character - 128 x 128/character_024.png",
-	"Ghoul": "res://assets/vendor/modular_characters/Character - 128 x 128/character_036.png",
-	"Wraith": "res://assets/vendor/modular_characters/Character - 128 x 128/character_020.png",
-	"Orc": "res://assets/vendor/modular_characters/Character - 128 x 128/character_023.png",
-	"Goblin": "res://assets/vendor/modular_characters/Character - 128 x 128/character_022.png",
+	"Skeleton": "res://assets/placeholder/modular/character_024.png",
+	"Ghoul": "res://assets/placeholder/modular/character_036.png",
+	"Wraith": "res://assets/placeholder/modular/character_020.png",
+	"Orc": "res://assets/placeholder/modular/character_023.png",
+	"Goblin": "res://assets/placeholder/modular/character_022.png",
 }
 
 ## The player's own portrait -- commissioned, used for both the HUD badge and
@@ -183,7 +183,7 @@ const ICON_DARK_ESSENCE := "res://assets/official/icons/Icon_Dark_Essence.png"
 
 ## Last-resort portrait if a follower has neither a races.json sprite nor a
 ## SPECIES_SPRITES entry. Reaching this means a data gap, not a normal path.
-const FALLBACK_SPECIES_SPRITE := "res://assets/vendor/modular_characters/Character - 128 x 128/character_001.png"
+const FALLBACK_SPECIES_SPRITE := "res://assets/placeholder/modular/character_001.png"
 
 const INFO_PANEL_WIDTH := 170.0
 ## One pixel per world cell. Was 78 while this was a blank placeholder; at the
