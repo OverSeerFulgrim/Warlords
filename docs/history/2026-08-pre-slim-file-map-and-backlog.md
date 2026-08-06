@@ -83,3 +83,4 @@ art/creature_deer.png       Generated, not from a pack -- see tools/make_deer_sp
 - Save/load
 - Remaining villain classes and climates (Phase 2, per design doc)
 - Unique undead-themed building art per housing type (currently reusing the Kenney fantasy House/Tower/Castle packs with color-variant reuse as a placeholder — see `data/buildings.json` `sprite_path` fields)
+- measure_travel (fixed 2026-08-05): lair -> nearby resource is 3s vs the 10-20s design target — retune resource placement or speeds before R2.
