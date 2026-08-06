@@ -84,10 +84,9 @@ var bounty_tab_btn: Button
 var economy_tab_btn: Button
 var build_row: HBoxContainer
 var bounty_row: HBoxContainer
-var economy_row: VBoxContainer
-var workers_row: VBoxContainer     # holds the priority list + workforce summary
-var workforce_label: Label
-var priority_status_labels: Dictionary = {}  # kind String -> Label
+## Gathering-priority list, workforce summary and the tab's action buttons.
+## See scripts/ui/EconomyTab.gd.
+var economy_tab: EconomyTab
 
 # ---------------- Build menu / click-to-place ----------------
 var build_hint_label: Label
@@ -153,12 +152,6 @@ const MINIMAP_SIZE := 144.0
 ## constant is what keeps scrolling from being *needed* at the default one.
 const BOTTOM_BAR_HEIGHT := 250
 
-## Compact metrics for the priority rows. Godot's default Button/SpinBox
-## minimum height is ~31px; four rows of that plus a header and two summary
-## lines is 180px, which does not fit. These bring a row to ~24px.
-const PRIORITY_ROW_HEIGHT := 24.0
-const PRIORITY_FONT_SIZE := 10
-const PRIORITY_ARROW_WIDTH := 22.0
 const MAX_ALERTS := 3            # oldest alert pin is dropped once a 4th arrives
 const MAX_HISTORY_ENTRIES := 200 # oldest history-log row is dropped past this cap
 
@@ -239,7 +232,7 @@ func _process(delta: float) -> void:
 	if fog and villain:
 		fog.update_for(villain.position)
 	hud_top_bar.refresh_orientation()
-	_refresh_priority_status()
+	economy_tab.refresh_status()
 	_poll_timer += delta
 	if _poll_timer >= INSPECTOR_REFRESH_INTERVAL:
 		_poll_timer = 0.0
@@ -496,7 +489,7 @@ func _build_ui() -> void:
 
 	hud_top_bar.refresh_stats()
 	_populate_build_row()
-	_build_priority_rows()
+	economy_tab.build_priority_rows()
 	_select_folder_tab("town")
 	_select_category_tab("build")
 
@@ -742,26 +735,10 @@ func _build_cmd_town(command_area: VBoxContainer) -> void:
 	cmd_town.add_child(bounty_row)
 	_add_locked_placeholder(bounty_row, "Bounty board -- unlocks in Stage 4")
 
-	economy_row = VBoxContainer.new()
-	cmd_town.add_child(economy_row)
-	var economy_actions := HBoxContainer.new()
-	economy_actions.add_theme_constant_override("separation", 6)
-	economy_row.add_child(economy_actions)
-	_add_button(economy_actions, "Recruit Worker (5 Bones)", _recruit_worker)
-	# Forge Equipment, Train Followers and Dispatch Mission are hard-locked
-	# alongside the bounty board -- all three are Stage 4. Their handlers
-	# (_forge_equipment/_train_followers/_dispatch_random_mission) and
-	# MissionSystem are deliberately left intact and unreferenced, so
-	# re-surfacing them at Stage 4 is one _add_button() line each.
-	_add_button(economy_actions, "Lay Low", func(): GameState.lay_low())
-
-	# The global resource priority list -- replaces the per-worker "click to
-	# cycle Idle/Wood/Stone/Bones" buttons that used to sit here. See
-	# _build_priority_rows() for the layout and WorkerSystem's `priorities`
-	# for what the numbers mean.
-	workers_row = VBoxContainer.new()
-	workers_row.add_theme_constant_override("separation", 2)
-	economy_row.add_child(workers_row)
+	economy_tab = EconomyTab.new()
+	economy_tab.name = "EconomyTab"
+	add_child(economy_tab)
+	economy_tab.build(cmd_town, worker_system, resource_field)
 
 ## History tab content: Events/Alerts/Characters filter chips above a
 ## scrollable log. Replaces the old always-visible bottom-left log panel --
@@ -870,7 +847,7 @@ func _restyle_category_tab(btn: Button, active: bool) -> void:
 func _select_category_tab(tab: String) -> void:
 	build_row.visible = tab == "build"
 	bounty_row.visible = tab == "bounty"
-	economy_row.visible = tab == "economy"
+	economy_tab.set_tab_visible(tab == "economy")
 	_restyle_category_tab(build_tab_btn, tab == "build")
 	_restyle_category_tab(bounty_tab_btn, tab == "bounty")
 	_restyle_category_tab(economy_tab_btn, tab == "economy")
@@ -881,143 +858,6 @@ func _select_info(unit_name: String, klass: String, status: String) -> void:
 	info_name_label.text = unit_name
 	info_class_label.text = klass
 	info_status_label.text = status
-
-## The global resource priority list (GAME_OUTLINE Stage 1). One row per
-## resource, ranked top-to-bottom, each with reorder arrows and a threshold
-## spinner:
-##
-##     [^][v]  Wood    stop at [ 30 ]   Working
-##     [^][v]  Stone   stop at [ 20 ]   Satisfied
-##
-## Workers serve the highest row whose stock is under its threshold; at or
-## above it, that row is satisfied and they fall through to the next. This
-## deliberately replaces per-worker assignment -- you set policy, the workforce
-## sorts itself out, which is the "indirect control" design pillar applied to
-## labor. Rebuilt wholesale on EventBus.priorities_changed rather than
-## patched in place; four rows is far too little to bother diffing.
-func _build_priority_rows() -> void:
-	if not workers_row:
-		return
-	for child in workers_row.get_children():
-		child.queue_free()
-	priority_status_labels.clear()
-
-	var header := Label.new()
-	header.text = "Gathering priorities — workers serve the top resource still under its threshold"
-	_compact(header)
-	header.modulate = Color(1, 1, 1, 0.6)
-	workers_row.add_child(header)
-
-	for i in range(worker_system.priorities.size()):
-		var entry: Dictionary = worker_system.priorities[i]
-		var kind: String = entry["kind"]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-
-		var up := Button.new()
-		up.text = "^"
-		up.tooltip_text = "Raise %s priority" % kind
-		up.disabled = i == 0
-		_compact(up)
-		up.custom_minimum_size = Vector2(PRIORITY_ARROW_WIDTH, PRIORITY_ROW_HEIGHT)
-		up.pressed.connect(func(): worker_system.move_priority(kind, -1))
-		row.add_child(up)
-
-		var down := Button.new()
-		down.text = "v"
-		down.tooltip_text = "Lower %s priority" % kind
-		down.disabled = i == worker_system.priorities.size() - 1
-		_compact(down)
-		down.custom_minimum_size = Vector2(PRIORITY_ARROW_WIDTH, PRIORITY_ROW_HEIGHT)
-		down.pressed.connect(func(): worker_system.move_priority(kind, 1))
-		row.add_child(down)
-
-		var name_label := Label.new()
-		name_label.text = "%d. %s" % [i + 1, kind.capitalize()]
-		name_label.custom_minimum_size = Vector2(70, 0)
-		_compact(name_label)
-		row.add_child(name_label)
-
-		var stop_label := Label.new()
-		stop_label.text = "stop at"
-		_compact(stop_label)
-		stop_label.modulate = Color(1, 1, 1, 0.6)
-		row.add_child(stop_label)
-
-		# A real SpinBox rather than the codebase's usual +/- button pair:
-		# thresholds are an arbitrary number the player types, not a small
-		# fixed choice set, which is exactly the case the button-pair
-		# convention doesn't cover.
-		# The SpinBox is what actually set the old 31px row height -- its
-		# default minimum is the tallest thing in the row. Capping it here is
-		# most of the compaction; its internal LineEdit needs the font
-		# override too or it forces the height back up.
-		var spin := SpinBox.new()
-		spin.min_value = 0
-		spin.max_value = 999
-		spin.step = 5
-		spin.value = entry["threshold"]
-		spin.custom_minimum_size = Vector2(66, PRIORITY_ROW_HEIGHT)
-		spin.add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
-		spin.get_line_edit().add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
-		spin.value_changed.connect(func(v: float): worker_system.set_threshold(kind, int(v)))
-		row.add_child(spin)
-
-		var status := Label.new()
-		_compact(status)
-		priority_status_labels[kind] = status
-		row.add_child(status)
-
-		workers_row.add_child(row)
-
-	# Workforce census and map stock share one line. They used to be two
-	# labels, which cost ~16px of a band that had none to spare, and they read
-	# fine together -- "who is working" next to "what is left to work on".
-	workforce_label = Label.new()
-	_compact(workforce_label)
-	workforce_label.modulate = Color(1, 1, 1, 0.75)
-	workers_row.add_child(workforce_label)
-
-	_refresh_priority_status()
-
-## Per-row Working/Satisfied/None-left text plus the workforce and map-stock
-## summaries. Cheap enough to run every frame from _process -- the trip loop
-## changes worker states continuously, so there's no useful signal to hang
-## this on that wouldn't just fire constantly anyway.
-func _refresh_priority_status() -> void:
-	for kind in priority_status_labels.keys():
-		var lbl: Label = priority_status_labels[kind]
-		var status: String = worker_system.priority_status(kind)
-		lbl.text = status
-		match status:
-			"Working":
-				lbl.modulate = Color(0.6, 0.9, 0.6)
-			"Satisfied":
-				lbl.modulate = Color(0.7, 0.7, 0.7)
-			"None left":
-				lbl.modulate = Color(0.95, 0.6, 0.5)
-			_:
-				lbl.modulate = Color(1, 1, 1)
-	if workforce_label:
-		var stock: String = resource_field.stock_summary() if resource_field else ""
-		workforce_label.text = "%s   —   %s" % [worker_system.workforce_summary(), stock]
-
-## Shrinks a Control to the priority list's compact metrics. Godot's default
-## theme gives Buttons and SpinBoxes a ~31px minimum height, which is fine for
-## the main action buttons but far too tall for a four-row list crammed into
-## the bottom band.
-func _compact(c: Control) -> void:
-	c.add_theme_font_size_override("font_size", PRIORITY_FONT_SIZE)
-	if c is Button:
-		# Trim the vertical padding too -- the font override alone doesn't
-		# shrink a Button, its StyleBox content margins set the floor.
-		for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-			var sb := StyleBoxEmpty.new()
-			sb.content_margin_top = 2
-			sb.content_margin_bottom = 2
-			sb.content_margin_left = 4
-			sb.content_margin_right = 4
-			c.add_theme_stylebox_override(state, sb)
 
 func _add_button(parent: Control, text: String, callback: Callable) -> void:
 	var b := Button.new()
@@ -1663,6 +1503,10 @@ func _connect_signals() -> void:
 	# Main's, so bounty/mission token moves are delegated from here rather than
 	# wired inside TokenLayer.
 	token_layer.connect_signals()
+	# Raising a worker costs Bones and writes a history line, so the Economy
+	# tab's button reports the press and Main.gd does the work -- the same
+	# handler the Keep menu's identical button uses.
+	economy_tab.recruit_worker_pressed.connect(_recruit_worker)
 	hud_top_bar.badge_pressed.connect(func(): _inspect(necromancer_token, _build_necromancer_actions))
 	hud_top_bar.debug_speed_changed.connect(func(scale: float):
 		_log("Debug: game speed set to %dx." % int(scale), "events")
@@ -1676,7 +1520,6 @@ func _connect_signals() -> void:
 		_alert("Defeat: %s" % reason, "bad")
 	)
 
-	EventBus.priorities_changed.connect(_build_priority_rows)
 	EventBus.worker_deposited.connect(func(w, kind, amount):
 		# display_name() rather than worker_name -- the labor pool is Workers
 		# *and* recruited Followers now (see Laborer.gd).
