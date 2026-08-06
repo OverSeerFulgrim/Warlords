@@ -41,8 +41,6 @@ enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
 
 [rendering]
 
-renderer/rendering_method="gl_compatibility"
-renderer/rendering_method.mobile="gl_compatibility"
 ; Linear with mipmaps. The enum is "Nearest,Linear,Linear Mipmap,Nearest
 ; Mipmap", so 2 is Linear Mipmap -- Nearest Mipmap is 3, which is not the
 ; usual ordering and is worth reading twice. Chosen because this art is not
@@ -54,4 +52,10 @@ renderer/rendering_method.mobile="gl_compatibility"
 ; "textures/..." and NOT "rendering/textures/...". Written the long way it
 ; silently defines rendering/rendering/textures/... which nothing reads, and
 ; the filter stays at its Linear default with no mipmaps.
+;
+; The Godot editor strips these comments whenever it re-saves this file. If
+; they are gone again, restore them -- the setting survives, the reasoning
+; does not.
 textures/canvas_textures/default_texture_filter=2
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

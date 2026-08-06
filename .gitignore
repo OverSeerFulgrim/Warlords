@@ -48,6 +48,12 @@ _zoom.gd
 _imgtool.gd
 *.bak
 
+# Before/after capture renders, sprite-cutout experiments and their scratch
+# scenes. CLAUDE.md documents this directory as untracked on purpose:
+# regenerate the renders with tools/capture_settlement.gd rather than looking
+# for them in git. The generator is the source of truth, not the output.
+experiments/
+
 # ---- OS junk ----
 Thumbs.db
 ehthumbs.db
