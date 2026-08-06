@@ -45,7 +45,6 @@ const FALLBACK_SPECIES_SPRITE := "res://assets/placeholder/modular/character_001
 var followers_layer: Node2D
 var follower_tokens: Dictionary = {}  # Follower -> FollowerToken
 var followers_idle_zone: Rect2
-var followers_gate_point: Vector2
 
 # ---------------- Worker tokens (see WorkerToken.gd) ----------------
 var workers_layer: Node2D
@@ -70,9 +69,6 @@ func build_layers(settlement: SettlementGrid, grid_w: float, grid_h: float) -> v
 		Vector2(SettlementGrid.CELL_SIZE, grid_h - 2.5 * SettlementGrid.CELL_SIZE),
 		Vector2(grid_w - 2.0 * SettlementGrid.CELL_SIZE, 2.0 * SettlementGrid.CELL_SIZE)
 	)
-	# Just off the west edge of the grid -- where tokens glide to/from when
-	# their follower leaves on a bounty or mission.
-	followers_gate_point = Vector2(-SettlementGrid.CELL_SIZE * 0.6, grid_h * 0.5)
 
 	workers_layer = Node2D.new()
 	workers_layer.name = "WorkersLayer"
@@ -123,7 +119,7 @@ func _spawn_token(follower) -> void:
 	var tex: Texture2D = null
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		tex = load(sprite_path)
-	token.setup(follower, tex, followers_gate_point)
+	token.setup(follower, tex)
 	follower_tokens[follower] = token
 
 func _despawn_token(follower) -> void:
@@ -131,14 +127,6 @@ func _despawn_token(follower) -> void:
 	if token:
 		token.queue_free()
 	follower_tokens.erase(follower)
-
-func send_token_away(follower) -> void:
-	if follower_tokens.has(follower):
-		follower_tokens[follower].send_away()
-
-func return_token_home(follower) -> void:
-	if follower_tokens.has(follower):
-		follower_tokens[follower].return_home()
 
 # ---------------- Worker tokens (on-screen presence) ----------------
 

@@ -14,10 +14,11 @@ class_name FollowerToken
 ## the WorkerToken rewrite: when a token holds its own movement state, the
 ## visual and the simulation drift apart.
 ##
-## The exception is bounties/missions: those genuinely take a follower *off*
-## the map, so send_away()/return_home() still glide to a gate point and hide.
-## Both are currently unreachable from the UI (Stage 4 is hard-locked) but are
-## kept wired for when it isn't.
+## It used to carry a send_away()/return_home() pair that glided the token to a
+## gate point off the west edge and hid it, for bounties and missions that took
+## a follower *off* the map. That model is gone: travel happens on the world map
+## now, in view. Removed rather than left wired, so this token can't look like it
+## supports a mode the game no longer has.
 
 ## **Content height in world px: 58 = 0.90 of a 64px tile** -- SPRITE_SPEC.md
 ## §3's *Medium* body family, which is where most of the roster sits.
@@ -36,13 +37,10 @@ class_name FollowerToken
 const SPRITE_TARGET_SIZE: float = 58.0
 
 var follower  # Follower (untyped to avoid a hard script dependency loop)
-var gate_point: Vector2
 
 var sprite: Sprite2D
 var carry_label: Label
 var star_label: Label
-var _tween: Tween
-var _away: bool = false
 
 func _ready() -> void:
 	sprite = Sprite2D.new()
@@ -70,9 +68,8 @@ func _ready() -> void:
 
 	set_process(true)
 
-func setup(p_follower, texture: Texture2D, p_gate_point: Vector2) -> void:
+func setup(p_follower, texture: Texture2D) -> void:
 	follower = p_follower
-	gate_point = p_gate_point
 	if texture:
 		sprite.texture = texture
 		# Scaled so the *recruit* is 58px tall, whatever fraction of its 128px
@@ -89,7 +86,7 @@ func hit_radius() -> float:
 	return maxf(drawn.x, drawn.y) * Anchoring.HIT_RADIUS_FRACTION
 
 func _process(_delta: float) -> void:
-	if follower == null or _away:
+	if follower == null:
 		return
 	position = follower.position
 	if follower.stage == Laborer.TripStage.WALK_HOME:
@@ -101,26 +98,3 @@ func _process(_delta: float) -> void:
 		carry_label.text = "+%d %s" % [follower.carrying_amount, follower.carrying_kind]
 	else:
 		carry_label.visible = false
-
-## Called when this follower's bounty/mission dispatch signal fires -- glides
-## to the gate and fades from view once it arrives.
-func send_away() -> void:
-	_away = true
-	_glide_to(gate_point, 1.0)
-	_tween.finished.connect(func(): visible = false)
-
-## Called when this follower's bounty/mission resolve signal fires -- pops back
-## in at the gate. Position control returns to the trip loop immediately; the
-## follower walks home from the gate on their own.
-func return_home() -> void:
-	visible = true
-	_away = false
-	if follower:
-		follower.position = gate_point
-
-func _glide_to(target: Vector2, duration: float) -> void:
-	if _tween:
-		_tween.kill()
-	_tween = create_tween()
-	_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	_tween.tween_property(self, "position", target, duration)

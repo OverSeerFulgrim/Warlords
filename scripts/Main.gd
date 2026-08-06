@@ -1817,9 +1817,8 @@ func _connect_signals() -> void:
 		_log("[color=orange]%s the %s left — %s.[/color]" % [f.follower_name, f.species, reason], "characters events")
 	)
 	EventBus.bounty_posted.connect(func(b): _log("Bounty posted: %s (reward %d, risk %d)." % [b.bounty_name, b.reward, b.risk], "events"))
-	EventBus.bounty_accepted.connect(func(b, f): _log("%s took the bounty '%s'." % [f.follower_name, b.bounty_name], "characters"); token_layer.send_token_away(f))
+	EventBus.bounty_accepted.connect(func(b, f): _log("%s took the bounty '%s'." % [f.follower_name, b.bounty_name], "characters"))
 	EventBus.bounty_completed.connect(_on_bounty_completed)
-	EventBus.mission_dispatched.connect(_on_mission_dispatched)
 	EventBus.mission_resolved.connect(_on_mission_resolved)
 	EventBus.threat_tier_escalated.connect(func(tier):
 		_log("[color=orange]Threat tier escalated (%d).[/color]" % tier, "alerts events")
@@ -1848,16 +1847,9 @@ func _on_bounty_completed(b: Bounty, f: Follower, success: bool) -> void:
 	else:
 		_log("[color=orange]%s failed '%s'.[/color]" % [f.follower_name, b.bounty_name], "characters alerts")
 		_alert("%s failed '%s'." % [f.follower_name, b.bounty_name], "bad")
-	token_layer.return_token_home(f)
 
-func _on_mission_dispatched(_mission: Dictionary, party: Array) -> void:
-	for f in party:
-		token_layer.send_token_away(f)
-
-func _on_mission_resolved(m: Dictionary, party: Array, outcome: String) -> void:
+func _on_mission_resolved(m: Dictionary, _party: Array, outcome: String) -> void:
 	_log("Mission '%s' resolved: %s." % [m.get("title", "?"), outcome], "characters events")
-	for f in party:
-		token_layer.return_token_home(f)
 
 func _on_event_triggered(event: Dictionary) -> void:
 	current_event = event
