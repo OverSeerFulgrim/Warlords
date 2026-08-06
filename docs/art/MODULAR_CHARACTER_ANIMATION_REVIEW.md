@@ -1,6 +1,6 @@
 # Review — Modular Character Animation System
 
-**Reviewing:** `Documentation/MODULAR_CHARACTER_ANIMATION_REFERENCE.md` (August 3, 2026)
+**Reviewing:** `assets/vendor/modular_characters/Documentation/MODULAR_CHARACTER_ANIMATION_REFERENCE.md` (August 3, 2026)
 **Method:** repo audit against the live tree at `C:\Users\sjodz\Warlords` — token scripts, `RaceCatalog`, `races.json`, every PNG in `Official Sprites/` (dimensions, alpha, colour statistics), `project.godot`, `.import` params, `COMBAT_SPEC.md`, `ROGUELITE_REWORK.md`, `ART_BRIEF.md` — plus current upstream state of the three candidate importers.
 **Reviewed:** August 3, 2026
 
