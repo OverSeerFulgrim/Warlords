@@ -122,10 +122,14 @@ acceptable and is the TERRAIN_SPEC §4 "16 tiles, convex only" caveat in practic
 | 1, 4 | ridge end, N / S | (1,2) | ≈ |
 | 11, 14 | tees with E+W | (1,1) | ≈ |
 | 7, 13 | tees with N+S | (1,2) | ≈ |
-| 15 | cross | (1,0) | ≈ |
+| 15 | interior (all four neighbours cliff) | snow sheet plain snow | plateau top — a ridge thicker than one cell is a plateau, and its interior is walk-on-top snow, not a repeated south face. (Changed 2026-08-27 after P1 showed the 7-wide ridge drawing as a grid of lone crags.) |
 
 ## Sheets not tabulated
 
 `roads_snow` and `marsh_corrupt` hold no connection groups in P1 (winter road variants and
 semantic ground: marsh `,`, farmland `f`/`F`, corrupted `x`, charred `X`). Assign those by eye from
 the dump; a wrong pick there is a visible cosmetic, not a silent junction error.
+
+## Observed in P1 (2026-08-27)
+- 8 cliff cells on the ridge request inner-corner masks; §4 permits outer only. Approximation is visible only at the gap shoulders — acceptable until the 47-tile set exists.
+- 8 ice cells at the ellipse tips fall back to ≈ entries. Invisible in play; the 'convex lakes never produce these' claim above was too strong.

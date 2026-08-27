@@ -38,3 +38,8 @@ Food 2, Threat 1 (tier 0), Throne 40/40; both offered recruits turned away; 33 u
 ## P1 follow-ups (2026-08-27)
 - verify_combat_feedback flakes ~1 in 3 ("a throne and a worker exist for the repair test") — pre-existing, not terrain. Needs a proper look; fold into P2 or a fix-up prompt.
 - Mask tables read from the sheets by hand: docs/design/TERRAIN_MASKS.md. Sheets are NOT clean 16-sets; flips cover the gaps.
+
+## P1 outcome (2026-08-27)
+- Landed c185690. Two travel rows moved, both in band; the crossing now shortcuts across a frozen lake (3m20s -> 3m14s).
+- Draw calls: 71 total vs the 52 R1 baseline; +1 is terrain, the other +18 accumulated from combat-feedback labels, minimap dots and HUD. Decision: the TERRAIN_SPEC §12 budget is re-based to terrain-only draw calls in P2 (assert the terrain layer + canopy, not the whole viewport).
+- Cliff mask 15 re-mapped to plain snow (plateau top) in TERRAIN_MASKS.md; one-line fix folded into P2.
