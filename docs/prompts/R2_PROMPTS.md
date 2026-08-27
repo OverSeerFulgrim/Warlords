@@ -324,7 +324,7 @@ in one pass. The map is untouched; this is combat, labor and data.
 Verification: tools/verify_stats.tscn, headless AS A SCENE -- every race
 in races.json has 9 attributes and 12 resolvable skills; effective-skill
 spot checks match the workbook's Effective skills sheet (Gray Dwarf
-mining 9+1=10 capped, Ogre 6+2=8); profile assignment matches the
+mining 9+0=9 -- Str 6 gives floor(1/2)=0; Ogre 6+2=8); profile assignment matches the
 workbook's profile column for all 17 races + villain + wolf; damage_roll
 reads the right pair for all three profiles; hp/carry assertions from
 step 5; is_combatant rejects an object still implementing only

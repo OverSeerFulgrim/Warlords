@@ -25,3 +25,12 @@ Food 2, Threat 1 (tier 0), Throne 40/40; both offered recruits turned away; 33 u
   permanently visible.
 - #4 minimap: **yes** — friendly-unit dots. Hostiles/animals stay hidden.
 - Whether #1/#2 get their own small prompt (`U1`) run right after P0, before P1 — they're map-untouched and improve every later playtest.
+
+## Human checks (2026-08-27 evening)
+- U1: right-click tap/drag split feels reliable at 6px/250ms; 3-cell friendly disc accepted.
+- F1: dusk wolf bites read from the red numbers — accepted.
+
+## C2 follow-ups (2026-08-27)
+- missions.json: `influence` had no 1:1 attribute; Claude Code chose `mercantile` for court-infiltration, `strength` for the two might missions. Designer may prefer `leadership` for court-infiltration.
+- RACES.md stat table marked dead; re-issuing it from data/races.json is an outstanding docs task (fold into C2's history write-up or a later docs pass).
+- The C2 prompt's Gray Dwarf spot check was wrong (9+1=10); corrected in R2_PROMPTS.md to 9+0=9.
