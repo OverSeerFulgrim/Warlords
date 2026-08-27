@@ -113,8 +113,39 @@ func _emits_per_landed_swing(main) -> void:
 		_check("every kind is damage or heal ('%s')" % e["kind"],
 			e["kind"] == "damage" or e["kind"] == "heal", "unknown kind")
 
-	wolf.depart("test over")
-	await _advance(cs, 0.1)
+	await _break_off(cs, wolf)
+
+## Ends a fight the way the **game** ends one, and waits for CombatSystem to
+## notice.
+##
+## **This is what the harness was getting wrong.** It used to call
+## `Wolf.depart()` -- a raw state setter -- and then wait up to 600 frames for
+## `is_fighting()` to go false. But `depart()` does not end the engagement:
+## `CombatSystem._advance_engagement` keeps running an exchange every 1.5s until
+## the wolf despawns or its defender dies. So the wait was ten seconds of the
+## wolf still biting, which killed the skeleton it was fighting, then the next
+## one, and about one run in three the roster was empty by the time the
+## Throne-repair test asked for a worker -- failing as "a throne and a worker
+## exist" with no hint that a wolf had eaten the workforce.
+##
+## Dropping the wolf below `FLEE_BELOW_HP` instead uses the game's own path:
+## `_advance_engagement` sees `should_flee()`, clears every defender's
+## `in_combat`, departs the wolf and calls `_finish(e)` in the same tick. The
+## fight is over because the game ended it, which is also the only way it ends
+## in play.
+##
+## The game is not wrong here and was not changed. A wolf told to leave while
+## its teeth are in something does keep biting for a moment, and in play that
+## state is only ever reached *through* `should_flee()` or dawn, both of which
+## finish the engagement on the spot.
+func _break_off(cs: CombatSystem, wolf: Wolf) -> void:
+	if wolf == null or not is_instance_valid(wolf):
+		return
+	wolf.hp = 1   # below Wolf.FLEE_BELOW_HP, so should_flee() is true
+	var frames: int = 0
+	while cs.is_fighting() and frames < 120:
+		await get_tree().process_frame
+		frames += 1
 
 ## Sums the announced amounts for one unit and kind.
 func _total_for(unit, kind: String) -> int:
@@ -144,7 +175,8 @@ func _throne_repair_heals(main) -> void:
 	var throne: Building = main.settlement.get_main_building()
 	var victim = _a_worker(main)
 	if throne == null or victim == null:
-		_check("a throne and a worker exist for the repair test", false, "missing one")
+		_check("a throne and a worker exist for the repair test", false,
+			"throne=%s, %d workers on the roster" % [throne, main.worker_system.workers.size()])
 		return
 
 	# **WorkerSystem is paused for the duration.** Repair only reaches a worker
@@ -199,7 +231,7 @@ func _throne_repair_heals(main) -> void:
 func _quiet_the_settlement(main) -> void:
 	var cs: CombatSystem = main.combat_system
 	for wolf in cs.wolves.duplicate():
-		wolf.depart("test over")
+		await _break_off(cs, wolf)
 	# Bounded: a stuck engagement should fail the tests below, not hang here.
 	var frames: int = 0
 	while cs.is_fighting() and frames < 600:

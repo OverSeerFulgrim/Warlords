@@ -92,6 +92,561 @@
 			]
 		}
 	],
+	"connections": {
+		"cliff": {
+			"masks": {
+				"0": {
+					"cell": [
+						1,
+						0
+					]
+				},
+				"1": {
+					"cell": [
+						1,
+						2
+					],
+					"note": "~ ridge end; the face continues"
+				},
+				"10": {
+					"cell": [
+						1,
+						1
+					]
+				},
+				"11": {
+					"cell": [
+						1,
+						1
+					],
+					"note": "~ tee approximated by the E-W face"
+				},
+				"12": {
+					"cell": [
+						2,
+						0
+					],
+					"flip_v": true,
+					"note": "~ inner corner approximated"
+				},
+				"13": {
+					"cell": [
+						1,
+						2
+					],
+					"note": "~ tee approximated by the N-S face"
+				},
+				"14": {
+					"cell": [
+						1,
+						1
+					],
+					"note": "~ tee approximated by the E-W face"
+				},
+				"15": {
+					"cell": [
+						1,
+						0
+					],
+					"note": "~ cross approximated by the lone crag"
+				},
+				"2": {
+					"cell": [
+						1,
+						1
+					],
+					"note": "~ ridge end; the face continues"
+				},
+				"3": {
+					"cell": [
+						2,
+						1
+					]
+				},
+				"4": {
+					"cell": [
+						1,
+						2
+					],
+					"note": "~ ridge end; the face continues"
+				},
+				"5": {
+					"cell": [
+						1,
+						2
+					]
+				},
+				"6": {
+					"cell": [
+						2,
+						1
+					],
+					"flip_v": true,
+					"note": "~ inner corner approximated"
+				},
+				"7": {
+					"cell": [
+						1,
+						2
+					],
+					"note": "~ tee approximated by the N-S face"
+				},
+				"8": {
+					"cell": [
+						1,
+						1
+					],
+					"note": "~ ridge end; the face continues"
+				},
+				"9": {
+					"cell": [
+						2,
+						0
+					]
+				}
+			},
+			"sheet": "rock_ruins"
+		},
+		"ice": {
+			"masks": {
+				"0": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ single ice cell; not generated"
+				},
+				"1": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ ice stub; not generated"
+				},
+				"10": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ no ice-channel art; frozen lakes are convex and never make one"
+				},
+				"11": {
+					"cell": [
+						3,
+						0
+					],
+					"flip_v": true
+				},
+				"12": {
+					"cell": [
+						3,
+						2
+					],
+					"flip_h": true
+				},
+				"13": {
+					"cell": [
+						3,
+						1
+					],
+					"flip_h": true
+				},
+				"14": {
+					"cell": [
+						3,
+						0
+					]
+				},
+				"15": {
+					"cell": [
+						0,
+						2
+					]
+				},
+				"2": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ ice stub; not generated"
+				},
+				"3": {
+					"cell": [
+						3,
+						2
+					],
+					"flip_v": true
+				},
+				"4": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ ice stub; not generated"
+				},
+				"5": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ no ice-channel art; frozen lakes are convex and never make one"
+				},
+				"6": {
+					"cell": [
+						3,
+						2
+					]
+				},
+				"7": {
+					"cell": [
+						3,
+						1
+					]
+				},
+				"8": {
+					"cell": [
+						0,
+						2
+					],
+					"note": "~ ice stub; not generated"
+				},
+				"9": {
+					"cell": [
+						3,
+						2
+					],
+					"flip_h": true,
+					"flip_v": true
+				}
+			},
+			"sheet": "water_ice"
+		},
+		"path_dirt": {
+			"masks": {
+				"0": {
+					"cell": [
+						2,
+						1
+					]
+				},
+				"1": {
+					"cell": [
+						1,
+						0
+					]
+				},
+				"10": {
+					"cell": [
+						2,
+						2
+					]
+				},
+				"11": {
+					"cell": [
+						2,
+						3
+					]
+				},
+				"12": {
+					"cell": [
+						0,
+						3
+					]
+				},
+				"13": {
+					"cell": [
+						3,
+						1
+					]
+				},
+				"14": {
+					"cell": [
+						2,
+						3
+					],
+					"flip_v": true
+				},
+				"15": {
+					"cell": [
+						3,
+						2
+					]
+				},
+				"2": {
+					"cell": [
+						0,
+						2
+					],
+					"flip_h": true
+				},
+				"3": {
+					"cell": [
+						1,
+						2
+					],
+					"flip_v": true
+				},
+				"4": {
+					"cell": [
+						0,
+						1
+					]
+				},
+				"5": {
+					"cell": [
+						1,
+						1
+					]
+				},
+				"6": {
+					"cell": [
+						1,
+						2
+					]
+				},
+				"7": {
+					"cell": [
+						1,
+						3
+					]
+				},
+				"8": {
+					"cell": [
+						0,
+						2
+					]
+				},
+				"9": {
+					"cell": [
+						0,
+						3
+					],
+					"flip_v": true
+				}
+			},
+			"sheet": "path_dirt"
+		},
+		"road_cobble": {
+			"masks": {
+				"0": {
+					"cell": [
+						0,
+						1
+					],
+					"note": "~ stub; isolated road cells should not be generated"
+				},
+				"1": {
+					"cell": [
+						0,
+						1
+					],
+					"flip_v": true
+				},
+				"10": {
+					"cell": [
+						2,
+						2
+					]
+				},
+				"11": {
+					"cell": [
+						2,
+						3
+					]
+				},
+				"12": {
+					"cell": [
+						1,
+						2
+					]
+				},
+				"13": {
+					"cell": [
+						3,
+						1
+					]
+				},
+				"14": {
+					"cell": [
+						2,
+						3
+					],
+					"flip_v": true
+				},
+				"15": {
+					"cell": [
+						1,
+						3
+					]
+				},
+				"2": {
+					"cell": [
+						2,
+						0
+					]
+				},
+				"3": {
+					"cell": [
+						2,
+						1
+					],
+					"flip_h": true
+				},
+				"4": {
+					"cell": [
+						0,
+						1
+					]
+				},
+				"5": {
+					"cell": [
+						1,
+						1
+					]
+				},
+				"6": {
+					"cell": [
+						1,
+						2
+					],
+					"flip_h": true
+				},
+				"7": {
+					"cell": [
+						3,
+						1
+					],
+					"flip_h": true
+				},
+				"8": {
+					"cell": [
+						0,
+						2
+					]
+				},
+				"9": {
+					"cell": [
+						2,
+						1
+					]
+				}
+			},
+			"sheet": "road_cobble"
+		},
+		"water": {
+			"masks": {
+				"0": {
+					"cell": [
+						3,
+						3
+					],
+					"note": "~ no all-round shore exists; do not generate single water cells"
+				},
+				"1": {
+					"cell": [
+						2,
+						0
+					],
+					"note": "~ river runs off the map edge; the straight is right"
+				},
+				"10": {
+					"cell": [
+						2,
+						0
+					],
+					"transpose": true
+				},
+				"11": {
+					"cell": [
+						1,
+						0
+					],
+					"flip_v": true
+				},
+				"12": {
+					"cell": [
+						1,
+						3
+					]
+				},
+				"13": {
+					"cell": [
+						1,
+						1
+					],
+					"flip_h": true
+				},
+				"14": {
+					"cell": [
+						1,
+						0
+					]
+				},
+				"15": {
+					"cell": [
+						0,
+						0
+					]
+				},
+				"2": {
+					"cell": [
+						2,
+						0
+					],
+					"note": "~ as above, E-W",
+					"transpose": true
+				},
+				"3": {
+					"cell": [
+						1,
+						2
+					],
+					"flip_v": true
+				},
+				"4": {
+					"cell": [
+						2,
+						0
+					],
+					"note": "~ river runs off the map edge; the straight is right"
+				},
+				"5": {
+					"cell": [
+						2,
+						0
+					]
+				},
+				"6": {
+					"cell": [
+						1,
+						2
+					]
+				},
+				"7": {
+					"cell": [
+						1,
+						1
+					]
+				},
+				"8": {
+					"cell": [
+						2,
+						0
+					],
+					"note": "~ as above, E-W",
+					"transpose": true
+				},
+				"9": {
+					"cell": [
+						1,
+						3
+					],
+					"flip_v": true
+				}
+			},
+			"sheet": "water_ice"
+		}
+	},
 	"height": 144,
 	"lair_band": [
 		12,
@@ -104,137 +659,310 @@
 		56
 	],
 	"legend": {
+		",": {
+			"category": "ground",
+			"cell": [
+				0,
+				2
+			],
+			"name": "Marsh",
+			"sheet": "marsh_corrupt",
+			"speed": 0.6
+		},
+		"=": {
+			"category": "road",
+			"cell": [
+				2,
+				2
+			],
+			"name": "Bridge",
+			"sheet": "water_ice",
+			"speed": 1.2
+		},
 		"B": {
 			"category": "ground",
+			"cell": [
+				3,
+				3
+			],
 			"name": "Bone-strewn ground",
-			"tile": [
-				7,
-				1
-			]
+			"sheet": "snow"
 		},
 		"C": {
 			"category": "road",
+			"cell": [
+				1,
+				2
+			],
+			"draws": "road_cobble",
+			"group": "road",
 			"name": "Cobblestone road",
-			"speed": 1.35,
-			"tile": [
-				6,
-				0
-			]
+			"sheet": "snow",
+			"speed": 1.35
 		},
 		"D": {
 			"category": "ground",
+			"cell": [
+				1,
+				1
+			],
 			"name": "Snow-edged dirt",
-			"tile": [
-				5,
-				0
-			]
+			"sheet": "snow"
+		},
+		"F": {
+			"category": "ground",
+			"cell": [
+				2,
+				3
+			],
+			"name": "Stubble field",
+			"sheet": "marsh_corrupt"
+		},
+		"I": {
+			"category": "ground",
+			"cell": [
+				0,
+				2
+			],
+			"draws": "ice",
+			"group": "ice",
+			"name": "Ice sheet",
+			"sheet": "water_ice",
+			"speed": 0.85
+		},
+		"O": {
+			"category": "blocking",
+			"cell": [
+				0,
+				2
+			],
+			"name": "Boulder",
+			"sheet": "rock_ruins"
+		},
+		"R": {
+			"category": "ground",
+			"cell": [
+				3,
+				1
+			],
+			"name": "Stone ruins",
+			"sheet": "rock_ruins",
+			"speed": 0.9
 		},
 		"S": {
 			"category": "ground",
+			"cell": [
+				2,
+				0
+			],
 			"name": "Stony snow-grass",
-			"tile": [
-				0,
-				1
-			]
+			"sheet": "snow"
+		},
+		"T": {
+			"category": "blocking",
+			"cell": [
+				1,
+				0
+			],
+			"name": "Dense forest",
+			"sheet": "marsh_corrupt"
+		},
+		"X": {
+			"category": "ground",
+			"cell": [
+				3,
+				0
+			],
+			"name": "Charred ground",
+			"sheet": "marsh_corrupt"
+		},
+		"^": {
+			"category": "blocking",
+			"cell": [
+				1,
+				0
+			],
+			"draws": "cliff",
+			"group": "cliff",
+			"name": "Cliff",
+			"sheet": "rock_ruins"
 		},
 		"b": {
 			"category": "ground",
-			"name": "Log-strewn dirt",
-			"tile": [
-				5,
+			"cell": [
+				3,
 				1
-			]
+			],
+			"name": "Log-strewn dirt",
+			"sheet": "snow"
 		},
 		"c": {
 			"category": "road",
+			"cell": [
+				0,
+				2
+			],
+			"draws": "road_cobble",
+			"group": "road",
 			"name": "Mossy cobblestone",
-			"speed": 1.35,
-			"tile": [
-				2,
-				0
-			]
+			"sheet": "snow",
+			"speed": 1.35
 		},
 		"d": {
 			"category": "ground",
+			"cell": [
+				0,
+				1
+			],
 			"name": "Bare dirt",
-			"tile": [
-				1,
-				0
-			]
+			"sheet": "snow"
 		},
 		"e": {
 			"category": "ground",
+			"cell": [
+				0,
+				3
+			],
 			"name": "Patchy snow",
-			"tile": [
-				3,
-				0
-			]
+			"sheet": "snow"
+		},
+		"f": {
+			"category": "ground",
+			"cell": [
+				2,
+				2
+			],
+			"name": "Plowed farmland",
+			"sheet": "marsh_corrupt"
 		},
 		"g": {
 			"category": "ground",
-			"name": "Frozen grass",
-			"tile": [
+			"cell": [
 				0,
 				0
-			]
+			],
+			"name": "Frozen grass",
+			"sheet": "snow"
 		},
 		"i": {
 			"category": "blocking",
+			"cell": [
+				1,
+				3
+			],
 			"name": "Frozen water",
-			"tile": [
-				7,
-				0
-			]
+			"sheet": "snow"
 		},
 		"k": {
 			"category": "road",
-			"name": "Snow-covered cobbles",
-			"speed": 1.2,
-			"tile": [
+			"cell": [
 				2,
-				1
-			]
+				2
+			],
+			"draws": "road_cobble",
+			"group": "road",
+			"name": "Snow-covered cobbles",
+			"sheet": "snow",
+			"speed": 1.2
 		},
 		"m": {
 			"category": "blocking",
+			"cell": [
+				3,
+				2
+			],
 			"name": "Rocky scree",
-			"tile": [
-				6,
-				1
-			]
+			"sheet": "snow"
+		},
+		"o": {
+			"category": "ground",
+			"cell": [
+				0,
+				0
+			],
+			"name": "Boulder field",
+			"sheet": "rock_ruins",
+			"speed": 0.8
 		},
 		"r": {
 			"category": "ground",
+			"cell": [
+				2,
+				3
+			],
 			"name": "Sealed ritual ground",
-			"tile": [
-				3,
-				1
-			]
+			"sheet": "snow"
 		},
 		"s": {
 			"category": "ground",
-			"name": "Snow scrub",
-			"tile": [
-				4,
+			"cell": [
+				1,
 				0
-			]
+			],
+			"name": "Snow scrub",
+			"sheet": "snow"
 		},
 		"t": {
 			"category": "road",
-			"name": "Worn track",
-			"speed": 1.2,
-			"tile": [
-				1,
+			"cell": [
+				2,
 				1
-			]
+			],
+			"draws": "path_dirt",
+			"group": "road",
+			"name": "Worn track",
+			"sheet": "snow",
+			"speed": 1.2
+		},
+		"u": {
+			"category": "ground",
+			"cell": [
+				1,
+				0
+			],
+			"name": "Open woodland",
+			"sheet": "marsh_corrupt",
+			"speed": 0.85
 		},
 		"w": {
 			"category": "ground",
+			"cell": [
+				3,
+				0
+			],
 			"name": "Deep snow",
-			"tile": [
-				4,
+			"sheet": "snow"
+		},
+		"x": {
+			"category": "ground",
+			"cell": [
+				3,
 				1
-			]
+			],
+			"name": "Corrupted ground",
+			"sheet": "marsh_corrupt",
+			"speed": 0.9
+		},
+		"~": {
+			"category": "blocking",
+			"cell": [
+				0,
+				0
+			],
+			"draws": "water",
+			"group": "water",
+			"name": "Open water",
+			"sheet": "water_ice"
+		},
+		"≈": {
+			"category": "ground",
+			"cell": [
+				0,
+				1
+			],
+			"name": "Shallows / ford",
+			"sheet": "water_ice",
+			"speed": 0.7
 		}
 	},
 	"rows": [
@@ -258,22 +986,22 @@
 		"mmwgwwwwsswSSSSSwwwssswwwSSwSbddddwSwwbbBSssSwSSwSmmmmmmmmmmmSmmmmmwmmmswSmmmmmSmmwmmmCCmSmmmmmmmwwmmmdmsmsmsSmSmmmmmmmwmmmmmmmmSwmgwsssSsssSemm",
 		"mmmmmmmmmssSSSSSswwwwwswSsSswBBBbbwsSwswsswSSsSwSwmmSwmwmmSmmmmmmmmmmmmmmmwmmmmmmSwmmmCCmmsmwSmmwwmmmmmmmmmmmmmmmmmwmmmmmmmwwmSemmmwwwswSssSSSmm",
 		"mmmmmmmmmwwswSwewwggwwwssssseSbdBwswSwsssSssSSSeggmmwmmwmmmmmmmSwmmmmmmmmmmwmwSsmmmsmmCCmwmmmwmmwgmmbmmmmmmmmmmmmmBbmmwmmmmSmmmmmmmwwsSwwwsSSwmm",
-		"mmmmmmmmmmwwwwwwSSSSSssSwsswwwbbSeSSSSwswwwwwwwSeSmmmmmmmmwmmmmmewmmsmmsmmmmmmmmmSmwmmCCmmmmmmmmSmmmmdmbsmmsmmmwmmdmmmmmmsmsmwmmmmmSssssewwswwmm",
-		"mmmmmmmmmwwwggwSSSSwSsSswssswwwwSSSessswSwwwwwwwSSSeSSSsSswwwwwwSsSeSsssswmmmmmmmsweswCCwswwwgweSSSgbdbwwswwwwggdbdBdbbSssswwwwwwSSwsssswsswgwmm",
-		"mmmmmmmmmwwSwwwsSwSSsssSswwwwwwwSSSSsSswwwwwwwwwSSSwsSsSSswwwwwwsSwSssswsSmmmmmmmeSewsCCwwwwwwsgSeSwSSwswsswgwwwBbbBbBbsswwswwwweSSSSesswwwswwmm",
-		"mmmmmmmmmswswwwwsSwSsssswwsswsSwSSSSSssswwwwwSwwSwewwssswwsSggwwwSsesswswwmmmmmmmSSSssCCwwwsgwssSeSwssssSwswwsswdbdBbBBSwsSwwwSSsSSSsssSwwSwwSmm",
-		"mmmmmmmmmgwgswwwSsSSSeSSwSggssSwwssweeSSgwwwwwswsgssSSSSwwgwwwwwSSssSwSSggmmmmmmmSsssSCCwwwgsswwsswSwsgSwwwSwwwwiBbdBBSSSwwwwsswssSsSSeswgwwwwmm",
-		"mmmmmmmmmwswswswswssSSSbbBbswswwSssswdbSwwwwsswwwwsSwSsSwwgwSwswssgwSSwewsmmmmmmmsSsgeCCsSwwswwwSsswSSSwwgwwsiiiiiiibswewgwwwwweSsSsSSwewwSwwwmm",
-		"mmmmmmmmmwwwwswwsSsSSeBddddwwwwswSsBbddBwwggwwewssssSSwSwgwgwswwssSsSsSSgwmmmmmmmwwsSwCCwwwwwwwgSSSseSSSwgwiiiiiiiiiiiSSwwwwwwwswsssseSSwwswwsmm",
-		"mmmmmmmmmSwgwswwSsSwwBdddbBbswwssSbbbBBddddBbBswsSssSSSegwswBBBBSSssSweSswmmmmmmmwswSSCCwwwSssswsSssSSwwwwwiiiiiiiiiiiSwwwwSgwwwwsSwSSsSwwwwwwmm",
-		"mmmmmmmmmSSSSsSsswwwbbdddBBbbwSssBBbdBBbbbdbddbSswsswwwwSwBBdbBBwwswwwwweSmmmmmmmwswSwCCSssSsssswswwwggwSSiiiiiiiiiiiiiwSweSssswwSswgwgweswSSsmm",
-		"mmmmmmmmmSSwsswsssswdddbbbBbBsSswdBbBddBddBdbbbBwsSsSwwweedBBddbsswssggwSemmmmmmmwwswwCCSSSSSSsswsswwSwweSSiiiiiiiiiiisgSwwSsewSwwwwwgswsSwwsSmm",
-		"mmmmmmmmmmSSSSssswwwdbbbbdBbbSSswdbddbdbbdBbddbBwwweggwwSsBdBbBbbwSsSgwgwemmmmmmmwswwwCCweSewssmmmwmmdbSSssiiiiiiiiiiiggwwSSsssswwewgwSwSSSSSwmm",
-		"mmmmmmmmmSSSSSsswswwwBBbbdddsSsewwBbBbBbBdBBBbbbwwwswwwwSeSBdddBwswwwswwwwmmmmmmmwSwwgCCwSSSsSssmwmBmbbdbSSSsiiiiiiiswwgSwsSsSsswSwswwgwwseSsSmm",
-		"mmmmmmmmmsSwSSwewwggsdbBBddbSSeSwwBbddddbBbbdBBbgSwwwswwsssddddbwwSwswwSSsmmmmmmmwgwssCCSSSswSwmmmmBmbbddBSwwSSwigwwwwwwsSswSwSswwwwwwswsssSSSmm",
-		"mmmmmmmmmmssSwSewgwwswbBdbssSSSswwwbBbdBBbbddBbbewwwswwwSsssbddBwsgwwwwwSSmmmmmmmwwwwwCCsSsswSSwmwwmmbbbbbsSSSSSwswwwswsSSswsSSewwwwswwwswsSSwmm",
-		"mmmmmmmmmSssSSgSwwwwwssssSSsSSeSgwwwSwwwBBbBdbSSwwwwswwwssswwwewwgwwwwwssSmmmmmmmwwwwwCCSSwseSSmmmmmdBbBbdssgSwSwgwSwswgssssSwSwgwgwwwwwsSssSwmm",
-		"mmmmmmmmmssSSSSSSwwSssswSsSwewSwwgwwsswwsddbdwSSwwwwwwwwSsSsSSwSSwwwswsSssmmmmmmmSwgwwCCsweSSSSmmmmmmBBBbsSsSSSwwwwSewwsSsSsSSgSwwgwwwSwSswsSSmm",
+		"mmmmmmmmmmwwwwwwSSSSSssSwsswwwbbSeSSSSwswwwwwwwSeSmmmmmmmmwmmmmmewmmsmmsmmmm^mmmmSmwmmCCmmmmmmmmSmmmmdmbsmmsmmmwmmdmmmmmmsmsmwmmmmmSssssewwswwmm",
+		"mmmmmmmmmwwwggwSSSSwSsSswssswwwwSSSessswSwwwwwwwSSSeSSSsSswwwwwwSsSeSssssw^^^^^^^sweswCCwswwwgweSSSgbdbwwswwwwggdbdBdbbSssswwwwwwSSwsssswsswgwmm",
+		"mmmmmmmmmwwSwwwsSwSSsssSswwwwwwwSSSSsSswwwwwwwwwSSSwsSsSSswwwwwwsSwSssswsS^^^^^^^eSewsCCwwwwwwsgSeSwSSwswsswgwwwBbbBbBbsswwswwwweSSSSesswwwswwmm",
+		"mmmmmmmmmswswwwwsSwSsssswwsswsSwSSSSSssswwwwwSwwSwewwssswwsSggwwwSsesswsww^^^^^^^SSSssCCwwwsgwssSeSwssssSwswwsswdbdBbBBSwsSwwwSSsSSSsssSwwSwwSmm",
+		"mmmmmmmmmgwgswwwSsSSSeSSwSggssSwwssweeSSgwwwwwswsgssSSSSwwgwwwwwSSssSwSSgg^^^^^^^SsssSCCwwwgsswwsswSwsgSwwwSwwwwIBbdBBSSSwwwwsswssSsSSeswgwwwwmm",
+		"mmmmmmmmmwswswswswssSSSbbBbswswwSssswdbSwwwwsswwwwsSwSsSwwgwSwswssgwSSwews^^^^^^^sSsgeCCsSwwswwwSsswSSSwwgwwsIIIIIIIbswewgwwwwweSsSsSSwewwSwwwmm",
+		"mmmmmmmmmwwwwswwsSsSSeBddddwwwwswSsBbddBwwggwwewssssSSwSwgwgwswwssSsSsSSgw^^^^^^^wwsSwCCwwwwwwwgSSSseSSSwgwIIIIIIIIIIISSwwwwwwwswsssseSSwwswwsmm",
+		"mmmmmmmmmSwgwswwSsSwwBdddbBbswwssSbbbBBddddBbBswsSssSSSegwswBBBBSSssSweSsw^^^^^^^wswSSCCwwwSssswsSssSSwwwwwIIIIIIIIIIISwwwwSgwwwwsSwSSsSwwwwwwmm",
+		"mmmmmmmmmSSSSsSsswwwbbdddBBbbwSssBBbdBBbbbdbddbSswsswwwwSwBBdbBBwwswwwwweS^^^^^^^wswSwCCSssSsssswswwwggwSSIIIIIIIIIIIIIwSweSssswwSswgwgweswSSsmm",
+		"mmmmmmmmmSSwsswsssswdddbbbBbBsSswdBbBddBddBdbbbBwsSsSwwweedBBddbsswssggwSe^^^^^^^wwswwCCSSSSSSsswsswwSwweSSIIIIIIIIIIIsgSwwSsewSwwwwwgswsSwwsSmm",
+		"mmmmmmmmmmSSSSssswwwdbbbbdBbbSSswdbddbdbbdBbddbBwwweggwwSsBdBbBbbwSsSgwgwe^^^^^^^wswwwCCweSewssmmmwmmdbSSssIIIIIIIIIIIggwwSSsssswwewgwSwSSSSSwmm",
+		"mmmmmmmmmSSSSSsswswwwBBbbdddsSsewwBbBbBbBdBBBbbbwwwswwwwSeSBdddBwswwwswwww^^^^^^^wSwwgCCwSSSsSssmwmBmbbdbSSSsIIIIIIIswwgSwsSsSsswSwswwgwwseSsSmm",
+		"mmmmmmmmmsSwSSwewwggsdbBBddbSSeSwwBbddddbBbbdBBbgSwwwswwsssddddbwwSwswwSSs^^^^^^^wgwssCCSSSswSwmmmmBmbbddBSwwSSwIgwwwwwwsSswSwSswwwwwwswsssSSSmm",
+		"mmmmmmmmmmssSwSewgwwswbBdbssSSSswwwbBbdBBbbddBbbewwwswwwSsssbddBwsgwwwwwSS^^^^^^^wwwwwCCsSsswSSwmwwmmbbbbbsSSSSSwswwwswsSSswsSSewwwwswwwswsSSwmm",
+		"mmmmmmmmmSssSSgSwwwwwssssSSsSSeSgwwwSwwwBBbBdbSSwwwwswwwssswwwewwgwwwwwssS^^^^^^^wwwwwCCSSwseSSmmmmmdBbBbdssgSwSwgwSwswgssssSwSwgwgwwwwwsSssSwmm",
+		"mmmmmmmmmssSSSSSSwwSssswSsSwewSwwgwwsswwsddbdwSSwwwwwwwwSsSsSSwSSwwwswsSss^^^^^^^SwgwwCCsweSSSSmmmmmmBBBbsSsSSSwwwwSewwsSsSsSSgSwwgwwwSwSswsSSmm",
 		"mmmmmmmmmwwwwwSwSsSSSssSwswwwwSwSSSSsSwSwSwwgwgSseSwsssSswwwwgwwewSwsssSssswwewwSSSwSwCCwSwwwwsmmmwmmBbbwwwswwwgwSSewssSwwwwwwwggsSwssswwwSsgwmm",
 		"mmmmmmmmmwsswSwwSSSwSSsswSswwwwwSSgwssSSwwSwwgwwSSwesssswswwwwwwSwSSsswswwwsgswwsseSSSCCsswswSwwmmSwmwsswwwwwgwwwSwwsssswswswswwegSewssswssswwmm",
 		"mmmmmmmmmmssgswweeewSSSwssssgSgSwwewSSSggsssggweeeSeSSSSsssswgwgswggSSSessgswsggeewwweCCssssgswmsmmmmwSssSsswwwwewewSwsSsesswsgweweesSSSssssswmm",
@@ -285,91 +1013,91 @@
 		"mmmmmmmmmwwwSSSSssssggwwwwweSSSwssssgSwSweeeSSsSsSeswgswwwswSwttsssswwSggweeSSSSssSswgCCwwewSwSmmsmmmwgsseewSwSessSswSggeeeeeSSSSsssggggeeeeSSmm",
 		"mmmmmmmmmwweSSSSsssswswweeesSSSwssssggwwwswwSssSsSwsggggwewsSSttssssggswweeSSgSSseSsggCCSeweSSSSswgsdbddbbbdeeeeddddddddbbbbeeeedddddddddbbbeemm",
 		"mmmmmmmmmmweeSwswssswswgeeewwSSSsssswwwweeweSSSSssSsgwggwewsSSttssssgwggwweesSSSssweggCCeweeSSSSSswwddddebbdddeeddddddddebbbeeeeddddddbbbbbbegmm",
-		"mmmmmmmmmewSSSwSssegwgegeeewSSwwssssgwggeeeegSSesessgwggwSeeSSttsgssgsSwSemmmmmmmssewwCCwwSSSSSesSssddbdbbbbeeebdddbddddbbbbeeeededdedddbbbbeSmm",
-		"mmmmmmmmmmSsewSewwwgssgsSSSSeeSwgwgesssgSSSSSwwwwwwssssSSSSseettgggwssssSSmmmmmmmgwSssCCsSSsSewegwgsddddbeeebbbbdbdeddddebeebbbbdddddddddeeebwmm",
-		"mmmmmmmmmSSSweeeegggssssSSSSweeeeewssessSSSSSweegeggwsssSSgSwgttSswgswsseSmmmmmmmwgsesCCSSSSwSewgswgbddbeeeeebbbdddddbddbedebbbbdddeeddbeeeddsmm",
-		"mmmmmmmmmmSSegwewwegssssSSSSeeewggggssgsSSSSeeeeSgwgsgssSSeSeettsswwssssSSmmmmmmmwgwswCCSSwSeweeggggddddeeeebbebddddddedeeeebbbbdeddddddeeebdsmm",
-		"mmmmmmmmmSSSwesegSggssssSSSSeeewggggsssseSwwewwwggggswssSSSSewttegsgssssSSmmmmmmmwwgssCCSSSSsSweggwwddbbededbbbbeddddddddebebbbbdddddddeeeeebwmm",
-		"mmmmmmmmmmsswwggeeewSSSSsswSweggeeweSSSSssssgwwgSeeSSSSSwsssgwttewweSSSSSsmmmmmmmweeSSCCsssswSwgeeegeededddbddbeddbeeeeeddddddddbbbbeeeededddgmm",
-		"mmmmmmmmmsssgwwgswesSgSssswewgwgewesSsSSssSsgwgswwewSSSSssgswettwweSSSwSwsmmmmmmmwwwSSCCesssgwggeeseeeedddddddddbbbbeddedddddddeeebbeeeedddddsmm",
-		"mmmmmmmmmmssgwggeessSSSSSSgsggggeeweSSSSwsssgwgweeeegSgSSsSsggtteewwSsSSsemmmmmmmeeeSSCCsssswgggeweSeeeedddddddebbebdeeedddddddebbbbdeebedddegmm",
-		"mmmmmmmmmsSsggwwewegSSSSssssSgwSwwswSSSSsssgwgwseSeeSSSSssseggttwwgeSSSSswmmmmmmmewewSCCesgsggggeegeeeeeddedddddbbbbeeeebbbbddddecebddddbbddbwmm",
-		"mmmmmmmmmwsgssssSSBBbbbbBBBBswssSSSSeewsgggwsgssSSSSeeweggsgssttsSSSegwegwmmmmmmmSsSswCCggggssssSSSsdebbdddddddedeeebbbbeddbbebedcdddebedddddsmm",
-		"mmmmmmmmmwggssssSSBBbbbbBBBBssesSSSSweseSggwsssswSSseSeeSwwgsstteSsSeeSewgmmmmmmmSSegsCCwgggssssSSSSdbbddddddddddebebebddbddbdbbdcddedeedddddsmm",
-		"mmmmmmmmmmwgssssSgBBbbBbBBBBssSsSwSSwewewgwwssssSSSSeweesgSwsSttSSSSweeegwmmmmmmmSSSewCCgSgSssssSSSebbdbdddddeddeedebdbbedddbbbbdcddbeeedddddsmm",
-		"mmmmmmmmmmgwSsssSSBBBbbBBBBBssssSSSSseewwgsgssssSSSSeeeeegwgssttSSSSeewesgmmmmmmmSSSwwCCwgggssssSSSsbbbeddedddddeeeebebebdddbbbbdcddeebedbdddsmm",
-		"mmmmmmmmmmseSSwSgsbBbBBBbBbbSSSSsssswgttttttttttttttttttttttttttsessgggwewmmmmmmmwsgwgCCesweSSSSssssdddddbbbeeeedddddeddeebedddddcdeddddeeebeSmm",
-		"mmmmmmmmmmewSSSSssBBBBBBbbbbSgSSSsssggttttttttttttttttttttttttttssSwwgwewwmmmmmmmsssgwCCsewegsSSssssddbdbbbbeeeeddddddddeeeeddddbcbbdbddeddbeSmm",
-		"mmmmmmmmmeesSeSSssBBBBBBbbbBSSSSssswgwggesweggSSsssSgggSeSeeSSSSSsesggggewmmmmmmmssswwCCweeeeSSgssssddddbbdbeeeeddddddbeeeeeddeddcbbdbbddedbbSmm",
-		"mmmmmmmmmmeeSSgSssBBBBBBbbbbSSsssssssSgseegesSSSswsswwgwwwSwgSSSsssswwgSewmmmmmmmsssgSCCewewSSSSSsssddeddebbeedededdddddeeeeddddbcbbddddedebeSmm",
-		"mmmmmmmmmmSSewewwgwwssssSSSSweewgSgessssSsSSwwwewsgwssssSSSSweewwegesssgwsmmmmmmmggwseCkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkebemm",
-		"mmmmmmmmmmSSweewgggwssssSSSSeeweSggwssseSSSSsgseggggssssSsSSweweggegssssSSmmmmmmmwswgsCkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkebemm",
-		"mmmmmmmmmSSgeesegwwgssssSSSSeweeggggssesSSSSgeeeggwssswsSSsSeewegsgwssssSSmmmmmmmgggssCCSSSSewwegggwdddeeeeebbbeedddddddcccccccccccccccccccebemm",
-		"mmmmmmmmmmSSwwSeggewssssSSSseeewgewgssssSSSSweswgewggSwsSSSSwwsswwggsssSSSmmmmmmmwggssCCSSSweeegggggdbdddeedbbbbddddddddebddeeeedcddbbebdddebemm",
-		"mmmmmmmmmsssggggewwsSSSSsssswwgweeewSSSSesSsgggeseeeSSsSssssggsgeeegSSSSssmmmmmmmeeeSSCCssssggwgeeeweeeeddddddddbedbeeeebbbbddddecdeedddbbbddgmm",
-		"mmmmmmmmmssswggseeeessSesssssggweeweSSSSsesssggwweegSSSSssssggSgewewSSSSssmmmmmmmSeeSSCCsssSwgwgeeSeeeeeddddddedbbbbbeeedbbbdedeeceeddddebbddgmm",
-		"mmmmmmmmmmssggggweewSssSsssswwggweggSSSSssssggwweeewSSSesgssggewesweSsSSssmmmmmmmweSSSCCsesswggweeeSeeeedddddbddbbdeeedebbbbddedeceedddddebddgmm",
-		"mmmmmmmmmsswSsgggwwwSSSSsssSwgSgeeeewesSsssswwggeweeSSSSssssgwggeegeSSSSsSmmmmmmmeSgSSCCssssggggwweeededdbdeddbdebbbeeeebddddeddecbedddbdbbddgmm",
-		"mmmmmmmmmmggssssSSgSewwwggwgssssSSsSewwegwggssswSSeSeewSwwgsssssgSSSeSesSwmmmmmmmSSsweCCgwgwSsSsSSSSbbbbdddddddddeeebbbbddddbbbbecddeebddddddsmm",
-		"mmmmmmmmmmgwSsssSSSSewegwwwgswssSSSSwwegggggggssSSSSeSsegeggsggswSSSeeewgwmmmmmmmeSSSwCCggwwssssSSSSbbbbddddddedeebedbbbdddddbbbdcedeeeedddddsmm",
-		"mmmmmmmmmgwgsssseSeSwweegggwssssSSSSweeewggsssssSSsSwweeggggssseSSSSeeewwgmmmmmmmSSSweCCgwsgsgssSweSdbbbbdbdddddeeeebbbbdeddbdebdcbdeeeedddddsmm",
-		"mmmmmmmmmwggwgssSgSSegeeewgSgsssgSSsegeewsggSsssSSsSeeeeSsggsssgSeSseSeewgmmmmmmmSSSeeCCggggssgsSSSSbbbdddddddddebbebbbbddddbbbbdcddeeebdddddSmm",
-		"mmmmmmmmmmeeSSSSssssggSwttewSSSSssgSggwgeesSSSSSwsssggwgeeeseSSSssssgwwgwwmmmmmmmssswgCCwegeSSSSssssddddbbbbdeeeddddedddeeeedbddbcbbddedebdbeSmm",
-		"mmmmmmmmmmSeSSSSssssgswgtteeSSeSsSsseggwewewSSSSssssgggweeewSSwwssssgwwgeemmmmmmmsssggCCwwesSSeSssswddddbbebeeeeedddddddeeeedddedcbbddddeedbesmm",
-		"mmmmmmmmmewSwSsSssesgwwgttwwgSSwsgssgeggeeeSeSSSssswgwwggewssSSSsssSggwggemmmmmmmsgsgSCCegewSSsSesssddddbbdbeeeedddddddebebbeeeebddddddddbbbegmm",
-		"mmmmmmmmmeeeSwsesSssgssgttegSSwSSSgsgwggeeeewSSSssssgwggeewwSSSSssssggeweemmmmmmmsgsggCCeeewSSSSssssddddbbbbeeeeddddbdddbbdbeeeeddddddddbbbbeSmm",
-		"mmmmmmmmmSeweewsgggssswsttSSeeeeeSswSSsssgSSSegswgggsSssSsSSeSssweggSsssSSmmmmmmmgwwssCCSSSeeeeegSegddddeeeebbbbddddddddedeecccccccccccdeeeebwmm",
-		"mmmmmmmmmSSSeSeeeggsssggttSSwwweSggssgssSSSSwgeSgSggssssSSSSwweeggwgsSsswSmmmmmmmgggeSCCSSSeeeweggwgddddeeebbbbdddddddedeeeecccccccccccdeeeebemm",
-		"mmmmmmmmmmsSweeswgwgssSsttgSewewegwwssssSSSSgweegggggsssSSSSgeeeggegsssssSmmmmmmmgggssCCSgSSeeeeggegddddeebebbdbdddbdddeebedcccccccccccdeeeebemm",
-		"mmmmmmmmmmSSeeseSwggssssttSSewewSgwesssSSSssseeegggwsssssSSSeeeewgsSssssSSmmmmmmmgSgsSCCSSsSwSwegwgSedddeeeebbbbdddddeddeeeecccccccccccdeeeebemm",
-		"mmmmmmmmmsgswegweSeeSSeSttssggggeeessSSSessegSwgeeswSSSSesssggggeeeeSSSSsgmmmmmmmeewSSCCsegsgwgwwwweeeeeddddddddbbbdeeebddddcccccccccccbdddedgmm",
-		"mmmmmmmmmsssgggsSweeSSgSttssgggweSeeSSSSesSggewgegsSSSSSsssSwggweegeSSSsssmmmmmmmeeeSSCCssssggsgeewseeeeddddddddbdbbeedddbddcccccccccccededddgmm",
-		"mmmmmmmmmsswggwseeewsSSSttsswggwgeseSSeessssggwgwegSeSSSsssssggSeweeSSeSSemmmmmmmewwSSCCssssggweweeeeeeedbddbdddbdbbeeeeedddcccccCcccccebddddgmm",
-		"mmmmmmmmmmssggggwweeSSwSttsswwggSeweSsSSSssswggweeeeeSSSssssggggewewSSSSssmmmmmmmweSSSCCsgssggggweSweeeedbddddbdbbbeebeedddbddebdCbbdededddddwmm",
-		"mmmmmmmmmwwgssssSSSweswettegssssSswSeewgggswssssSSwSeeweggggswSsSSSSeegsegmmmmmmmSSSeeCCgwgwssssSSSSddbbedbdddddedeebbbbdddddedbeCeeebbbedbddsmm",
-		"mmmmmmmmmgegssSsSSsSewSettgwssssSsSSeewwgswwssssSwSSewwegggsssssSSSegeeeSgmmmmmmmSSSweCCgsgwssssgSsSdbdbeeddddddeeeddbbbddddddddeCeebebddddddsmm",
-		"mmmmmmmmmwgwsegsSSSSeseettgsssgsSSeSewseggwgssssSSsSwSeegegessssSSiseewswgmmmmmmmSSSswCCswwwssssSsSSebdddddddddeeeedddebdddeddddeCedbbbbdeddbsmm",
-		"mmmmmmmmmwggsssesSsSeeeettggsswgSSSsweewgggwssssSSSseeeegggSsSiiiiiiiiieggmmmmmmmSSeeSCCwgggsSsgSSSSeeeeggggssssSSSSeeewgggweSsSSCSSeegewgggssmm",
-		"mmmmmmmmmmewSeSSsgsswwggttweSSSSssssgeggseeSSsSSssssgggweeeeiiiiiiiiiiiiiemmmmmmmsssggCCSeweSSSSssssggwwwewegSeSSSssgwgSeeweSsSssCsswgwwweewSSmm",
-		"mmmmmmmmmmswSSSSssssggwSttewsSSSssssggwgeeeeSSSSssssgsgSewSiiiiiiiiiiiiiiimmmmmmmsssggCCeeeSgSsSssssggggsewewSSssSssggggeweesSSSsCsswgwswweeSSmm",
-		"mmmmmmmmmeeeSeSSssssSgwgtteeeSSesgssggggeeSeSgSSssssggSSSwiiiiiiiiiiiiiiiiimmmmmmsssggCCeweeegSSssssggggwegeSSSSssssgSggeeseSSSSsCsSgSgwsSegSsmm",
-		"mmmmmmmmmeeeSSgeSssswSggtteSSSSSssssggSgweeeSSSsssssgggseeiiiiiiiiiiiiiiiiimmmmmmsssggCCeeegSSSeesssgSggeeeeSSSSssswewgeseeeSSSSsCsSwgwgeeeeeSmm",
-		"mmmmmmmmmSSSewewggsgeswsttgSeSesggwwssesSsSSeeeSwgggssssSiiiiiiiiiiiiiiiiiiiweeeggggSsCCSgSSsgwegSwgssssSSSSgeeeSggwssssSSsSewesgCggssSsSsSSeemm",
-		"mmmmmmmmmSSggweeggSsssssttSSeewegggwssSsSSSSeeeeggggssSsSSiiiiiiiiiiiiiiiiiSsewwggggssCCSSSSeswegwggssesSSSeegeeegegsssSSSsSgewegCgwsessSSSSeemm",
-		"mmmmmmmmmSSSgweSggggssssttSSsweeggeSssgsSeSSeswegsggsssgSSiiiiiiiiiiiiiiiiiSeeesggggssCCSSSSeewegsggsgSssSSSeeeegSggsssgSSsSwewegCegssssSSeSeemm",
-		"mmmmmmmmmmSweeeeSgggssssttSswweeggSgsssSSSSSeeewwsgwesssSSsiiiiiiiiiiiiiiiSSeeeSgwggssCCSSgSewgSwgggssssSsSeeeeeegesssSsSSSSeewegCgSssssSSSSeemm",
-		"mmmmmmmmmmSsddddBBdBbbbbttdddBddBBBeSSSSsessggggeeeeSSeSsessiiiiiiiiiiiiisSsgwggsewgSeCCsssswggweeeeSSSSsesggSwweweeeSeSsdSBbbwgeCgSSSgSgsssegmm",
-		"mmmmmmmmmssSBddddBBBbbbbttddddddBBBeSSSessssgSwgeseeSSgSssssegiiiiiiiiiSwgssggggeweeSSCCssesgSggeweeSSgSssssgegSwseeSSSSsBBBddBdeCeeeSSSssssewmm",
-		"mmmmmmmmmgswddddBBBBbbbbttdddddbBBdeSSSessssgwggewesgSwSseSsggswesieSSSSsssssgggegeeSSCCsSssggegwsesSgeSssssgggSeeweSSSebdBBBdBdeCgeSSSSssssgsmm",
-		"mmmmmmmmmmsSdbdbBBBBbbbbttddddddBBBSsSSSssssSgsgeeesSSSSsssewggweweegSSSssmmmmmmmeewSSCCesssgegSeweeesSSssssggeSeeeeSSSSddBbdbbBbCeeSSSSssssggmm",
-		"mmmmmmmmmmggddddbbbbBdbBttddbdbdbdbsseesgeggssSeSSsSeewwswwgessssSSSeeeegemmmmmmmSSSeeCCggegsgssSSSSeeSegwggssssSSSSSeeedbddBdbddCSSeeeegggessmm",
-		"mmmmmmmmmmggBdddbbbbBdBBttddddddbdbSeewegwggsssgSSSSeeeegSsgsssSgsSsSeeSggmmmmmmmSSSsSCCgggwssssSSSsweeewgggsgsSSSSSeewSBBbBdbddBCSSeeeegwggssmm",
-		"mmmmmmmmmmggdddbbbbbBBBBttddddddbbBSeeewggSgSssweSSSSweeggwgssssSSgSeeweggmmmmmmmeSSggCCgggSsSssSSSSweeeSgegssegSSSgegewdbBBdbddSCSSSeeeggggSgmm",
-		"mmmmmmmmmggwBddddbbbBBBBttdddbddbbbSeeeegsggssSeSSgSeeeeggggssssSSSSeseggwmmmmmmmSSSesCCggggssssSSeSeeeewggessgSesgSweSedsbdddbdwCeSegeeggegssmm",
-		"mmmmmmmmmeSebbbbddddddddttBBbbbbdddsggggeewwSSSSssSegSggeewgsSSsweeegwwweSmmmmmmmsseggCCseeesSSSsessggggweeeSSSSssssegggeeebbBSesCSsgssgSgeeSSmm",
-		"mmmmmmmmmeeebdbbdddddrrrttBBbbbddddsggwgweewSSSSssssggggeeeeSSSSssssggggwwmmmmmmmsssggCCeeeeeSSSsseegwggeeswSSSSwessggsSeewwSgSSsCssgwwgeegeSSmm",
-		"mmmmmmmmmmeebbBbdddBdrrrttdBbbdbdddsggggeeeesSSSssSegSSweeeeSSSSssssggSgSwmmmmmmmsseggCCeeesSSSSssssgggweweeSSSSsssSegggeeeeSeSSsCssggggesSesSmm",
-		"mmmmmmmmmeewBdbbdBdddrrrttBBBbdbdbdwgwwggeeesSgSsssswSggesSwSSSsssswggwgeSmmmmmmmsssggCCeeeeeSSSssssggSgewweSSSSssgsggggeeeeSSessCsswgwgwseeSemm",
-		"mmmmmmmmmmSSBBBBdddbddddttbbBBBBdddgssssSSSSeegeggggegssSSgSeeewgwwgsSssSemmmmmmmgegssCCSSSSweeegwgsssssSSSSeeweggggssssSesSeewegCggssgsSeSSeemm",
-		"mmmmmmmmmmgSBBdBddddbdddttdbBbBBdddsssssSSSSewwwgggwseSsSSSSeseegwggsgsSesmmmmmmmgggssCCSSgSesSeggggssssgsSSegsegeggsssssSSSeweeSCggssgsSSSSeemm",
-		"mmmmmmmmmesSBBBbddddddddttbbBdBBdddggsssSSSseeeSggggesseSSsSeeeegggggsSsSSmmmmmmmgwgssCCSwSSeeeeggggssssSSSSSeeeggggsgsseSsSeeeesCggsgssSSSSssmm",
-		"mmmmmmmmmmSeBBBBddddddbdttbbBBBBdddSssssessSseewggSgssgsSSSSeeeegggSseesSSmmmmmmmgegseCCSsSSeeewgggwsessSSSSeeeeggggsssssSSSwssSgCggsseSSSSSeemm",
-		"mmmmmmmmmsssddddBBBBbbddttddddBdBBBeSSSSsesssgwgwweeSSSSssSeggggegesSSSsssmmmmmmmSeesgCCssssgggwseeeSSSSsssgwgggeewsSsSSssssggwwsCeesSSSssssggmm",
-		"mmmmmmmmmmssddddBBbBdbbbttddddddBBBSSSSSssgsgggweeeeSSSSseesSggseeSeSSSSSgmmmmmmmgeewSCCssssgggSeeseSSSSssssggggeeeeSSSSssssgwggsCesSsSssssegSmm",
+		"mmmmmmmmmewSSSwSssegwgegeeewSSwwssssgwggeeeegSSesessgwggwSeeSSttsgssgsSwSe^^^^^^^ssewwCCwwSSSSSesSssddbdbbbbeeebdddbddddbbbbeeeededdedddbbbbeSmm",
+		"mmmmmmmmmmSsewSewwwgssgsSSSSeeSwgwgesssgSSSSSwwwwwwssssSSSSseettgggwssssSS^^^^^^^gwSssCCsSSsSewegwgsddddbeeebbbbdbdeddddebeebbbbdddddddddeeebwmm",
+		"mmmmmmmmmSSSweeeegggssssSSSSweeeeewssessSSSSSweegeggwsssSSgSwgttSswgswsseS^^^^^^^wgsesCCSSSSwSewgswgbddbeeeeebbbdddddbddbedebbbbdddeeddbeeeddsmm",
+		"mmmmmmmmmmSSegwewwegssssSSSSeeewggggssgsSSSSeeeeSgwgsgssSSeSeettsswwssssSS^^^^^^^wgwswCCSSwSeweeggggddddeeeebbebddddddedeeeebbbbdeddddddeeebdsmm",
+		"mmmmmmmmmSSSwesegSggssssSSSSeeewggggsssseSwwewwwggggswssSSSSewttegsgssssSS^^^^^^^wwgssCCSSSSsSweggwwddbbededbbbbeddddddddebebbbbdddddddeeeeebwmm",
+		"mmmmmmmmmmsswwggeeewSSSSsswSweggeeweSSSSssssgwwgSeeSSSSSwsssgwttewweSSSSSs^^^^^^^weeSSCCsssswSwgeeegeededddbddbeddbeeeeeddddddddbbbbeeeededddgmm",
+		"mmmmmmmmmsssgwwgswesSgSssswewgwgewesSsSSssSsgwgswwewSSSSssgswettwweSSSwSws^^^^^^^wwwSSCCesssgwggeeseeeedddddddddbbbbeddedddddddeeebbeeeedddddsmm",
+		"mmmmmmmmmmssgwggeessSSSSSSgsggggeeweSSSSwsssgwgweeeegSgSSsSsggtteewwSsSSse^^^^^^^eeeSSCCsssswgggeweSeeeedddddddebbebdeeedddddddebbbbdeebedddegmm",
+		"mmmmmmmmmsSsggwwewegSSSSssssSgwSwwswSSSSsssgwgwseSeeSSSSssseggttwwgeSSSSsw^^^^^^^ewewSCCesgsggggeegeeeeeddedddddbbbbeeeebbbbddddecebddddbbddbwmm",
+		"mmmmmmmmmwsgssssSSBBbbbbBBBBswssSSSSeewsgggwsgssSSSSeeweggsgssttsSSSegwegw^^^^^^^SsSswCCggggssssSSSsdebbdddddddedeeebbbbeddbbebedcdddebedddddsmm",
+		"mmmmmmmmmwggssssSSBBbbbbBBBBssesSSSSweseSggwsssswSSseSeeSwwgsstteSsSeeSewg^^^^^^^SSegsCCwgggssssSSSSdbbddddddddddebebebddbddbdbbdcddedeedddddsmm",
+		"mmmmmmmmmmwgssssSgBBbbBbBBBBssSsSwSSwewewgwwssssSSSSeweesgSwsSttSSSSweeegw^^^^^^^SSSewCCgSgSssssSSSebbdbdddddeddeedebdbbedddbbbbdcddbeeedddddsmm",
+		"mmmmmmmmmmgwSsssSSBBBbbBBBBBssssSSSSseewwgsgssssSSSSeeeeegwgssttSSSSeewesg^^^^^^^SSSwwCCwgggssssSSSsbbbeddedddddeeeebebebdddbbbbdcddeebedbdddsmm",
+		"mmmmmmmmmmseSSwSgsbBbBBBbBbbSSSSsssswgttttttttttttttttttttttttttsessgggwew^^^^^^^wsgwgCCesweSSSSssssdddddbbbeeeedddddeddeebedddddcdeddddeeebeSmm",
+		"mmmmmmmmmmewSSSSssBBBBBBbbbbSgSSSsssggttttttttttttttttttttttttttssSwwgweww^^^^^^^sssgwCCsewegsSSssssddbdbbbbeeeeddddddddeeeeddddbcbbdbddeddbeSmm",
+		"mmmmmmmmmeesSeSSssBBBBBBbbbBSSSSssswgwggesweggSSsssSgggSeSeeSSSSSsesggggew^^^^^^^ssswwCCweeeeSSgssssddddbbdbeeeeddddddbeeeeeddeddcbbdbbddedbbSmm",
+		"mmmmmmmmmmeeSSgSssBBBBBBbbbbSSsssssssSgseegesSSSswsswwgwwwSwgSSSsssswwgSew^^^^^^^sssgSCCewewSSSSSsssddeddebbeedededdddddeeeeddddbcbbddddedebeSmm",
+		"mmmmmmmmmmSSewewwgwwssssSSSSweewgSgessssSsSSwwwewsgwssssSSSSweewwegesssgws^^^^^^^ggwseCkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkebemm",
+		"mmmmmmmmmmSSweewgggwssssSSSSeeweSggwssseSSSSsgseggggssssSsSSweweggegssssSS^^^^^^^wswgsCkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkebemm",
+		"mmmmmmmmmSSgeesegwwgssssSSSSeweeggggssesSSSSgeeeggwssswsSSsSeewegsgwssssSS^^^^^^^gggssCCSSSSewwegggwdddeeeeebbbeedddddddcccccccccccccccccccebemm",
+		"mmmmmmmmmmSSwwSeggewssssSSSseeewgewgssssSSSSweswgewggSwsSSSSwwsswwggsssSSS^^^^^^^wggssCCSSSweeegggggdbdddeedbbbbddddddddebddeeeedcddbbebdddebemm",
+		"mmmmmmmmmsssggggewwsSSSSsssswwgweeewSSSSesSsgggeseeeSSsSssssggsgeeegSSSSss^^^^^^^eeeSSCCssssggwgeeeweeeeddddddddbedbeeeebbbbddddecdeedddbbbddgmm",
+		"mmmmmmmmmssswggseeeessSesssssggweeweSSSSsesssggwweegSSSSssssggSgewewSSSSss^^^^^^^SeeSSCCsssSwgwgeeSeeeeeddddddedbbbbbeeedbbbdedeeceeddddebbddgmm",
+		"mmmmmmmmmmssggggweewSssSsssswwggweggSSSSssssggwweeewSSSesgssggewesweSsSSss^^^^^^^weSSSCCsesswggweeeSeeeedddddbddbbdeeedebbbbddedeceedddddebddgmm",
+		"mmmmmmmmmsswSsgggwwwSSSSsssSwgSgeeeewesSsssswwggeweeSSSSssssgwggeegeSSSSsS^^^^^^^eSgSSCCssssggggwweeededdbdeddbdebbbeeeebddddeddecbedddbdbbddgmm",
+		"mmmmmmmmmmggssssSSgSewwwggwgssssSSsSewwegwggssswSSeSeewSwwgsssssgSSSeSesSw^^^^^^^SSsweCCgwgwSsSsSSSSbbbbdddddddddeeebbbbddddbbbbecddeebddddddsmm",
+		"mmmmmmmmmmgwSsssSSSSewegwwwgswssSSSSwwegggggggssSSSSeSsegeggsggswSSSeeewgw^^^^^^^eSSSwCCggwwssssSSSSbbbbddddddedeebedbbbdddddbbbdcedeeeedddddsmm",
+		"mmmmmmmmmgwgsssseSeSwweegggwssssSSSSweeewggsssssSSsSwweeggggssseSSSSeeewwg^^^^^^^SSSweCCgwsgsgssSweSdbbbbdbdddddeeeebbbbdeddbdebdcbdeeeedddddsmm",
+		"mmmmmmmmmwggwgssSgSSegeeewgSgsssgSSsegeewsggSsssSSsSeeeeSsggsssgSeSseSeewg^^^^^^^SSSeeCCggggssgsSSSSbbbdddddddddebbebbbbddddbbbbdcddeeebdddddSmm",
+		"mmmmmmmmmmeeSSSSssssggSwttewSSSSssgSggwgeesSSSSSwsssggwgeeeseSSSssssgwwgww^^^^^^^ssswgCCwegeSSSSssssddddbbbbdeeeddddedddeeeedbddbcbbddedebdbeSmm",
+		"mmmmmmmmmmSeSSSSssssgswgtteeSSeSsSsseggwewewSSSSssssgggweeewSSwwssssgwwgee^^^^^^^sssggCCwwesSSeSssswddddbbebeeeeedddddddeeeedddedcbbddddeedbesmm",
+		"mmmmmmmmmewSwSsSssesgwwgttwwgSSwsgssgeggeeeSeSSSssswgwwggewssSSSsssSggwgge^^^^^^^sgsgSCCegewSSsSesssddddbbdbeeeedddddddebebbeeeebddddddddbbbegmm",
+		"mmmmmmmmmeeeSwsesSssgssgttegSSwSSSgsgwggeeeewSSSssssgwggeewwSSSSssssggewee^^^^^^^sgsggCCeeewSSSSssssddddbbbbeeeeddddbdddbbdbeeeeddddddddbbbbeSmm",
+		"mmmmmmmmmSeweewsgggssswsttSSeeeeeSswSSsssgSSSegswgggsSssSsSSeSssweggSsssSS^^^^^^^gwwssCCSSSeeeeegSegddddeeeebbbbddddddddedeecccccccccccdeeeebwmm",
+		"mmmmmmmmmSSSeSeeeggsssggttSSwwweSggssgssSSSSwgeSgSggssssSSSSwweeggwgsSsswS^^^^^^^gggeSCCSSSeeeweggwgddddeeebbbbdddddddedeeeecccccccccccdeeeebemm",
+		"mmmmmmmmmmsSweeswgwgssSsttgSewewegwwssssSSSSgweegggggsssSSSSgeeeggegsssssS^^^^^^^gggssCCSgSSeeeeggegddddeebebbdbdddbdddeebedcccccccccccdeeeebemm",
+		"mmmmmmmmmmSSeeseSwggssssttSSewewSgwesssSSSssseeegggwsssssSSSeeeewgsSssssSS^^^^^^^gSgsSCCSSsSwSwegwgSedddeeeebbbbdddddeddeeeecccccccccccdeeeebemm",
+		"mmmmmmmmmsgswegweSeeSSeSttssggggeeessSSSessegSwgeeswSSSSesssggggeeeeSSSSsg^^^^^^^eewSSCCsegsgwgwwwweeeeeddddddddbbbdeeebddddcccccccccccbdddedgmm",
+		"mmmmmmmmmsssgggsSweeSSgSttssgggweSeeSSSSesSggewgegsSSSSSsssSwggweegeSSSsss^^^^^^^eeeSSCCssssggsgeewseeeeddddddddbdbbeedddbddcccccccccccededddgmm",
+		"mmmmmmmmmsswggwseeewsSSSttsswggwgeseSSeessssggwgwegSeSSSsssssggSeweeSSeSSe^^^^^^^ewwSSCCssssggweweeeeeeedbddbdddbdbbeeeeedddcccccCcccccebddddgmm",
+		"mmmmmmmmmmssggggwweeSSwSttsswwggSeweSsSSSssswggweeeeeSSSssssggggewewSSSSss^^^^^^^weSSSCCsgssggggweSweeeedbddddbdbbbeebeedddbddebdCbbdededddddwmm",
+		"mmmmmmmmmwwgssssSSSweswettegssssSswSeewgggswssssSSwSeeweggggswSsSSSSeegseg^^^^^^^SSSeeCCgwgwssssSSSSddbbedbdddddedeebbbbdddddedbeCeeebbbedbddsmm",
+		"mmmmmmmmmgegssSsSSsSewSettgwssssSsSSeewwgswwssssSwSSewwegggsssssSSSegeeeSg^^^^^^^SSSweCCgsgwssssgSsSdbdbeeddddddeeeddbbbddddddddeCeebebddddddsmm",
+		"mmmmmmmmmwgwsegsSSSSeseettgsssgsSSeSewseggwgssssSSsSwSeegegessssSSIseewswg^^^^^^^SSSswCCswwwssssSsSSebdddddddddeeeedddebdddeddddeCedbbbbdeddbsmm",
+		"mmmmmmmmmwggsssesSsSeeeettggsswgSSSsweewgggwssssSSSseeeegggSsSIIIIIIIIIegg^^^^^^^SSeeSCCwgggsSsgSSSSeeeeggggssssSSSSeeewgggweSsSSCSSeegewgggssmm",
+		"mmmmmmmmmmewSeSSsgsswwggttweSSSSssssgeggseeSSsSSssssgggweeeeIIIIIIIIIIIIIe^^^^^^^sssggCCSeweSSSSssssggwwwewegSeSSSssgwgSeeweSsSssCsswgwwweewSSmm",
+		"mmmmmmmmmmswSSSSssssggwSttewsSSSssssggwgeeeeSSSSssssgsgSewSIIIIIIIIIIIIIII^^^^^^^sssggCCeeeSgSsSssssggggsewewSSssSssggggeweesSSSsCsswgwswweeSSmm",
+		"mmmmmmmmmeeeSeSSssssSgwgtteeeSSesgssggggeeSeSgSSssssggSSSwIIIIIIIIIIIIIIIII^^^^^^sssggCCeweeegSSssssggggwegeSSSSssssgSggeeseSSSSsCsSgSgwsSegSsmm",
+		"mmmmmmmmmeeeSSgeSssswSggtteSSSSSssssggSgweeeSSSsssssgggseeIIIIIIIIIIIIIIIII^^^^^^sssggCCeeegSSSeesssgSggeeeeSSSSssswewgeseeeSSSSsCsSwgwgeeeeeSmm",
+		"mmmmmmmmmSSSewewggsgeswsttgSeSesggwwssesSsSSeeeSwgggssssSIIIIIIIIIIIIIIIIIIIweeeggggSsCCSgSSsgwegSwgssssSSSSgeeeSggwssssSSsSewesgCggssSsSsSSeemm",
+		"mmmmmmmmmSSggweeggSsssssttSSeewegggwssSsSSSSeeeeggggssSsSSIIIIIIIIIIIIIIIIISsewwggggssCCSSSSeswegwggssesSSSeegeeegegsssSSSsSgewegCgwsessSSSSeemm",
+		"mmmmmmmmmSSSgweSggggssssttSSsweeggeSssgsSeSSeswegsggsssgSSIIIIIIIIIIIIIIIIISeeesggggssCCSSSSeewegsggsgSssSSSeeeegSggsssgSSsSwewegCegssssSSeSeemm",
+		"mmmmmmmmmmSweeeeSgggssssttSswweeggSgsssSSSSSeeewwsgwesssSSsIIIIIIIIIIIIIIISSeeeSgwggssCCSSgSewgSwgggssssSsSeeeeeegesssSsSSSSeewegCgSssssSSSSeemm",
+		"mmmmmmmmmmSsddddBBdBbbbbttdddBddBBBeSSSSsessggggeeeeSSeSsessIIIIIIIIIIIIIsSsgwggsewgSeCCsssswggweeeeSSSSsesggSwweweeeSeSsdSBbbwgeCgSSSgSgsssegmm",
+		"mmmmmmmmmssSBddddBBBbbbbttddddddBBBeSSSessssgSwgeseeSSgSssssegIIIIIIIIISwgssggggeweeSSCCssesgSggeweeSSgSssssgegSwseeSSSSsBBBddBdeCeeeSSSssssewmm",
+		"mmmmmmmmmgswddddBBBBbbbbttdddddbBBdeSSSessssgwggewesgSwSseSsggswesIeSSSSsssssgggegeeSSCCsSssggegwsesSgeSssssgggSeeweSSSebdBBBdBdeCgeSSSSssssgsmm",
+		"mmmmmmmmmmsSdbdbBBBBbbbbttddddddBBBSsSSSssssSgsgeeesSSSSsssewggweweegSSSss^^^^^^^eewSSCCesssgegSeweeesSSssssggeSeeeeSSSSddBbdbbBbCeeSSSSssssggmm",
+		"mmmmmmmmmmggddddbbbbBdbBttddbdbdbdbsseesgeggssSeSSsSeewwswwgessssSSSeeeege^^^^^^^SSSeeCCggegsgssSSSSeeSegwggssssSSSSSeeedbddBdbddCSSeeeegggessmm",
+		"mmmmmmmmmmggBdddbbbbBdBBttddddddbdbSeewegwggsssgSSSSeeeegSsgsssSgsSsSeeSgg^^^^^^^SSSsSCCgggwssssSSSsweeewgggsgsSSSSSeewSBBbBdbddBCSSeeeegwggssmm",
+		"mmmmmmmmmmggdddbbbbbBBBBttddddddbbBSeeewggSgSssweSSSSweeggwgssssSSgSeewegg^^^^^^^eSSggCCgggSsSssSSSSweeeSgegssegSSSgegewdbBBdbddSCSSSeeeggggSgmm",
+		"mmmmmmmmmggwBddddbbbBBBBttdddbddbbbSeeeegsggssSeSSgSeeeeggggssssSSSSeseggw^^^^^^^SSSesCCggggssssSSeSeeeewggessgSesgSweSedsbdddbdwCeSegeeggegssmm",
+		"mmmmmmmmmeSebbbbddddddddttBBbbbbdddsggggeewwSSSSssSegSggeewgsSSsweeegwwweS^^^^^^^sseggCCseeesSSSsessggggweeeSSSSssssegggeeebbBSesCSsgssgSgeeSSmm",
+		"mmmmmmmmmeeebdbbdddddrrrttBBbbbddddsggwgweewSSSSssssggggeeeeSSSSssssggggww^^^^^^^sssggCCeeeeeSSSsseegwggeeswSSSSwessggsSeewwSgSSsCssgwwgeegeSSmm",
+		"mmmmmmmmmmeebbBbdddBdrrrttdBbbdbdddsggggeeeesSSSssSegSSweeeeSSSSssssggSgSw^^^^^^^sseggCCeeesSSSSssssgggweweeSSSSsssSegggeeeeSeSSsCssggggesSesSmm",
+		"mmmmmmmmmeewBdbbdBdddrrrttBBBbdbdbdwgwwggeeesSgSsssswSggesSwSSSsssswggwgeS^^^^^^^sssggCCeeeeeSSSssssggSgewweSSSSssgsggggeeeeSSessCsswgwgwseeSemm",
+		"mmmmmmmmmmSSBBBBdddbddddttbbBBBBdddgssssSSSSeegeggggegssSSgSeeewgwwgsSssSe^^^^^^^gegssCCSSSSweeegwgsssssSSSSeeweggggssssSesSeewegCggssgsSeSSeemm",
+		"mmmmmmmmmmgSBBdBddddbdddttdbBbBBdddsssssSSSSewwwgggwseSsSSSSeseegwggsgsSes^^^^^^^gggssCCSSgSesSeggggssssgsSSegsegeggsssssSSSeweeSCggssgsSSSSeemm",
+		"mmmmmmmmmesSBBBbddddddddttbbBdBBdddggsssSSSseeeSggggesseSSsSeeeegggggsSsSS^^^^^^^gwgssCCSwSSeeeeggggssssSSSSSeeeggggsgsseSsSeeeesCggsgssSSSSssmm",
+		"mmmmmmmmmmSeBBBBddddddbdttbbBBBBdddSssssessSseewggSgssgsSSSSeeeegggSseesSS^^^^^^^gegseCCSsSSeeewgggwsessSSSSeeeeggggsssssSSSwssSgCggsseSSSSSeemm",
+		"mmmmmmmmmsssddddBBBBbbddttddddBdBBBeSSSSsesssgwgwweeSSSSssSeggggegesSSSsss^^^^^^^SeesgCCssssgggwseeeSSSSsssgwgggeewsSsSSssssggwwsCeesSSSssssggmm",
+		"mmmmmmmmmmssddddBBbBdbbbttddddddBBBSSSSSssgsgggweeeeSSSSseesSggseeSeSSSSSg^^^^^^^geewSCCssssgggSeeseSSSSssssggggeeeeSSSSssssgwggsCesSsSssssegSmm",
 		"mmmmmmmmmsssdddbBdBBbbbbttddddbdBBBeSSSSsesscccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccCccccccccccwSmm",
 		"mmmmmmmmmmssdBddBBBdbbbdbdddddddBdBgSegSssssccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccggmm",
-		"mmmmmmmmmmggddddbbbbBBBBddddddddbbbSeweeggggsswsSggSeSeeggegsSSsgSSSeeeegsmmmmmmmSSSesCCgeggssssgSSSeeegggggsggsSSSSeeeegegsSsgsSSSSSweegggwgsmm",
-		"mmmmmmmmmmggdddBbBbbBBBddddddbddbbbSeegeggggssssSSsSsewsSwSgssesSSeSeeeSwgmmmmmmmSSSeeCCggggwwgsSSSSeeeesggwssssSSSseewggswgssssSSSSeeeegwggSgmm",
-		"mmmmmmmmmewgdbbdbbbbBBBBddddddddbdbSeeeeegggssssSSeSeeweggggssssSSsSeeeewgmmmmmmmSSSweCCggggsssseSSSeeeewggwgesssSeSeeeeggggssgsgSSSeeSeggwgsgmm",
-		"mmmmmmmmmgwSgsgsgsSSeeSswgwessssSSSesgeewgggssssSSSgeegegsggsgesssSSeeeewemmmmmmmsSSeeCCSgggsssSsSgSeeeesSSgssesSSSSeeeSsewessssSSSSeeeeggggsemm",
-		"mmmmmmmmmweeSSSSseSsggggeeeeSSSsssssgssgeseesSSSegssggsgeeweeSSSSssSggggeemmmmmmmSssgeCCgSeeSesSsgssSggeeeesSSSSsessggggesweSSSSsgssgggggSeeSSmm",
-		"mmmmmmmmmeegSSSSssssggwgeeSeSSeSssgsgsegeeeegSSSssssggggeeeeSSSSssssgggSeemmmmmmmssgggCCesgeSSSessssggegweewggSSssssggSseweeSSSSssssggggsSegSSmm",
-		"mmmmmmmmmmeSSsgesSgsggggeeeeSSSSssssgggggeeeSSSSsgssggegeeeeSSSSSsseggggeSmmmmmmmswsggCCwgeeseSwssssegsSesewgSSSssssggggeeeeSSSSssssggSseeeeSsmm",
-		"mmmmmmmmmmeeSSSSsssgwggseeeeSgSssssgggggewsgSSSSSsseggggeeeesSSSgsgsgggSwemmmmmmmssggeCCeeggSSSSssSsSggSeeeeeSSssssswegSeeeeSSSSesSsgggsegeeSSmm",
-		"mmmmmmmmmmSgeeeeegggssssSSsSgeewgwggssesSSSgeeeesgwseSssSSSSeeeeggggsSsesgmmmmmmmggsssCCSSSSeeeegwggssssSSSSeeeSsgggssssSSSSeeeeegwgsssseSSseemm",
-		"mmmmmmmmmSSSeeSegggggsssSSSSweeeSeggssssgSsSeeeeggegssssSSSSessegggwssssSSmmmmmmmSgsseCCSeSSeeeegggsssssSSSSweeSggggssesSSSSSeeegggssSssSSSSwsmm",
-		"mmmmmmmmmmSSeeSeggggsgssSSSeeeeeggegSgSsSeSSSeeegewgssssSSSSweeeggSgessSSSmmmmmmmgSwsSCCSSSSeeeeegegSessSSSSeeeegggessssSgSSeeSSgwggssssSSeSegmm",
-		"mmmmmmmmmgSgeeeeggggssssSSSSeseeggggsgssSSsSegeeggggSsssSeSSeeeesgewssesSemmmmmmmgggssCCeSSgeesSggggssesSSSSeesewsggsSssSSSSeeegggggsssSSgSSSsmm",
+		"mmmmmmmmmmggddddbbbbBBBBddddddddbbbSeweeggggsswsSggSeSeeggegsSSsgSSSeeeegs^^^^^^^SSSesCCgeggssssgSSSeeegggggsggsSSSSeeeegegsSsgsSSSSSweegggwgsmm",
+		"mmmmmmmmmmggdddBbBbbBBBddddddbddbbbSeegeggggssssSSsSsewsSwSgssesSSeSeeeSwg^^^^^^^SSSeeCCggggwwgsSSSSeeeesggwssssSSSseewggswgssssSSSSeeeegwggSgmm",
+		"mmmmmmmmmewgdbbdbbbbBBBBddddddddbdbSeeeeegggssssSSeSeeweggggssssSSsSeeeewg^^^^^^^SSSweCCggggsssseSSSeeeewggwgesssSeSeeeeggggssgsgSSSeeSeggwgsgmm",
+		"mmmmmmmmmgwSgsgsgsSSeeSswgwessssSSSesgeewgggssssSSSgeegegsggsgesssSSeeeewe^^^^^^^sSSeeCCSgggsssSsSgSeeeesSSgssesSSSSeeeSsewessssSSSSeeeeggggsemm",
+		"mmmmmmmmmweeSSSSseSsggggeeeeSSSsssssgssgeseesSSSegssggsgeeweeSSSSssSggggee^^^^^^^SssgeCCgSeeSesSsgssSggeeeesSSSSsessggggesweSSSSsgssgggggSeeSSmm",
+		"mmmmmmmmmeegSSSSssssggwgeeSeSSeSssgsgsegeeeegSSSssssggggeeeeSSSSssssgggSee^^^^^^^ssgggCCesgeSSSessssggegweewggSSssssggSseweeSSSSssssggggsSegSSmm",
+		"mmmmmmmmmmeSSsgesSgsggggeeeeSSSSssssgggggeeeSSSSsgssggegeeeeSSSSSsseggggeS^^^^^^^swsggCCwgeeseSwssssegsSesewgSSSssssggggeeeeSSSSssssggSseeeeSsmm",
+		"mmmmmmmmmmeeSSSSsssgwggseeeeSgSssssgggggewsgSSSSSsseggggeeeesSSSgsgsgggSwe^^^^^^^ssggeCCeeggSSSSssSsSggSeeeeeSSssssswegSeeeeSSSSesSsgggsegeeSSmm",
+		"mmmmmmmmmmSgeeeeegggssssSSsSgeewgwggssesSSSgeeeesgwseSssSSSSeeeeggggsSsesg^^^^^^^ggsssCCSSSSeeeegwggssssSSSSeeeSsgggssssSSSSeeeeegwgsssseSSseemm",
+		"mmmmmmmmmSSSeeSegggggsssSSSSweeeSeggssssgSsSeeeeggegssssSSSSessegggwssssSS^^^^^^^SgsseCCSeSSeeeegggsssssSSSSweeSggggssesSSSSSeeegggssSssSSSSwsmm",
+		"mmmmmmmmmmSSeeSeggggsgssSSSeeeeeggegSgSsSeSSSeeegewgssssSSSSweeeggSgessSSS^^^^^^^gSwsSCCSSSSeeeeegegSessSSSSeeeegggessssSgSSeeSSgwggssssSSeSegmm",
+		"mmmmmmmmmgSgeeeeggggssssSSSSeseeggggsgssSSsSegeeggggSsssSeSSeeeesgewssesSe^^^^^^^gggssCCeSSgeesSggggssesSSSSeesewsggsSssSSSSeeegggggsssSSgSSSsmm",
 		"mmSeSSSeSsssggggeeeeSSSSssssgwggseeeSSSSsessggggeeegSgSSssesgeggweesSeSSsgssgsggeeeeSSCCssssggggeeseSsgSsegsggSgegeeSSSSsssswggweseeSSSssgssggmm",
 		"mmeeSSSSssssggggeeeeSSSSssssSgggeessSSsSsSssggggegeeSSSSSsssgggseeeeSSsSssseggggeeeSSSCCsgSSegggeeeeSsSSeessggggeeeeeSSSssssgwggeeeeSSgSssssgemm",
 		"mmSeSSSSssssgeweeeeeSsSSssssggggeeSgSSSSssssgsggwSgeSSSSssssggggeeeegSsSsgssgsggegeeSSCCssseegwgeeeeeSSSesesggggeeeeSSSSssseSgggeeeeSSSSssssggmm",

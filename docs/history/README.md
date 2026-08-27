@@ -30,5 +30,6 @@ Newest at the bottom; the order below is the order the passes happened in.
 | [2026-08-27-u2-input-and-visibility.md](2026-08-27-u2-input-and-visibility.md) | Four input and visibility fixes from the R1 playtest: minimap clicks, right-click-to-move, friendly units lighting fog, friendly dots (prompt U2) |
 | [2026-08-combat-feedback.md](2026-08-combat-feedback.md) | Red numbers, in real time — pooled floating damage numbers over every combatant (COMBAT_FEEDBACK_SPEC) |
 | [2026-08-stat-rework.md](2026-08-stat-rework.md) | The stat rework: one Might becomes nine attributes, workbook-exported roster, attack profiles (COMBAT_SPEC slice C2) |
+| [2026-08-terrain-tiles.md](2026-08-terrain-tiles.md) | Seven sheets, and roads that know their corners — the seven-sheet atlas, connection tiles with flip/transpose, cliff ridge and walkable ice (P1) |
 
 New session write-ups go here as `YYYY-MM-topic.md`, never back into `CLAUDE.md`.

@@ -60,24 +60,200 @@ const GAP_N_Y := 36
 const VILLAGE_X := 120
 const VILLAGE_Y := 55
 
-## char -> tile in the 4x4 sheet, category, and how fast you cross it.
+## char -> which sheet cell draws it, category, and how fast you cross it.
+##
+## **`cell` is `[row, col]` inside that sheet's own 4x4**, not an atlas
+## coordinate. Atlas coordinates are derived from the sheet order at load
+## (`WorldMap.atlas_coord_for`), so a sheet added or reordered re-derives every
+## one of these instead of silently repainting the map -- which is exactly what
+## happened when the atlas grew from one sheet to seven and this table still
+## held 4x4 coordinates.
+##
+## `group` is **connectivity**: which cells count as neighbours for the bitmask.
+## `draws` is **art**: which connection table supplies the tile. They are
+## deliberately different keys, because cobble and dirt share the group `road`
+## (a track meeting a road forms a junction on both sides) while each draws from
+## its own sheet -- TERRAIN_SPEC section 4.
 const LEGEND := {
-	"g": {"tile": [0, 0], "category": "ground", "name": "Frozen grass"},
-	"s": {"tile": [0, 1], "category": "ground", "name": "Snow scrub"},
-	"S": {"tile": [0, 2], "category": "ground", "name": "Stony snow-grass"},
-	"w": {"tile": [0, 3], "category": "ground", "name": "Deep snow"},
-	"d": {"tile": [1, 0], "category": "ground", "name": "Bare dirt"},
-	"D": {"tile": [1, 1], "category": "ground", "name": "Snow-edged dirt"},   # transition tile -- see _paint_lordship; do not bulk-fill with it
-	"t": {"tile": [1, 2], "category": "road", "speed": 1.2, "name": "Worn track"},
-	"b": {"tile": [1, 3], "category": "ground", "name": "Log-strewn dirt"},
-	"c": {"tile": [2, 0], "category": "road", "speed": 1.35, "name": "Mossy cobblestone"},
-	"C": {"tile": [2, 1], "category": "road", "speed": 1.35, "name": "Cobblestone road"},
-	"k": {"tile": [2, 2], "category": "road", "speed": 1.2, "name": "Snow-covered cobbles"},
-	"m": {"tile": [2, 3], "category": "blocking", "name": "Rocky scree"},
-	"e": {"tile": [3, 0], "category": "ground", "name": "Patchy snow"},
-	"i": {"tile": [3, 1], "category": "blocking", "name": "Frozen water"},
-	"r": {"tile": [3, 2], "category": "ground", "name": "Sealed ritual ground"},
-	"B": {"tile": [3, 3], "category": "ground", "name": "Bone-strewn ground"},
+	# --- the R1 snow sheet, unchanged ground ---------------------------------
+	"g": {"sheet": "snow", "cell": [0, 0], "category": "ground", "name": "Frozen grass"},
+	"s": {"sheet": "snow", "cell": [1, 0], "category": "ground", "name": "Snow scrub"},
+	"S": {"sheet": "snow", "cell": [2, 0], "category": "ground", "name": "Stony snow-grass"},
+	"w": {"sheet": "snow", "cell": [3, 0], "category": "ground", "name": "Deep snow"},
+	"d": {"sheet": "snow", "cell": [0, 1], "category": "ground", "name": "Bare dirt"},
+	"D": {"sheet": "snow", "cell": [1, 1], "category": "ground", "name": "Snow-edged dirt"},   # transition tile -- see _paint_lordship; do not bulk-fill with it
+	"b": {"sheet": "snow", "cell": [3, 1], "category": "ground", "name": "Log-strewn dirt"},
+	"e": {"sheet": "snow", "cell": [0, 3], "category": "ground", "name": "Patchy snow"},
+	"r": {"sheet": "snow", "cell": [2, 3], "category": "ground", "name": "Sealed ritual ground"},
+	"B": {"sheet": "snow", "cell": [3, 3], "category": "ground", "name": "Bone-strewn ground"},
+	"m": {"sheet": "snow", "cell": [3, 2], "category": "blocking", "name": "Rocky scree"},
+	"i": {"sheet": "snow", "cell": [1, 3], "category": "blocking", "name": "Frozen water"},
+
+	# --- roads: one group, two sheets ----------------------------------------
+	"c": {"sheet": "snow", "cell": [0, 2], "category": "road", "speed": 1.35,
+		"name": "Mossy cobblestone", "group": "road", "draws": "road_cobble"},
+	"C": {"sheet": "snow", "cell": [1, 2], "category": "road", "speed": 1.35,
+		"name": "Cobblestone road", "group": "road", "draws": "road_cobble"},
+	"k": {"sheet": "snow", "cell": [2, 2], "category": "road", "speed": 1.2,
+		"name": "Snow-covered cobbles", "group": "road", "draws": "road_cobble"},
+	"t": {"sheet": "snow", "cell": [2, 1], "category": "road", "speed": 1.2,
+		"name": "Worn track", "group": "road", "draws": "path_dirt"},
+
+	# --- TERRAIN_SPEC section 5's extended legend ----------------------------
+	"~": {"sheet": "water_ice", "cell": [0, 0], "category": "blocking",
+		"name": "Open water", "group": "water", "draws": "water"},
+	"≈": {"sheet": "water_ice", "cell": [0, 1], "category": "ground", "speed": 0.7,
+		"name": "Shallows / ford"},
+	"=": {"sheet": "water_ice", "cell": [2, 2], "category": "road", "speed": 1.2,
+		"name": "Bridge"},
+	"I": {"sheet": "water_ice", "cell": [0, 2], "category": "ground", "speed": 0.85,
+		"name": "Ice sheet", "group": "ice", "draws": "ice"},
+	"^": {"sheet": "rock_ruins", "cell": [1, 0], "category": "blocking",
+		"name": "Cliff", "group": "cliff", "draws": "cliff"},
+	",": {"sheet": "marsh_corrupt", "cell": [0, 2], "category": "ground", "speed": 0.6,
+		"name": "Marsh"},
+	"f": {"sheet": "marsh_corrupt", "cell": [2, 2], "category": "ground",
+		"name": "Plowed farmland"},
+	"F": {"sheet": "marsh_corrupt", "cell": [2, 3], "category": "ground",
+		"name": "Stubble field"},
+	"x": {"sheet": "marsh_corrupt", "cell": [3, 1], "category": "ground", "speed": 0.9,
+		"name": "Corrupted ground"},
+	"X": {"sheet": "marsh_corrupt", "cell": [3, 0], "category": "ground",
+		"name": "Charred ground"},
+	"R": {"sheet": "rock_ruins", "cell": [3, 1], "category": "ground", "speed": 0.9,
+		"name": "Stone ruins"},
+	"o": {"sheet": "rock_ruins", "cell": [0, 0], "category": "ground", "speed": 0.8,
+		"name": "Boulder field"},
+	"O": {"sheet": "rock_ruins", "cell": [0, 2], "category": "blocking", "name": "Boulder"},
+	# Forest floor for both, per TERRAIN_SPEC section 6b: T and u share a ground
+	# tile and differ by the canopy drawn over them, which is P2's. **No cell on
+	# the map uses either yet** -- they are legend entries so the generation pass
+	# that plants forests is a data change rather than a schema change.
+	"T": {"sheet": "marsh_corrupt", "cell": [1, 0], "category": "blocking",
+		"name": "Dense forest"},
+	"u": {"sheet": "marsh_corrupt", "cell": [1, 0], "category": "ground", "speed": 0.85,
+		"name": "Open woodland"},
+}
+
+## Which sheet cell draws each of the sixteen neighbour combinations, per
+## connection group. **Transcribed from `docs/design/TERRAIN_MASKS.md`**, which
+## was read off the sheets by hand -- do not re-derive it from pixels, which is
+## what failed on the first attempt at P1.
+##
+## `cell` is `[row, col]` in the named sheet, exactly as the doc states it, so
+## this table can be diffed against the doc line by line.
+##
+## **The sheets are not complete 16-piece sets.** Missing pieces are supplied as
+## `flip_h` / `flip_v` / `transpose` of ones that exist. Entries carrying `note`
+## are the approximations TERRAIN_SPEC section 4's 16-tile caveat already
+## allows; the note travels into the JSON so nobody later mistakes an
+## approximation for art that was drawn for that case.
+const CONNECTIONS := {
+	"road_cobble": {
+		"sheet": "road_cobble",
+		"masks": {
+			"0": {"cell": [0, 1], "note": "~ stub; isolated road cells should not be generated"},
+			"1": {"cell": [0, 1], "flip_v": true},
+			"2": {"cell": [2, 0]},
+			"3": {"cell": [2, 1], "flip_h": true},
+			"4": {"cell": [0, 1]},
+			"5": {"cell": [1, 1]},
+			"6": {"cell": [1, 2], "flip_h": true},
+			"7": {"cell": [3, 1], "flip_h": true},
+			"8": {"cell": [0, 2]},
+			"9": {"cell": [2, 1]},
+			"10": {"cell": [2, 2]},
+			"11": {"cell": [2, 3]},
+			"12": {"cell": [1, 2]},
+			"13": {"cell": [3, 1]},
+			"14": {"cell": [2, 3], "flip_v": true},
+			"15": {"cell": [1, 3]},
+		},
+	},
+	"path_dirt": {
+		"sheet": "path_dirt",
+		"masks": {
+			"0": {"cell": [2, 1]},
+			"1": {"cell": [1, 0]},
+			"2": {"cell": [0, 2], "flip_h": true},
+			"3": {"cell": [1, 2], "flip_v": true},
+			"4": {"cell": [0, 1]},
+			"5": {"cell": [1, 1]},
+			"6": {"cell": [1, 2]},
+			"7": {"cell": [1, 3]},
+			"8": {"cell": [0, 2]},
+			"9": {"cell": [0, 3], "flip_v": true},
+			"10": {"cell": [2, 2]},
+			"11": {"cell": [2, 3]},
+			"12": {"cell": [0, 3]},
+			"13": {"cell": [3, 1]},
+			"14": {"cell": [2, 3], "flip_v": true},
+			"15": {"cell": [3, 2]},
+		},
+	},
+	"water": {
+		"sheet": "water_ice",
+		"masks": {
+			"15": {"cell": [0, 0]},
+			"14": {"cell": [1, 0]},
+			"11": {"cell": [1, 0], "flip_v": true},
+			"7": {"cell": [1, 1]},
+			"13": {"cell": [1, 1], "flip_h": true},
+			"6": {"cell": [1, 2]},
+			"12": {"cell": [1, 3]},
+			"3": {"cell": [1, 2], "flip_v": true},
+			"9": {"cell": [1, 3], "flip_v": true},
+			"5": {"cell": [2, 0]},
+			"10": {"cell": [2, 0], "transpose": true},
+			"1": {"cell": [2, 0], "note": "~ river runs off the map edge; the straight is right"},
+			"4": {"cell": [2, 0], "note": "~ river runs off the map edge; the straight is right"},
+			"2": {"cell": [2, 0], "transpose": true, "note": "~ as above, E-W"},
+			"8": {"cell": [2, 0], "transpose": true, "note": "~ as above, E-W"},
+			"0": {"cell": [3, 3], "note": "~ no all-round shore exists; do not generate single water cells"},
+		},
+	},
+	"ice": {
+		"sheet": "water_ice",
+		"masks": {
+			"15": {"cell": [0, 2]},
+			"14": {"cell": [3, 0]},
+			"11": {"cell": [3, 0], "flip_v": true},
+			"7": {"cell": [3, 1]},
+			"13": {"cell": [3, 1], "flip_h": true},
+			"6": {"cell": [3, 2]},
+			"12": {"cell": [3, 2], "flip_h": true},
+			"3": {"cell": [3, 2], "flip_v": true},
+			"9": {"cell": [3, 2], "flip_h": true, "flip_v": true},
+			"5": {"cell": [0, 2], "note": "~ no ice-channel art; frozen lakes are convex and never make one"},
+			"10": {"cell": [0, 2], "note": "~ no ice-channel art; frozen lakes are convex and never make one"},
+			"0": {"cell": [0, 2], "note": "~ single ice cell; not generated"},
+			"1": {"cell": [0, 2], "note": "~ ice stub; not generated"},
+			"2": {"cell": [0, 2], "note": "~ ice stub; not generated"},
+			"4": {"cell": [0, 2], "note": "~ ice stub; not generated"},
+			"8": {"cell": [0, 2], "note": "~ ice stub; not generated"},
+		},
+	},
+	"cliff": {
+		"sheet": "rock_ruins",
+		"masks": {
+			"0": {"cell": [1, 0]},
+			"10": {"cell": [1, 1]},
+			"5": {"cell": [1, 2]},
+			"9": {"cell": [2, 0]},
+			"3": {"cell": [2, 1]},
+			"12": {"cell": [2, 0], "flip_v": true, "note": "~ inner corner approximated"},
+			"6": {"cell": [2, 1], "flip_v": true, "note": "~ inner corner approximated"},
+			"2": {"cell": [1, 1], "note": "~ ridge end; the face continues"},
+			"8": {"cell": [1, 1], "note": "~ ridge end; the face continues"},
+			"1": {"cell": [1, 2], "note": "~ ridge end; the face continues"},
+			"4": {"cell": [1, 2], "note": "~ ridge end; the face continues"},
+			"11": {"cell": [1, 1], "note": "~ tee approximated by the E-W face"},
+			"14": {"cell": [1, 1], "note": "~ tee approximated by the E-W face"},
+			"7": {"cell": [1, 2], "note": "~ tee approximated by the N-S face"},
+			"13": {"cell": [1, 2], "note": "~ tee approximated by the N-S face"},
+			"15": {"cell": [1, 0], "note": "~ cross approximated by the lone crag"},
+		},
+	},
 }
 
 ## WORLD_MAP_PLAN §6's four danger bands, as **data only**. Nothing consumes
@@ -237,11 +413,21 @@ func _paint_mountains() -> void:
 	# this project can use -- a third of the target. At x68 it is ~50 cells,
 	# which lands in band. The 20x20 *starting region* (§5) is unchanged; what
 	# grew is the contested wilderness between it and the ridge.
+	# **Cliff, not scree.** R1 flagged rocky scree as the one terrain
+	# placeholder -- "a real cliff/mountain tile belongs in the art brief" --
+	# and the rock sheet closes it. The two gaps are untouched: a wall with a
+	# door is a route decision, a wall without one is a smaller map.
+	#
+	# Only THIS range converts. The map rim, the western range, the northern
+	# range and the spur stay `m`, and `m` stays **blocking** -- TERRAIN_SPEC
+	# section 5 retires scree to walkable decoration once cliffs are the real
+	# wall, but the rim is made of scree, and a walkable rim is a hole in the
+	# world. Converting the rest is a generation pass, which this is not.
 	for y in range(20, 132):
 		if (y >= GAP_N_Y and y <= GAP_N_Y + 10) or (y >= 96 and y <= 102):
 			continue
 		for x in range(RIDGE_X, RIDGE_X + 7):
-			grid[y][x] = "m"
+			grid[y][x] = "^"
 	# Northern range.
 	for y in range(8, 21):
 		for x in range(50, 131):
@@ -253,11 +439,19 @@ func _paint_mountains() -> void:
 			if rng.randf() < 0.8:
 				grid[y][x] = "m"
 
-## Frozen lakes. Blocking, because a necromancer who drowns in a bog is not the
-## fantasy -- and because the map needs blocking that isn't all mountain.
+## Frozen lakes. **Walkable ice at 0.85, not blocking** (TERRAIN_SPEC section 6):
+## a frozen lake you can cross is a shortcut with a flavour of risk; one you
+## cannot is a hole in the map. If ice-breaking is ever wanted it is an R3+
+## hazard, not terrain.
+##
+## Ellipses, which matters more than it looks: the ice connection set has shore
+## pieces for the four sides and the four outer corners and nothing else, so a
+## convex blob is exactly what the art can draw. A concave lake would ask for an
+## inner corner that does not exist -- the same constraint the cliff outlines
+## are held to.
 func _paint_water() -> void:
-	_ellipse(66, 96, 9, 6, "i")
-	_ellipse(112, 28, 6, 4, "i")
+	_ellipse(66, 96, 9, 6, "I")
+	_ellipse(112, 28, 6, 4, "I")
 
 ## Roads paint last so they cut through ridges. §4's structure: the Old Road runs
 ## north-south, the village hangs off it at a crossroads, the Southern Road runs
@@ -334,6 +528,7 @@ func _write() -> void:
 		"lair_band": [BAND.position.x, BAND.position.y, BAND.size.x, BAND.size.y],
 		"bands": BANDS,
 		"legend": LEGEND,
+		"connections": CONNECTIONS,
 		"rows": rows,
 	}
 	var f := FileAccess.open(OUT_PATH, FileAccess.WRITE)

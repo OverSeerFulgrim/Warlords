@@ -89,6 +89,42 @@ static func atlas_coord_for(sheet_index: int, tile_index: int) -> Vector2i:
 	var flat: int = sheet_index * SHEET_TILES + tile_index
 	return Vector2i(flat % ATLAS_COLUMNS, flat / ATLAS_COLUMNS)
 
+## Atlas coordinate for a sheet id plus a `[row, col]` cell inside that sheet's
+## own 4x4 -- the form `data/world_map.json` and `TERRAIN_MASKS.md` both use.
+##
+## **The JSON stores sheet cells, never atlas coordinates.** Atlas coordinates
+## are a function of the sheet *order*, so storing them would mean every legend
+## entry and all eighty mask entries silently repaint themselves the day a sheet
+## is inserted -- which is exactly what happened when the atlas grew from one
+## sheet to seven. Storing the sheet cell makes the JSON diffable against
+## `TERRAIN_MASKS.md` line by line, and makes a reorder a re-derivation.
+static func atlas_coord_for_cell(sheet_id: String, cell: Array) -> Vector2i:
+	var index: int = TILESET_PATHS.keys().find(sheet_id)
+	if index < 0:
+		push_error("WorldMap: unknown sheet id '%s'" % sheet_id)
+		return Vector2i.ZERO
+	var row: int = int(cell[0])
+	var col: int = int(cell[1])
+	return atlas_coord_for(index, row * SHEET_COLUMNS + col)
+
+## The three transform bits a TileMapLayer cell can carry. Godot encodes them in
+## the `alternative_tile` argument of `set_cell` rather than in a separate
+## parameter, which is why they are ORed into an int here.
+const TRANSFORM_BITS := {
+	"flip_h": TileSetAtlasSource.TRANSFORM_FLIP_H,
+	"flip_v": TileSetAtlasSource.TRANSFORM_FLIP_V,
+	"transpose": TileSetAtlasSource.TRANSFORM_TRANSPOSE,
+}
+
+## The alternative-tile id for a mask entry's transform flags, 0 when it draws
+## the tile as-authored.
+static func transform_id(entry: Dictionary) -> int:
+	var id: int = 0
+	for key in TRANSFORM_BITS.keys():
+		if bool(entry.get(key, false)):
+			id |= int(TRANSFORM_BITS[key])
+	return id
+
 ## Terrain categories. Deliberately three, and deliberately not an enum with
 ## per-type behaviour: the *layout* and the *category of each tile* are both
 ## data (data/world_map.json's legend), so adding "marsh: walkable but slow" is
@@ -125,6 +161,10 @@ var _speeds: PackedFloat32Array = PackedFloat32Array()
 ## hand-written colour table would.
 var _map_colors: PackedColorArray = PackedColorArray()
 
+## `table id -> {sheet, masks}` straight from the JSON. Resolved per cell in
+## `_resolve_connections()`; never mutated.
+var _connections: Dictionary = {}
+
 ## WORLD_MAP_PLAN §6's danger bands, straight from the data file:
 ## `{band: int, name: String, rect: Rect2i}`. **Data only** -- nothing consumes
 ## the number yet; it is the hook R2's encounter and loot tables plug into, and
@@ -150,6 +190,7 @@ func build() -> bool:
 	origin_px = -Vector2(lair_origin) * float(CELL_SIZE)
 	position = origin_px
 	_build_layer()
+	_resolve_connections()
 	return true
 
 func _load_data() -> Dictionary:
@@ -191,17 +232,23 @@ func _apply_data(data: Dictionary) -> void:
 	for key in legend.keys():
 		var entry: Dictionary = legend[key]
 		var category: String = entry.get("category", CAT_GROUND)
-		var atlas: Array = entry.get("tile", [0, 0])
 		index_of[key] = _types.size()
 		_types.append({
 			"char": key,
 			"name": entry.get("name", key),
 			"category": category,
-			"atlas": Vector2i(int(atlas[0]), int(atlas[1])),
+			"atlas": atlas_coord_for_cell(String(entry.get("sheet", "snow")),
+				entry.get("cell", [0, 0])),
+			# Connectivity vs art, deliberately two keys -- cobble and dirt share
+			# the group `road` and draw from different sheets (TERRAIN_SPEC 4).
+			"group": String(entry.get("group", "")),
+			"draws": String(entry.get("draws", "")),
 		})
 		_walkable.append(0 if category == CAT_BLOCKING else 1)
 		var speed: float = float(entry.get("speed", DEFAULT_ROAD_SPEED if category == CAT_ROAD else 1.0))
 		_speeds.append(speed)
+
+	_connections = data.get("connections", {})
 
 	var rows: Array = data.get("rows", [])
 	_cells.resize(width * height)
@@ -231,6 +278,84 @@ func _build_layer() -> void:
 			var t: Dictionary = _types[_cells[y * width + x]]
 			terrain_layer.set_cell(Vector2i(x, y), 0, t["atlas"])
 
+# ---------------- Connection tiles (TERRAIN_SPEC sections 3-4) ---------------
+
+## A cell's connection group, or "" if its type does not connect to anything.
+## Out of bounds returns "" so the map rim terminates roads and rivers cleanly
+## rather than wrapping.
+func connection_group_at(cell: Vector2i) -> String:
+	if not in_bounds(cell):
+		return ""
+	return String(_types[_cells[cell.y * width + cell.x]].get("group", ""))
+
+## Repaints every connecting cell with the tile its four orthogonal neighbours
+## imply (TERRAIN_SPEC section 4).
+##
+## **Semantic in, connection out.** `data/world_map.json`'s rows carry only what
+## a cell *is* -- "C" is cobble road, never "cobble T-junction". What it *looks
+## like* is derived here, once, at load. That is what keeps 112 tiles from
+## becoming 112 legend characters and the layout from becoming unmaintainable.
+##
+## One pass over 20,736 cells with four neighbour lookups each. The same order
+## of work as the plain `set_cell` loop it follows, and it adds **no nodes** --
+## the trap R1 documented has not moved: still one TileMapLayer, still zero
+## children.
+##
+## **A missing mask is a hard error, never a fallback.** A silently-wrong corner
+## on one cell of 20,736 is exactly the bug nobody ever finds, so the loader
+## refuses to guess. That is also why the tables in the JSON carry all sixteen
+## entries even where the art does not -- the approximations are declared,
+## marked, and visible in a diff.
+func _resolve_connections() -> void:
+	if _connections.is_empty():
+		return
+	var missing: Dictionary = {}
+	for y in range(height):
+		for x in range(width):
+			var cell := Vector2i(x, y)
+			var type: Dictionary = _types[_cells[y * width + x]]
+			var group: String = String(type.get("group", ""))
+			if group == "":
+				continue
+			var table_id: String = String(type.get("draws", ""))
+			var table: Dictionary = _connections.get(table_id, {})
+			if table.is_empty():
+				missing["table:" + table_id] = true
+				continue
+			var mask: int = _mask_at(cell, group)
+			var masks: Dictionary = table.get("masks", {})
+			var key: String = str(mask)
+			if not masks.has(key):
+				missing["%s mask %d" % [table_id, mask]] = true
+				continue
+			var entry: Dictionary = masks[key]
+			terrain_layer.set_cell(cell, 0,
+				atlas_coord_for_cell(String(table.get("sheet", "snow")), entry.get("cell", [0, 0])),
+				transform_id(entry))
+	if not missing.is_empty():
+		push_error("WorldMap: connection table incomplete -- %s. "
+			% str(missing.keys())
+			+ "A missing mask is a hard error (TERRAIN_SPEC section 4); "
+			+ "fill it in data/world_map.json rather than falling back.")
+
+## The four-bit neighbour mask for a cell, per TERRAIN_SPEC section 4:
+## `N | E<<1 | S<<2 | W<<3`.
+##
+## Membership is by **group**, not by type: a dirt track and a cobble road are
+## both group `road`, so a track meeting a road forms a junction on both sides
+## rather than two dead ends facing each other.
+func _mask_at(cell: Vector2i, group: String) -> int:
+	var mask: int = 0
+	if connection_group_at(cell + Vector2i(0, -1)) == group:
+		mask |= 1
+	if connection_group_at(cell + Vector2i(1, 0)) == group:
+		mask |= 2
+	if connection_group_at(cell + Vector2i(0, 1)) == group:
+		mask |= 4
+	if connection_group_at(cell + Vector2i(-1, 0)) == group:
+		mask |= 8
+	return mask
+
 ## Slices all seven 4x4 sheets into a single 512x896 atlas at exactly CELL_SIZE
 ## per tile, resampling each ~305px tile down once at load.
 ##
@@ -251,8 +376,33 @@ func _build_tileset() -> TileSet:
 	for row in range(ATLAS_ROWS):
 		for col in range(ATLAS_COLUMNS):
 			source.create_tile(Vector2i(col, row))
+	_register_transforms(source)
 	ts.add_source(source, 0)
 	return ts
+
+## Godot draws a flipped tile as an **alternative** of the base tile, and the
+## alternative has to exist on the source before any cell can reference it.
+##
+## Registered **once here, for every tile, rather than per cell**: creating an
+## alternative during the 20,736-cell resolve pass would allocate inside the
+## hot loop and would do it repeatedly for the same tile. Seven transform
+## combinations across 112 tiles is 784 alternatives, built once at load.
+##
+## The ids are not arbitrary -- Godot's transform bits ARE the alternative id
+## (`TRANSFORM_FLIP_H` is 4096, and so on), so `transform_id()` composing them
+## with OR produces exactly the id created here.
+func _register_transforms(source: TileSetAtlasSource) -> void:
+	var combinations: Array[int] = []
+	for h in [false, true]:
+		for v in [false, true]:
+			for t in [false, true]:
+				var id: int = transform_id({"flip_h": h, "flip_v": v, "transpose": t})
+				if id != 0:
+					combinations.append(id)
+	for row in range(ATLAS_ROWS):
+		for col in range(ATLAS_COLUMNS):
+			for id in combinations:
+				source.create_alternative_tile(Vector2i(col, row), id)
 
 ## Average colour per terrain type, for the minimap. **Sampled from the atlas**
 ## rather than written down: a hand-kept colour table is one more thing to

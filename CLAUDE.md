@@ -51,7 +51,10 @@ autoload/global).
 
 ## Graphics rules
 
-`docs/art/SPRITE_SPEC.md` is the ONE authority (256px canvas, y=224 baseline, body families).
+`docs/art/SPRITE_SPEC.md` is the ONE authority for **characters and buildings** (256px canvas,
+y=224 baseline, body families). **Terrain sheets are explicitly outside it** — full-res 4x4
+tilesheets in `assets/official/terrain/`, sliced to 64px at load; `TERRAIN_SPEC.md` §2 governs
+them and `tools/dump_atlas.gd` is how you read one.
 In code: sizes are **content heights** via `Anchoring.scale_for_content_height()` (never divide
 by texture width; never use `CELL_SIZE` as a sprite size). `Anchoring.foot()` / `cell_base()`
 anchor the drawn alpha box. Click radii come from `Anchoring.drawn_content_size()` × 0.45.
@@ -74,12 +77,14 @@ scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), L
                            MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/           Necromancer (data), VillainController (WASD+camera follow)
 scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), UndeadCommand, RallyPoint
-scripts/world/             WorldMap (one TileMapLayer), FogOfWar (one 144×144 image), DayNightCycle,
+scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles),
+                           FogOfWar (one 144×144 image), DayNightCycle,
                            WorldSite(s), Patrol, Wolf, Roaming, TravelLog
 scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
 data/                      the JSON content (races/buildings/events/missions/recruitment/world_*)
 tools/                     generators + verification harnesses (KEEP: they re-derive every number),
-                           export_roster.gd (stat_rework_roster.xlsx → data/races.json)
+                           export_roster.gd (stat_rework_roster.xlsx → data/races.json),
+                           dump_atlas.gd (READ ITS OUTPUT before wiring a terrain sheet)
 docs/design|art|prompts|history/         specs, art rules, prompt libraries, dated dev narrative
 assets/official|placeholder|vendor/      see Graphics rules
 ```
@@ -90,6 +95,9 @@ assets/official|placeholder|vendor/      see Graphics rules
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
 - `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3 (after speed/layout changes)
+- `tools/verify_terrain.tscn` — 229 assertions: per-file sheet slicing, 112 distinct atlas tiles
+  with none all-black, every legend char and all 80 mask entries resolving, the flipped
+  alternatives, and one TileMapLayer with zero children (run windowed for the draw-call gate)
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

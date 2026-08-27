@@ -34,3 +34,7 @@ Food 2, Threat 1 (tier 0), Throne 40/40; both offered recruits turned away; 33 u
 - missions.json: `influence` had no 1:1 attribute; Claude Code chose `mercantile` for court-infiltration, `strength` for the two might missions. Designer may prefer `leadership` for court-infiltration.
 - RACES.md stat table marked dead; re-issuing it from data/races.json is an outstanding docs task (fold into C2's history write-up or a later docs pass).
 - The C2 prompt's Gray Dwarf spot check was wrong (9+1=10); corrected in R2_PROMPTS.md to 9+0=9.
+
+## P1 follow-ups (2026-08-27)
+- verify_combat_feedback flakes ~1 in 3 ("a throne and a worker exist for the repair test") — pre-existing, not terrain. Needs a proper look; fold into P2 or a fix-up prompt.
+- Mask tables read from the sheets by hand: docs/design/TERRAIN_MASKS.md. Sheets are NOT clean 16-sets; flips cover the gaps.

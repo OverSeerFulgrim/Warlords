@@ -6,7 +6,15 @@
 
 ---
 
-## 1. The one convention that matters
+> **Terrain sheets are outside this document's rules.** `assets/official/terrain/*.png` are
+> full-resolution 4x4 tilesheets (nominally 1254px square, 5px margin, 8px gutters, 305px tiles),
+> sliced and resampled to 64px at load by `WorldMap._build_atlas_texture()`. They have no 256px
+> canvas, no y=224 baseline and no body family, and they never should -- ground is not a
+> character. The exception already existed in practice; this records it so nobody "fixes" it.
+> `TERRAIN_SPEC.md` section 2 is their spec, and `tools/dump_atlas.gd` is how you read one.
+> (The *trees* drawn over forest floor are a different matter: `Pine_Tree.png` is an ordinary
+> node sprite and **is** governed by this document.)
+
 
 **Every character is authored on the same canvas, with the same baseline, and occupies a different fraction of it.**
 
