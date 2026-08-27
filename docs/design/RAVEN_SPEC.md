@@ -3,12 +3,14 @@
 **Status:** Draft for review, 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
 `LOOT_SITES_SPEC.md` put out of scope. Nothing here is implemented.
 
-> **Correction, load-bearing.** `docs/history/2026-08-world-map-r1.md` says, in its fog-of-war
+> **Correction, load-bearing.** `docs/history/2026-08-world-map-r1.md` said, in its fog-of-war
 > section, that *"the map doc's 8–12 is the Raven's scouting number, rework §6, and that's R2."*
 > **That is wrong and this spec supersedes it.** `ROGUELITE_REWORK.md` §4 amendment 3 *replaced* the
 > 8–12-cells-per-scouting-action model outright; §6 gives the Raven no reveal radius at all, and
 > `WORLD_MAP_PLAN.md`'s own header already records the retraction. The Raven does not clear fog.
-> Fix the history file's parenthetical when this lands.
+> **The history file's parenthetical was fixed and now points here** (2026-08-06 for the
+> substance, prompt U1 on 2026-08-27 for the pointer). What stands above is the record of
+> what it used to claim, not an open task.
 
 **Scope:** what the Raven is in v1, the ping lifecycle, the honesty invariant, cadence and pool,
 UI surface, and what is deliberately not built.

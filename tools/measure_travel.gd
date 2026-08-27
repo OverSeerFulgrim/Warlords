@@ -27,14 +27,76 @@ extends Node
 ##   but exposed). It is also the honest worst case for a villain avoiding
 ##   witnesses, which is the whole Era I fantasy.
 ## - **road** -- A* weighted toward roads. Reported as the bonus it is.
+##
+## ## Worker nodes and sortie-scale resources are two different rows
+##
+## §3's "lair to nearby resource" row used to be measured to the nearest seeded
+## resource node, which reported FAST forever and read as a regression. It was a
+## category error in the harness, not a fault in the map: the lair's own nodes
+## are **worker nodes**, deliberately close because workers walk them every trip
+## and a long haul would wreck the settlement economy's pacing. §3's row is
+## about **sortie-scale** resources -- the ones the Necromancer leaves home for --
+## which R2 places outside the lair band.
+##
+## So the two are measured separately: the worker-node span is reported with its
+## reason and no target, and the sortie-scale row is measured to the ring §3
+## implies at the tuned walk speed. Until R2 seeds a site into that ring the row
+## is PENDING, and `_ring_report()` asserts the ring is there to seed into --
+## walkable, reachable, and inside the 10-20s band once you get there.
 
 const DT := 1.0 / 60.0
 const ARRIVE_PX := 20.0
 const GIVE_UP_SECONDS := 1800.0
 
+## How many bearings the sortie-scale ring is sampled along. 16 is every 22.5°,
+## enough to catch a whole quadrant walled off by the ridge.
+const RING_BEARINGS := 16
+
+## **The forest is scattered with `randf_range`**, so two runs place their trees
+## in different spots and the nearest-worker-node row lands on a different tree
+## each time -- it wobbled 4-5s across runs with everything else identical. A
+## travel harness that reports a different number every run cannot be regressed
+## against, so the global seed is fixed here exactly as `capture_settlement.gd`
+## fixes it, and for the same reason: measure one map, not a family of them.
+const MEASURE_SEED: int = 20260805
+
+## How far a ring cell's routed walk may exceed its straight-line time before
+## the ring is called a problem.
+##
+## Judging ring cells against the raw 10-20s band directly does not work: the
+## ring's edges *are* the band's edges by construction, so a cell sampled at
+## radius 20 lands at 20.5s and reads as a failure over grid quantisation. The
+## detour factor is the scale-free version of the same question -- "does routing
+## make this cell further than it looks?" -- and it is what would actually catch
+## a quadrant walled off by the ridge. Measured worst case on the R1 map is
+## 1.06x (pure diagonal-step quantisation); a genuinely blocked bearing routes
+## at 1.5x or worse, so 1.15 sits clearly between the two.
+const MAX_RING_DETOUR := 1.15
+
+## The one node in `ResourceField.nodes` that a travel measurement must not use:
+## the **deer roams**, every frame, from a `randf_range` start. It is not a
+## place a worker walks to on a repeatable trip.
+##
+## This is why the row was nondeterministic -- it reported 3s, 4s or 5s run to
+## run depending on where the deer had wandered, which is also how the backlog
+## came to record 3s while the R1 travel table recorded 5s. Both numbers were
+## real; neither was measuring a resource.
+##
+## Note the forest's four **carcasses stay in** -- they are seeded fixed nodes
+## seeded among the trees so a Bones trip and a Wood trip share a corner of the
+## map, and a worker walks them exactly like a tree. Only the wolf drop shares
+## that `node_type`, and it does not exist at seeding time.
+const ROAMING_NODES := ["deer"]
+
 ## label -> [min, max] seconds, straight from WORLD_MAP_PLAN §3.
+##
+## §3's first row reads "lair to nearby resource", and **that row is about
+## sortie-scale resources, not the lair's own worker nodes** -- two different
+## journeys with two different expectations, see `_worker_node_span()`. The
+## worker-node rows are deliberately reported without a target; judging them
+## against §3 is what produced the standing FAST false alarm this table carried.
 const TARGETS := {
-	"lair -> nearby resource": [10.0, 20.0],
+	"lair -> sortie-scale resource": [10.0, 20.0],
 	"lair -> first landmark": [20.0, 40.0],
 	"lair -> edge of local territory": [45.0, 75.0],
 	"lair -> the village": [120.0, 240.0],
@@ -49,6 +111,7 @@ var _road := AStarGrid2D.new()
 func _ready() -> void:
 	get_tree().root.size = Vector2i(1400, 760)
 	await get_tree().process_frame
+	seed(MEASURE_SEED)
 	var main = load("res://scenes/Main.tscn").instantiate()
 	get_tree().root.add_child(main)
 	await get_tree().process_frame
@@ -68,9 +131,21 @@ func _ready() -> void:
 	print("%-34s %-11s %-11s %-9s %s" % ["journey", "wilderness", "on roads", "cells", "verdict"])
 	print("-".repeat(86))
 
-	var span: Array = _resource_span(main, lair)
-	_journey("lair -> nearby resource", lair, span[0])
-	_journey("lair -> furthest lair resource", lair, span[1])
+	# The lair's own nodes, reported as what they are and judged against nothing.
+	var span: Array = _worker_node_span(main, lair)
+	var why := "short by design — workers walk these every trip"
+	_journey("lair -> worker node (nearest)", lair, span[0], why)
+	_journey("lair -> worker node (furthest)", lair, span[1], why)
+
+	# §3's actual first row. PENDING until R2 seeds the ring.
+	var ring: Array = _sortie_ring_cells()
+	var sortie: Vector2i = _sortie_site_cell(main, lair, ring)
+	if sortie.x < 0:
+		_pending("lair -> sortie-scale resource",
+			"PENDING R2a — no site in the %d-%d cell ring yet" % [ring[0], ring[1]])
+	else:
+		_journey("lair -> sortie-scale resource", lair, sortie)
+
 	_journey("lair -> first landmark", lair, _nearest_landmark_cell(main, lair))
 	_journey("lair -> edge of local territory", lair, _valley_mouth_cell(lair))
 	_journey("lair -> the village", lair, _site_cell(main, "manor"))
@@ -78,12 +153,18 @@ func _ready() -> void:
 	var b: Vector2i = _nearest_open(Vector2i(world.width - 7, world.height - 7))
 	_journey("crossing the entire map", a, b)
 
+	if sortie.x < 0:
+		_ring_report(lair, ring)
+
 	print("\nA day is 30 minutes of daylight + 20 of night (DayNightCycle).")
 	get_tree().quit()
 
 # ---------------- Journeys ---------------------------------------------------
 
-func _journey(label: String, from: Vector2i, to: Vector2i) -> void:
+## `note`, when given, replaces the verdict column. It is how a row says "this
+## journey is not one of §3's and here is why", which is different from a row
+## that simply has no target -- silence there reads as an oversight.
+func _journey(label: String, from: Vector2i, to: Vector2i, note := "") -> void:
 	if to.x < 0:
 		print("%-34s (no destination found)" % label)
 		return
@@ -95,7 +176,7 @@ func _journey(label: String, from: Vector2i, to: Vector2i) -> void:
 	var wild: float = _walk(wild_path)
 	var road: float = _walk(road_path)
 	var band: Array = TARGETS.get(label, [])
-	var verdict := ""
+	var verdict := note
 	if not band.is_empty():
 		if wild < band[0]:
 			verdict = "FAST — target %s-%s" % [_fmt(band[0]), _fmt(band[1])]
@@ -105,6 +186,12 @@ func _journey(label: String, from: Vector2i, to: Vector2i) -> void:
 			verdict = "in band (%s-%s)" % [_fmt(band[0]), _fmt(band[1])]
 	print("%-34s %-11s %-11s %-9d %s" % [
 		label, _fmt(wild), _fmt(road), wild_path.size(), verdict])
+
+## A row that has a §3 target but nothing in the world to measure it to yet.
+## Printed rather than skipped, so the table keeps a slot for it and the reason
+## it is empty travels with the number that is missing.
+func _pending(label: String, why: String) -> void:
+	print("%-34s %-11s %-11s %-9s %s" % [label, "—", "—", "—", why])
 
 ## Drives the villain along a cell path with the real movement code and returns
 ## the game-seconds it took.
@@ -138,17 +225,31 @@ func _walk(path: Array) -> float:
 
 # ---------------- Destinations -----------------------------------------------
 
-## The nearest and furthest seeded resource, so the report shows the *spread*
-## rather than a single number. The lair's own nodes deliberately sit close --
-## workers walk them every trip and a long haul would wreck the settlement
-## economy's pacing -- so the near end is expected to undershoot §3's floor.
-func _resource_span(main, lair: Vector2i) -> Array:
+## The nearest and furthest **worker node**, so the report shows the *spread*
+## rather than a single number.
+##
+## These are the lair's own seeded resources -- `ResourceField`'s lair-band
+## seeding -- and they sit close **on purpose**: workers walk them every trip,
+## and a long haul would wreck the settlement economy's pacing. They are not
+## §3's "nearby resource" and are not judged against it. Do not "fix" a short
+## number here by moving the nodes; that trades a working economy for a row in
+## a table that was never about these nodes.
+##
+## The lair band is the structural line between the two kinds, which is also
+## how `ROGUELITE_REWORK.md` §12 frames it ("`ResourceField`'s fixed seeding
+## becomes the lair-band seeder"). Anything R2 seeds outside the band is a
+## sortie-scale resource and gets measured by `_sortie_site_cell()` instead.
+func _worker_node_span(main, lair: Vector2i) -> Array:
 	var near := Vector2i(-1, -1)
 	var far := Vector2i(-1, -1)
 	var near_d := INF
 	var far_d := -1.0
 	for n in main.resource_field.nodes:
+		if n.node_type in ROAMING_NODES:
+			continue
 		var cell: Vector2i = world.cell_at(n.position)
+		if not world.lair_band.has_point(cell):
+			continue   # not a worker node -- see _sortie_site_cell()
 		var d: float = Vector2(cell - lair).length()
 		if d < 3.0:
 			continue   # standing in the settlement's own footprint
@@ -159,6 +260,117 @@ func _resource_span(main, lair: Vector2i) -> Array:
 			far_d = d
 			far = cell
 	return [_nearest_open(near), _nearest_open(far)]
+
+## The ring §3's "lair -> nearby resource" row implies, in **cells**, derived
+## from the target seconds and the tuned walk speed rather than hardcoded -- so
+## if anyone retunes `MOVE_SPEED_CELLS`, the ring this harness checks moves with
+## it instead of quietly going stale.
+func _sortie_ring_cells() -> Array:
+	var band: Array = TARGETS["lair -> sortie-scale resource"]
+	return [
+		roundi(band[0] * Necromancer.MOVE_SPEED_CELLS),
+		roundi(band[1] * Necromancer.MOVE_SPEED_CELLS),
+	]
+
+## The nearest sortie-scale resource: a resource node or world site **outside
+## the lair band**, inside the ring. R2 has not placed any yet, so this returns
+## (-1, -1) and the row reports PENDING -- but it is wired now so the row starts
+## reporting a real number the moment `LOOT_SITES_SPEC.md` §2's sites land.
+func _sortie_site_cell(main, lair: Vector2i, ring: Array) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_d := INF
+	var candidates: Array = []
+	candidates.append_array(main.resource_field.nodes)
+	candidates.append_array(main.world_sites.sites)
+	for c in candidates:
+		var cell: Vector2i = world.cell_at(c.position)
+		if world.lair_band.has_point(cell):
+			continue
+		var d: float = Vector2(cell - lair).length()
+		if d < float(ring[0]) or d > float(ring[1]):
+			continue
+		if d < best_d:
+			best_d = d
+			best = cell
+	if best.x < 0:
+		return best
+	return _nearest_open(best)
+
+## With no sortie-scale site to measure to, assert the **ring** instead: that
+## there is somewhere in it to put one, and that standing there is 10-20s from
+## home once you do.
+##
+## Worth doing rather than just printing PENDING, because "10-20 cells out" is a
+## straight-line claim and the villain walks a route. The ridge, the marsh and
+## the blocking terrain are all entitled to make a cell 12 cells away a 30-second
+## walk, and that would be a real finding about where R2 may seed.
+##
+## Cells are sampled unsnapped: a blocked ring cell is genuinely unavailable for
+## seeding, and snapping it to its nearest open neighbour would hide exactly the
+## thing this is looking for.
+func _ring_report(lair: Vector2i, ring: Array) -> void:
+	var band: Array = TARGETS["lair -> sortie-scale resource"]
+	var radii: Array = [float(ring[0]), (ring[0] + ring[1]) * 0.5, float(ring[1])]
+	var bounds := Rect2i(0, 0, world.width, world.height)
+	var sampled := 0
+	var blocked := 0
+	var unreachable := 0
+	var outside_band := 0
+	var over := 0
+	var worst := 0.0
+	var worst_cell := Vector2i.ZERO
+	var times: Array = []
+	for i in range(RING_BEARINGS):
+		var dir := Vector2.RIGHT.rotated(TAU * float(i) / float(RING_BEARINGS))
+		for r in radii:
+			var cell: Vector2i = lair + Vector2i(roundi(dir.x * r), roundi(dir.y * r))
+			if not bounds.has_point(cell):
+				continue
+			sampled += 1
+			if not world.is_walkable_cell(cell):
+				blocked += 1
+				continue
+			var path: Array = _wild.get_id_path(lair, cell)
+			if path.is_empty():
+				unreachable += 1
+				continue
+			var t: float = _walk(path)
+			times.append(t)
+			var detour: float = t / (r / Necromancer.MOVE_SPEED_CELLS)
+			if detour > worst:
+				worst = detour
+				worst_cell = cell
+			if detour > MAX_RING_DETOUR:
+				over += 1
+			if not world.lair_band.has_point(cell):
+				outside_band += 1
+	times.sort()
+	print("\n--- sortie-scale ring: %d-%d cells from the lair ---" % [ring[0], ring[1]])
+	print("§3's %s-%s row is a sortie-scale row. At %.2f cells/sec that is this ring."
+		% [_fmt(band[0]), _fmt(band[1]), Necromancer.MOVE_SPEED_CELLS])
+	print("R2 seeds against it; until then this asserts the ring is there to seed into.")
+	print("  sampled            %d cells (%d bearings x radii %d/%d/%d)"
+		% [sampled, RING_BEARINGS, int(radii[0]), int(radii[1]), int(radii[2])])
+	print("  blocked terrain    %d" % blocked)
+	print("  unreachable        %d" % unreachable)
+	if times.is_empty():
+		print("  RING PROBLEM — nothing in the ring is walkable and reachable.")
+		return
+	print("  walkable+reachable %d   (of those, %d outside the lair band = seedable)"
+		% [times.size(), outside_band])
+	print("  walk times         min %s / median %s / max %s"
+		% [_fmt(times[0]), _fmt(times[times.size() / 2]), _fmt(times[-1])])
+	print("  worst detour       %.2fx straight-line, at cell %s (limit %.2fx)"
+		% [worst, worst_cell, MAX_RING_DETOUR])
+	if over == 0 and outside_band > 0:
+		print("  RING OK — routing never inflates a ring distance past the limit, so the")
+		print("            %d-%d cell ring really is a %s-%s ring. %d cells are seedable."
+			% [ring[0], ring[1], _fmt(band[0]), _fmt(band[1]), outside_band])
+	elif outside_band == 0:
+		print("  RING PROBLEM — no reachable ring cell sits outside the lair band.")
+	else:
+		print("  RING PARTIAL — %d cell(s) route past %.2fx; seed away from those bearings."
+			% [over, MAX_RING_DETOUR])
 
 func _nearest_landmark_cell(main, lair: Vector2i) -> Vector2i:
 	var best := Vector2i(-1, -1)

@@ -38,7 +38,8 @@ It reports two routes per journey. **The wilderness route is the one judged agai
 
 | Journey | §3 target | Wilderness | On roads | Verdict |
 |---|---|---|---|---|
-| lair → nearby resource | 10–20s | **5s** (nearest) / 11s (furthest lair node) | — | near end under, by design — see below |
+| lair → worker node | (not a §3 row) | **4s** (nearest) / 11s (furthest) | — | short by design — see below |
+| lair → sortie-scale resource | 10–20s | pending | — | R2 seeds the ring; ring verified |
 | lair → first landmark | 20–40s | **25s** | 25s | in band |
 | lair → edge of local territory | 45–75s | **45s** | 45s | in band |
 | lair → the village | 2–4 min | **2m02s** | 1m57s | in band |
@@ -52,6 +53,27 @@ It reports two routes per journey. **The wilderness route is the one judged agai
 4. **The village core moved east (x108 → x120), manor at (129, 83).** The 2–4 minute target needs the two powers at opposite ends of the map. It stays inside §5's 35×45 human territory.
 
 **The one row still out of band, and why it isn't a bug.** The lair's own resources sit 5–11 seconds out. That is deliberate: workers walk them every trip, and a long haul would wreck the settlement economy's pacing — the far end (the grave past the forest, 11s) *is* in band, so the spread straddles the target rather than missing it. §3's row is really about sortie-scale resources, which R2 places; at 1.0 cells/sec the ring for those is **10–20 cells from the lair**, and that is the number R2 should seed against.
+
+> **Correction, 2026-08-27 (prompt U1).** The table above judged the lair's own worker nodes
+> against §3's row and therefore reported FAST forever — a category error in the harness, not a
+> fault in the map. `tools/measure_travel.tscn` now reports the two as separate journeys: the
+> **worker-node span** with its reason and no target, and **lair → sortie-scale resource** measured
+> against §3's 10–20s to a site outside the lair band. Nothing moved: not the walk speed (1.0 was
+> tuned against the crossing and the village trip, both in band, and moving it would break two rows
+> to fix one), and not the worker nodes.
+>
+> The sortie row is **PENDING R2a** — R2 has not placed a site in the ring yet — so the harness
+> asserts the ring instead: 48 cells sampled at 16 bearings × radii 10/15/20, 6 blocked by terrain,
+> 0 unreachable, 18 of the 42 walkable ones outside the lair band and therefore seedable, walk
+> times 10–21s. Routing never inflates a ring distance by more than **1.06×** straight-line, so the
+> 10–20 **cell** ring really is a 10–20 **second** ring — the number above is safe to seed against.
+>
+> Two harness bugs fell out of this. The nearest-node row was measuring **the roaming deer**,
+> which is seeded at `randf_range` and wanders every frame; that is why this file recorded 5s while
+> the backlog recorded 3s. Both were real, neither was measuring a resource. And the forest is
+> scattered with `randf_range`, so the row landed on a different tree each run. The deer is now
+> excluded and the global seed fixed, as `capture_settlement.gd` already did — the report is
+> reproducible run to run for the first time.
 
 #### Day/night pressure comes free, as predicted
 
