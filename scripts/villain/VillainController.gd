@@ -7,18 +7,27 @@ class_name VillainController
 ## mean two controllers, which is the whole point of ROGUELITE_REWORK section
 ## 11's "no system may assume there is exactly one villain".
 ##
-## ## Why the keyboard, and not click-to-move
+## ## The keyboard, and now also right-click-to-move
 ##
-## Left-click is already spoken for three times over: inspection, build
-## placement, demolish, and Command Undead's rally point all read a left-click
-## on the map, and `Main._unhandled_input` arbitrates between them by mode.
-## Right-drag is camera pan. Adding "walk here" as a fourth meaning for a mouse
-## button would mean every click first asking *which mode am I in* before it
-## could ask *what did they click* -- which is exactly how an input layer rots.
-## Hold-to-move on the keyboard is a separate channel entirely: it cannot
-## collide with any click, it needs no mode, and it reads as direct control
-## rather than as issuing an order (which matters, because ordering people
-## about is the one thing this game's pillars rule out).
+## Left-click is spoken for three times over: inspection, build placement,
+## demolish, and Command Undead's rally point all read a left-click on the map,
+## and `Main._unhandled_input` arbitrates between them by mode. Hold-to-move on
+## the keyboard cannot collide with any of that: it is a separate channel, it
+## needs no mode, and it reads as direct control rather than as issuing an order
+## (which matters, because ordering people about is the one thing this game's
+## pillars rule out).
+##
+## **Right-click-to-move joined it after the R1 playtest** (request #2), on the
+## button that was carrying only camera pan. The two coexist because the gesture
+## is split by *shape*, not by mode: a right **tap** walks him, a right **drag**
+## pans. That decision is made in exactly one place -- `GameCamera`, which is the
+## only thing already watching right-button press, motion and release -- and it
+## emits `right_tapped` for the tap case. Nothing else may test the right button,
+## or the two meanings will both fire on the same gesture.
+##
+## The destination still goes through `_movement_input()` and `step()` like a
+## keystroke; see `Necromancer.target_direction()`. Holding a key cancels it,
+## which is why the keys are read first below.
 ##
 ## ## WASD moves the man, arrows move the camera
 ##
@@ -66,17 +75,21 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if villain == null:
 		return
-	villain.step(_movement_input(), delta)
+	villain.step(_movement_input(delta), delta)
 	_update_follow()
 
-## Held-direction vector, unnormalised -- `Necromancer.step` normalises, so
-## diagonals aren't faster.
+## The direction he should move this frame, unnormalised -- `Necromancer.step`
+## normalises, so diagonals aren't faster.
+##
+## **Keys win over a click destination, and cancel it.** Held keys are the more
+## direct statement of intent, and leaving a stale target alive underneath them
+## would yank him back the moment the player let go.
 ##
 ## Returns zero while a text field has keyboard focus. The Economy tab's
 ## threshold `SpinBox`es are real text entry: without this guard, typing "30"
 ## into one would also walk the Necromancer across the map (and, before this
 ## pass, panned the camera -- the same bug, just less visible).
-func _movement_input() -> Vector2:
+func _movement_input(delta: float) -> Vector2:
 	if _text_field_has_focus():
 		return Vector2.ZERO
 	var dir := Vector2.ZERO
@@ -88,7 +101,19 @@ func _movement_input() -> Vector2:
 		dir.y -= 1.0
 	if _any_pressed(KEYS_DOWN):
 		dir.y += 1.0
-	return dir
+	if dir != Vector2.ZERO:
+		villain.clear_move_target()
+		return dir
+	return villain.target_direction(delta)
+
+## Sends him walking to a world position. The one entry point for click-to-move,
+## whether the click landed on the world or on the minimap -- Main routes both
+## here after it has had first refusal (a click-to-target mode armed means the
+## click cancels that mode instead; see Main._on_right_tap).
+func order_move_to(world_pos: Vector2) -> void:
+	if villain == null:
+		return
+	villain.set_move_target(world_pos)
 
 func _any_pressed(keys: Array) -> bool:
 	for k in keys:

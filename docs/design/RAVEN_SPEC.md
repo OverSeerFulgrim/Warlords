@@ -34,9 +34,17 @@ catalog, §3 telegraphing), `WORLD_MAP_PLAN.md` (§8 fog and scouting — *as am
    hostile.
 3. **It never finds the big stuff.** Minor finds only. A fresh grave, a small cache. If the Raven
    could point at the crypt, exploring would be a chore list rather than a risk.
-4. **It does not solve fog of war.** Revealing the map remains the Necromancer's job, on foot, at
-   risk — *his physical presence in the world is the whole point*
-   (`ROGUELITE_REWORK.md` §4 amendment 3). A ping shows a marker, not terrain.
+4. **It does not solve fog of war.** Revealing the map remains the Necromancer's **and his
+   people's** job, on foot, at risk — *physical presence in the world is the whole
+   point* (`ROGUELITE_REWORK.md` §4 amendment 3). A ping shows a marker, not terrain:
+   **the Raven still reveals nothing.**
+
+   > Amended 2026-08-27 (prompt U2): friendly units -- workers, followers, bound undead --
+   > light a 3-cell disc while they stand in it, against the Necromancer's 7
+   > (`FogOfWar.UNIT_REVEAL_RADIUS_CELLS`). That widens *whose feet* do the revealing and
+   > changes nothing about the bird: lit-while-present, never permanent, and still no reveal
+   > radius on the Raven.
+
 5. **Dangerous surprises live only in self-found discoveries.** The ~90/10 worthwhile-to-surprise
    ratio (`ROGUELITE_REWORK.md` §6) applies to what the *player* uncovers. Raven pings are 100%
    worthwhile, by rule.

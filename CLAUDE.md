@@ -84,6 +84,8 @@ assets/official|placeholder|vendor/      see Graphics rules
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
 - `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3 (after speed/layout changes)
+- `tools/check_fog_and_minimap.tscn` — 41 assertions: multi-source fog (villain 7 cells, friendly
+  units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs
 
 ## Gotchas (one line each; details in docs/history/)

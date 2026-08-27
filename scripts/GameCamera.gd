@@ -11,6 +11,22 @@ class_name GameCamera
 ## the camera.** With follow mode on they read almost identically anyway --
 ## moving him moves the view -- so the arrow keys are really "look away from him
 ## for a moment", and like a right-drag they drop follow.
+##
+## ## The right button means two things, decided in one place
+##
+## A right **drag** pans. A right **tap** walks the Necromancer (R1 playtest
+## request #2). Both gestures start with the same press, so the split has to be
+## made by something that sees the whole gesture -- press, motion, release --
+## and this node is the only thing that already did. It therefore owns the
+## decision outright and announces the tap as `right_tapped`; **nothing else in
+## the project may test `MOUSE_BUTTON_RIGHT`**, or one gesture will fire both
+## meanings.
+##
+## The thresholds are deliberately loose: a "tap" is under TAP_MAX_DRAG_PX of
+## travel and under TAP_MAX_SECONDS held. A pan that happens to be tiny is
+## indistinguishable from a tap and is treated as one, which is the right way
+## round -- the cost is a short walk the player can cancel with any key, where
+## the reverse would be a click that silently does nothing.
 
 ## Zoom-out floor. Was 0.35, which framed a settlement nicely and showed about
 ## 60 cells of a 144-cell world -- less than half of it, with no way to see
@@ -36,7 +52,23 @@ var world_bounds: Rect2 = Rect2()
 var ui_top_inset: float = 0.0
 var ui_bottom_inset: float = 0.0
 
+## Emitted on a right-click *tap* -- press and release in nearly the same place,
+## quickly -- with the world position under the cursor. Main decides what it
+## means; see the class header for why this node is the one that decides a tap
+## happened at all.
+signal right_tapped(world_pos: Vector2)
+
+## Past this much travel, or this long held, the gesture is a pan and no tap is
+## emitted on release. Both have to be exceeded to *stay* a tap.
+const TAP_MAX_DRAG_PX: float = 6.0
+const TAP_MAX_SECONDS: float = 0.25
+
 var _dragging: bool = false
+## Gesture bookkeeping for the tap/drag split. `_drag_px` accumulates absolute
+## motion rather than start-to-end distance, so a wiggle that returns to where
+## it started is still a pan.
+var _press_time: float = 0.0
+var _drag_px: float = 0.0
 
 ## True once the player has panned or zoomed. The initial framing re-applies
 ## itself on window resize, but only while this is false -- once you've moved
@@ -65,13 +97,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_apply_zoom(-zoom_step)
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			# Right-drag rather than left-drag: left-click is now spoken for
-			# by build-menu placement (Main.gd enters "pending placement"
-			# mode and listens for a left-click on the grid), so panning
-			# moved to the button that's actually free. Matches the AoE/
-			# Majesty convention of left = select/act, right = pan anyway.
-			_dragging = event.pressed
+			# Right-drag rather than left-drag: left-click is spoken for by
+			# build-menu placement (Main.gd enters "pending placement" mode
+			# and listens for a left-click on the grid), so panning moved to
+			# the button that's actually free. Matches the AoE/Majesty
+			# convention of left = select/act, right = pan anyway.
+			if event.pressed:
+				_dragging = true
+				_press_time = _now()
+				_drag_px = 0.0
+			else:
+				_dragging = false
+				if _was_a_tap():
+					right_tapped.emit(get_global_mouse_position())
 	elif event is InputEventMouseMotion and _dragging:
+		# Accumulated first: a gesture is a pan the moment it moves far enough,
+		# even if the player then drags back to where they started.
+		_drag_px += event.relative.length()
 		position -= event.relative * zoom.x
 		_clamp_to_world()
 		_note_manual_pan()
@@ -91,6 +133,23 @@ func _process(delta: float) -> void:
 		position += move.normalized() * pan_speed * delta * zoom.x
 		_clamp_to_world()
 		_note_manual_pan()
+
+## Whether the right-button gesture that just ended was a tap rather than a pan.
+##
+## A tiny pan does move the camera by those few pixels before this decides it
+## was a tap. That is accepted: at any usable zoom, six pixels of camera drift is
+## invisible, and the alternative -- holding the pan until the gesture resolves
+## -- makes every real pan start with a lurch.
+func _was_a_tap() -> bool:
+	return _drag_px <= TAP_MAX_DRAG_PX and (_now() - _press_time) <= TAP_MAX_SECONDS
+
+## Wall-clock, not game time. Gesture timing is a property of the player's hand
+## and must not scale with `Engine.time_scale` -- at the debug 60x this is the
+## one clock in the project that should keep ticking at 1x. (The CLAUDE.md rule
+## against `Time.get_ticks_msec()` is about *gameplay* timers, which this is
+## explicitly not.)
+func _now() -> float:
+	return float(Time.get_ticks_msec()) / 1000.0
 
 ## Pan, specifically -- see manual_pan_ticks for why zoom is not this.
 func _note_manual_pan() -> void:

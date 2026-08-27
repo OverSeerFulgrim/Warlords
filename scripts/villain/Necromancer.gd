@@ -67,6 +67,11 @@ const MOVE_SPEED_CELLS: float = 1.0
 ## How long without a movement key before the idle pacing resumes. **Tunable.**
 const IDLE_RESUME_SECONDS: float = 8.0
 
+## How long a click destination may make no progress before it is abandoned.
+## Short enough that walking into a cliff reads as "he stopped", long enough to
+## survive the few no-progress frames of scraping around a corner.
+const TARGET_STALL_SECONDS: float = 0.5
+
 ## The old pacing behaviour, demoted from "what he does" to "what he does when
 ## you leave him alone". Radius is around wherever he stopped, not around the
 ## Throne -- he is a unit you park now, not a fixture of the keep.
@@ -124,6 +129,21 @@ var is_moving: bool = false
 ## pacing below takes over.
 var idle_seconds: float = 0.0
 
+## Where a right-click told him to walk, and whether one is outstanding. A
+## *destination* is simulation state for the same reason `position` is: it
+## survives across frames and exactly one thing may own it.
+##
+## It does **not** get its own movement code. `VillainController` turns it into
+## the same movement vector the keys produce and hands that to `step()` -- so
+## facing, terrain speed, blocking-slide, idle-resume and pacing all keep
+## working without knowing a click happened. See `target_direction()`.
+var move_target: Vector2 = Vector2.ZERO
+var has_move_target: bool = false
+
+## Progress bookkeeping for the stall give-up in `target_direction()`.
+var _target_stall: float = 0.0
+var _target_last_pos: Vector2 = Vector2.ZERO
+
 var _idle_anchor: Vector2 = Vector2.ZERO
 var _idle_target: Vector2 = Vector2.ZERO
 var _idle_pause: float = 0.0
@@ -144,6 +164,7 @@ func _init(start_position: Vector2 = Vector2.ZERO) -> void:
 func place_at(p: Vector2) -> void:
 	position = p
 	_reset_idle(p)
+	clear_move_target()
 
 # ---------------- Movement ---------------------------------------------------
 
@@ -152,13 +173,20 @@ func place_at(p: Vector2) -> void:
 func move_speed_px() -> float:
 	return MOVE_SPEED_CELLS * float(SettlementGrid.CELL_SIZE)
 
-## One frame of movement. `move_dir` is the raw (unnormalised) key vector from
-## whoever is reading input -- `Vector2.ZERO` when nothing is held.
+## One frame of movement. `move_dir` is the raw (unnormalised) direction vector
+## from whoever is reading input -- `Vector2.ZERO` when he is not being driven.
 ##
 ## Both halves of "hold to move" and "idle pacing resumes" live here rather than
 ## in the controller, because both write `position` and position has exactly one
 ## owner. The controller decides *what the player asked for*; this decides where
 ## he ends up.
+##
+## **A right-click destination arrives through this same parameter**, converted
+## by `target_direction()` in the controller. It is not a second movement path
+## and must never become one: everything below -- pacing cancellation, facing,
+## terrain speed, the blocking slide -- would then need doing twice, and the two
+## copies would drift. If you are adding a new way to move him, produce a vector
+## and hand it here.
 func step(move_dir: Vector2, delta: float) -> void:
 	is_moving = false
 	if move_dir != Vector2.ZERO:
@@ -179,6 +207,58 @@ func step(move_dir: Vector2, delta: float) -> void:
 		_idle_anchor = position
 		_pick_idle_target()
 	_advance_pacing(delta)
+
+# ---------------- Click destination ------------------------------------------
+
+## Send him walking to `p`. Straight line, no pathfinding -- `_move_by` still
+## slides him along blocking terrain, so a wall deflects him rather than
+## stopping him dead, and `terrain_speed()` still applies exactly as it does to
+## a held key.
+func set_move_target(p: Vector2) -> void:
+	move_target = p
+	has_move_target = true
+	_target_stall = 0.0
+	_target_last_pos = position
+
+func clear_move_target() -> void:
+	has_move_target = false
+	_target_stall = 0.0
+
+## The movement vector this frame's outstanding click destination implies, or
+## `Vector2.ZERO` when there is nothing to walk to. Clears the target on arrival.
+##
+## This is the *only* thing the click target does: it produces a vector, and
+## `step()` consumes it identically to a keyed one. That is what keeps "where is
+## he going" a single question with a single answer -- facing, idle-resume and
+## pacing all keep working because none of them can tell a click from a key.
+##
+## **Arrival reuses the epsilon the idle pacing uses** (`maxf(stride, 2.0)`),
+## because it is the same problem: a target closer than one frame's stride would
+## be overshot and then chased back and forth forever.
+##
+## **And it gives up when wedged.** A straight line into a cliff corner slides
+## to a halt with the target still outstanding, and without this he would walk
+## on the spot, `is_moving` true, until the player pressed a key. Progress is
+## measured in position rather than intent, so half a second of getting nowhere
+## ends it.
+func target_direction(delta: float) -> Vector2:
+	if not has_move_target:
+		return Vector2.ZERO
+	var to_target: Vector2 = move_target - position
+	var stride: float = move_speed_px() * terrain_speed() * delta
+	if to_target.length() <= maxf(stride, 2.0):
+		position = move_target
+		clear_move_target()
+		return Vector2.ZERO
+	if position.distance_to(_target_last_pos) < stride * 0.25:
+		_target_stall += delta
+		if _target_stall >= TARGET_STALL_SECONDS:
+			clear_move_target()
+			return Vector2.ZERO
+	else:
+		_target_stall = 0.0
+	_target_last_pos = position
+	return to_target
 
 ## True while he has fallen back to the slow wander. Purely informational --
 ## the panel says so, and the smoke test asserts on it.

@@ -27,5 +27,6 @@ Newest at the bottom; the order below is the order the passes happened in.
 | [2026-08-world-population-r1.md](2026-08-world-population-r1.md) | Populating the world, and tuning it to the clock (rework R1, second half) |
 | [2026-08-foundation-exit-criteria.md](2026-08-foundation-exit-criteria.md) | Foundation exit criteria (manual playtest checklist) and the known gaps against it |
 | [2026-08-pre-slim-file-map-and-backlog.md](2026-08-pre-slim-file-map-and-backlog.md) | The pre-slim File map and the "Next milestones (not yet built)" backlog |
+| [2026-08-27-u2-input-and-visibility.md](2026-08-27-u2-input-and-visibility.md) | Four input and visibility fixes from the R1 playtest: minimap clicks, right-click-to-move, friendly units lighting fog, friendly dots (prompt U2) |
 
 New session write-ups go here as `YYYY-MM-topic.md`, never back into `CLAUDE.md`.

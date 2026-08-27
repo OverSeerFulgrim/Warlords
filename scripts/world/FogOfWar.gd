@@ -8,9 +8,27 @@ class_name FogOfWar
 ## 144x144 `Image` -- literally one pixel per cell -- uploaded to an
 ## `ImageTexture` and stretched over the map in a single `draw_texture_rect`.
 ## Updating a move costs a few hundred pixel writes and one 82KB upload, and
-## only happens when the villain crosses a cell boundary. A `_draw` loop over
+## only happens when a light source crosses a cell boundary. A `_draw` loop over
 ## every cell, or (worse) a ColorRect per cell, is the trap this stage is full
 ## of; this is the way around it.
+##
+## ## Many sources, one lit set
+##
+## The villain is no longer the only thing that lights ground: **every friendly
+## unit carries a smaller disc** (playtest request #3, designer decision
+## 2026-08-27). `update_for()` therefore takes a *list* of sources and rebuilds
+## the whole lit set from it, rather than moving one disc around.
+##
+## Rebuilding wholesale rather than diffing is deliberate. Overlapping discs
+## make "which cell does this unit still own" a reference-counting problem, and
+## a refcount that leaks by one leaves a cell permanently lit -- the exact bug
+## the three-state fog exists to prevent. Rebuilding cannot leak: what is lit is
+## a pure function of where the sources are this frame.
+##
+## What keeps that off the frame budget is the **early-out**: the rebuild only
+## runs when some source has crossed a cell boundary. With 33 bound undead
+## standing still that is one PackedInt32Array compare per frame and nothing
+## else. See `update_for()`.
 ##
 ## Filtering is **linear** on purpose: the texture is an alpha mask, so
 ## interpolation gives a soft one-cell falloff at the fog edge instead of a
@@ -32,7 +50,9 @@ class_name FogOfWar
 
 ## Fires when any cell's state changed. The minimap draws this same texture on
 ## top of its terrain image, so it redraws off this rather than polling -- and
-## it only fires when the villain crosses a cell boundary.
+## it only fires when a light source crosses a cell boundary. The minimap's
+## friendly dots ride on the same signal, which is exactly right: a dot at one
+## pixel per cell only needs redrawing when its unit changes cell.
 signal changed
 
 enum State { UNEXPLORED, REMEMBERED, VISIBLE }
@@ -41,6 +61,17 @@ enum State { UNEXPLORED, REMEMBERED, VISIBLE }
 ## reveal at 8-12 cells, but that is the Raven's number (rework §6) and the
 ## Raven is R2; a man on foot at night sees less than a bird in daylight.
 const REVEAL_RADIUS_CELLS: float = 7.0
+
+## How far a friendly unit lights the ground it is standing on -- workers,
+## followers and bound undead alike. **Tunable.**
+##
+## Deliberately less than half the villain's 7: they are labourers with their
+## eyes on the job, not a man scouting a valley, and a radius that read as
+## "scouting" would make walking out there yourself the slower way to see
+## anything. It is lit-while-present exactly like his: when the unit leaves,
+## the cell drops back to REMEMBERED. Nothing here becomes permanent -- that is
+## `reveal_permanently()`, which is the lair band and only the lair band.
+const UNIT_REVEAL_RADIUS_CELLS: float = 3.0
 
 ## Remembered ground. Dark enough that a wolf standing in it is a shape rather
 ## than a readable token, light enough that terrain still tells you where you
@@ -55,9 +86,14 @@ var _state: PackedByteArray = PackedByteArray()
 ## Cells that can never fall back to remembered -- the lair band. See
 ## reveal_permanently().
 var _permanent: PackedByteArray = PackedByteArray()
-## Indices currently lit by the villain, so the next move knows what to dim.
+## Indices currently lit by *any* source, so the next rebuild knows what to dim.
+## May hold the same index twice where two discs overlap; harmless, because
+## dimming is idempotent and `_set_state` early-outs on an unchanged cell.
 var _lit: PackedInt32Array = PackedInt32Array()
-var _last_cell: Vector2i = Vector2i(-9999, -9999)
+
+## The cell each source occupied at the last rebuild, flattened to x,y pairs.
+## Compared wholesale to decide whether anything moved -- see `update_for()`.
+var _last_cells: PackedInt32Array = PackedInt32Array()
 
 var _image: Image
 var _texture: ImageTexture
@@ -100,27 +136,50 @@ func reveal_permanently(cells: Rect2i) -> void:
 	queue_redraw()
 	changed.emit()
 
-## Call every frame with the villain's position; it early-outs unless he has
-## crossed into a new cell, which is what keeps this off the frame budget.
-func update_for(point: Vector2) -> void:
+## Call every frame with every light source: an Array of `[position, radius]`
+## pairs, villain first by convention (nothing depends on the order).
+##
+## **It early-outs unless some source has crossed into a new cell.** That is the
+## whole performance story: with 33 bound undead standing around the Throne this
+## is one `PackedInt32Array` compare per frame and no pixel writes at all, and a
+## single worker stepping over a boundary costs one rebuild.
+##
+## The comparison key holds each source's cell as an x,y pair rather than a
+## flattened index, so an out-of-bounds source (a unit walking the rim) cannot
+## alias onto a different cell's index and freeze the fog on a false match.
+func update_for(sources: Array) -> void:
 	if world == null:
 		return
-	var cell: Vector2i = world.cell_at(point)
-	if cell == _last_cell:
+	var cells := PackedInt32Array()
+	cells.resize(sources.size() * 2)
+	for i in range(sources.size()):
+		var c: Vector2i = world.cell_at(sources[i][0])
+		cells[i * 2] = c.x
+		cells[i * 2 + 1] = c.y
+	# Length changes too, so a unit dying or being recruited relights on its own.
+	if cells == _last_cells:
 		return
-	_last_cell = cell
-	_relight(cell)
+	_last_cells = cells
+	_relight(sources)
 
-func _relight(centre: Vector2i) -> void:
-	# Everything the last position lit falls back to remembered first...
+func _relight(sources: Array) -> void:
+	# Everything the last rebuild lit falls back to remembered first...
 	for i in _lit:
 		if _permanent[i] == 0:
 			_set_state(i, State.REMEMBERED)
 	_lit.resize(0)
-	# ...then the new disc lights up. Circular rather than square so the
-	# revealed shape reads as sight, not as a scanned rectangle.
-	var r: int = int(ceil(REVEAL_RADIUS_CELLS))
-	var r_sq: float = REVEAL_RADIUS_CELLS * REVEAL_RADIUS_CELLS
+	# ...then every source lights its own disc.
+	for s in sources:
+		_light_disc(world.cell_at(s[0]), float(s[1]))
+	_texture.update(_image)
+	queue_redraw()
+	changed.emit()
+
+## One source's disc. Circular rather than square so the revealed shape reads as
+## sight, not as a scanned rectangle.
+func _light_disc(centre: Vector2i, radius: float) -> void:
+	var r: int = int(ceil(radius))
+	var r_sq: float = radius * radius
 	for dy in range(-r, r + 1):
 		for dx in range(-r, r + 1):
 			if float(dx * dx + dy * dy) > r_sq:
@@ -131,9 +190,6 @@ func _relight(centre: Vector2i) -> void:
 			var i: int = c.y * world.width + c.x
 			_lit.append(i)
 			_set_state(i, State.VISIBLE)
-	_texture.update(_image)
-	queue_redraw()
-	changed.emit()
 
 ## The dimming mask itself, so the minimap can draw exactly the same fog over
 ## its own terrain image instead of maintaining a second copy of the state.

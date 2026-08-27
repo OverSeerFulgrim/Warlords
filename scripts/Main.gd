@@ -60,6 +60,9 @@ var hud_top_bar: HudTopBar
 var minimap: Minimap
 var minimap_hint: Label
 
+## Scratch buffer for _fog_sources(), reused every frame -- see there.
+var _fog_source_buf: Array = []
+
 # ---------------- Alerts + history log (Town/History/Research tabs) ----------------
 var alert_stack: VBoxContainer
 var history_log_list: VBoxContainer
@@ -226,10 +229,11 @@ func _place_necromancer() -> void:
 ## regardless. Everything genuinely event-shaped (deposits, depletion, dawn)
 ## still goes through EventBus -- see _connect_signals().
 func _process(delta: float) -> void:
-	# Fog follows the villain. Called every frame but early-outs unless he has
-	# crossed a cell boundary, so this is a Vector2i compare in the common case.
+	# Fog follows the villain *and* every friendly unit. Called every frame but
+	# early-outs unless one of them has crossed a cell boundary, so the common
+	# case is one PackedInt32Array compare.
 	if fog and villain:
-		fog.update_for(villain.position)
+		fog.update_for(_fog_sources())
 	hud_top_bar.refresh_orientation()
 	economy_tab.refresh_status()
 	_poll_timer += delta
@@ -241,6 +245,26 @@ func _process(delta: float) -> void:
 		# Follow drops silently on a right-drag, so it's polled on the same slow
 		# tick as everything else that changes without announcing itself.
 		hud_top_bar.refresh_follow_state()
+
+## Every light source for the fog this frame: the villain at his full radius,
+## then each living friendly unit at the smaller one.
+##
+## The Array is a **reused member** rather than a fresh one per frame. This runs
+## 60 times a second with 30+ undead on the roster, and the fog's own early-out
+## only saves the *relight* -- building the list happens regardless, so it is
+## the one part of this path worth not allocating.
+##
+## `all_units()` rather than `laborers()`: a skeleton bound to a rally point is
+## off the workforce but still standing in the world with its eyes open, and it
+## is exactly the case the playtest raised (33 bound undead).
+func _fog_sources() -> Array:
+	_fog_source_buf.clear()
+	_fog_source_buf.append([villain.position, FogOfWar.REVEAL_RADIUS_CELLS])
+	if worker_system:
+		for u in worker_system.all_units():
+			if u.is_alive():
+				_fog_source_buf.append([u.position, FogOfWar.UNIT_REVEAL_RADIUS_CELLS])
+	return _fog_source_buf
 
 # ---------------- Systems ----------------
 
@@ -383,6 +407,9 @@ func _build_camera() -> void:
 	villain_controller.name = "VillainController"
 	villain_controller.villain = villain
 	villain_controller.camera = camera
+	# The camera owns the right-button tap/drag split (see GameCamera's header);
+	# this node owns what a tap *means*, the same way it arbitrates left-clicks.
+	camera.right_tapped.connect(_on_right_tap)
 	add_child(villain_controller)
 
 	travel_log = TravelLog.new()
@@ -670,13 +697,17 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	minimap_column.add_theme_constant_override("separation", 2)
 	minimap = Minimap.new()
 	minimap.custom_minimum_size = Vector2(MINIMAP_SIZE, MINIMAP_SIZE)
-	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# mouse_filter is set to STOP inside setup() -- the minimap takes its own
+	# clicks now, and must not let them fall through to the world behind it.
 	minimap.setup(world_map, fog, villain, camera)
+	minimap.units_source = func(): return worker_system.all_units() if worker_system else []
+	minimap.camera_requested.connect(_on_minimap_camera_requested)
+	minimap.move_requested.connect(_on_right_tap)
 	minimap_column.add_child(minimap)
 	minimap_hint = Label.new()
 	minimap_hint.add_theme_font_size_override("font_size", 9)
 	minimap_hint.modulate = Color(1, 1, 1, 0.55)
-	minimap_hint.text = "○ lair   ● you"
+	minimap_hint.text = "○ lair   ● you   · yours"
 	minimap_column.add_child(minimap_hint)
 	bar_hbox.add_child(minimap_column)
 
@@ -1079,6 +1110,41 @@ func _enter_rally_placement_mode() -> void:
 	_close_inspector()
 	_rally_placement_mode = true
 	build_menu.show_hint("Command Undead — click where the dead should rally (Esc to cancel)")
+
+# ---------------- Right-click: walk there ------------------------------------
+
+## A right-click tap on the world or on the minimap.
+##
+## **An armed click-to-target mode gets first refusal and simply cancels**,
+## which is how those modes already treat a click they did not want: while you
+## are placing a building, the next click is about placing (or not placing) it,
+## and walking off mid-placement would be a second thing happening on one click.
+## The player right-clicks again to actually move.
+##
+## Note there is no fog or walkability check on the destination. Straight-line
+## movement already refuses blocking terrain by sliding, and refusing to walk
+## toward unexplored ground would make the fog a fence -- which is the opposite
+## of what it is for.
+func _on_right_tap(world_pos: Vector2) -> void:
+	if build_menu.is_placing():
+		build_menu.cancel_placement()
+		return
+	if build_menu.is_demolishing():
+		build_menu.toggle_demolish_mode()
+		return
+	if _rally_placement_mode:
+		_cancel_rally_placement()
+		return
+	villain_controller.order_move_to(world_pos)
+
+## A left-click on the minimap. Jumps the camera without touching follow --
+## unless follow is on, in which case looking somewhere else by hand means the
+## same thing here as a right-drag does, and follow drops.
+func _on_minimap_camera_requested(world_pos: Vector2) -> void:
+	if villain_controller.following:
+		villain_controller.stop_following()
+	camera.center_on(world_pos)
+	camera.player_has_moved_camera = true
 
 func _cancel_rally_placement() -> void:
 	_rally_placement_mode = false
