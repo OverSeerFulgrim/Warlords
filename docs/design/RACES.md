@@ -1,5 +1,13 @@
 # Race Roster — recruitable races, stats, alignment, housing
 
+> **PARTIALLY SUPERSEDED, 2026-08-06 (C2 adoption).** The **stat table below is dead**: it speaks
+> the retired Might/Guile/Influence/Loyalty model. The live statlines — nine attributes per race,
+> skill templates, overrides — are authored in **`stat_rework_roster.xlsx`** (COMBAT_SPEC §2, §12)
+> and prompt **C2** exports them to `data/races.json`, replacing this table's numbers wholesale.
+> **Still live and authoritative here:** alignment, recruitment rarity and the power-attracts-power
+> weighting, food/appetite flavour, and house-placement behavior. When C2 lands, this file should
+> be re-issued with the exported numbers or trimmed to the non-stat content.
+
 Companion to `FOUNDATION_SPEC.md` (which owns the stat scale, RNG rules, and formulas). This file is the full roster: baselines, alignment, rarity, and house-placement behavior. All values are playtest hypotheses; this table should become `data/races.json`.
 
 Scale reminder: **1–10, Human Peasant = 5 in everything, walk 1.0, food 1.0.** Individual recruits roll `baseline + d3 − d3` per stat (see FOUNDATION_SPEC §3).

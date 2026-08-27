@@ -4,6 +4,31 @@ Companion to `FOUNDATION_SPEC.md` (which owns the settlement loop's numbers) and
 
 `RACES.md` and `TRAITS.md` are downstream of this document — both were written against the retired four-stat model and `RACES.md` still needs its table re-authored (see §12).
 
+> **Amendment, 2026-08-06 — C2 adopted into the roguelite build order.** Decided with the designer
+> during R2 planning:
+>
+> 1. **C2 is scheduled**, as prompt **C2** in `docs/prompts/R2_PROMPTS.md`, after the combat-
+>    feedback prompt (F1) and **before** the terrain and R2 prompts — everything from R2a on
+>    consumes stats, and building those on `combat_might()` would mean migrating every harness
+>    twice. The §12 authoring problem is **already solved**: `stat_rework_roster.xlsx` contains
+>    all 153 attribute values, the six templates, the overrides, and the export plan.
+> 2. **Carry capacity = Endurance is confirmed** (§2.1). The R2 specs (`SORTIE_SPEC.md`,
+>    `ESCORT_SPEC.md`, `FOUNDATION_SPEC.md` §6, `LOOT_SITES_SPEC.md`) were reworded 2026-08-06;
+>    no shipped number moves (skeleton End 4 and wolf End 5 equal their old Might).
+> 3. **The Necromancer's profile is Arcane** — statline and the engage-close/cast-far model live
+>    in `NECROMANCER_SPEC.md` §2–§3, which details his side of this spec.
+> 4. **Creatures carry all nine attributes** — §7's reduced-set rule is **superseded** (marked
+>    inline). Same stat categories everywhere keeps combat fluid: arcane-vs-beast resolves
+>    through the beast's own (low) Intelligence instead of a special case. Creature and villain
+>    rows are authored in the workbook alongside the races.
+> 5. **C3 (morale, judgement, packs) stays post-R2**, targeted alongside R3 — it deletes
+>    `FLEE_HP_FRACTION`, which the R2 escort's interpose threshold reads, so it must not land
+>    mid-R2. **C4** folds into R5's spell unlocks. **C5** becomes R4's crusade climax.
+> 6. **C6 is retracted, not deferred.** Off-map bounty combat assumed the abstracted follower-
+>    travel path; commit `3023372` (2026-08-05) deleted that path, and Era-III bounty parties are
+>    now visible on-map units (`ROGUELITE_REWORK.md` §16.2). Bounty fights will be ordinary
+>    on-map engagements through the same resolver — there is no off-map caller to build.
+
 ---
 
 ## 1. Scope, and what already exists
@@ -25,11 +50,11 @@ The first combat slice is **built and committed** (`a2dcd65`). Working today:
 |---|---|---|
 | **C1** | HP, the shared resolver, the wolf, emergent defence | **done** |
 | **C1.5** | Command Undead — rally points, the dead as a commandable class | **done** |
-| **C2** | **The stat rework** — §2–§4 of this file | next |
-| **C3** | Morale routing, judgement, guidance, wolf packs — §5–§7 | |
-| **C4** | Necromancer combat spells beyond Command Undead | |
-| **C5** | Real raids replacing `ThreatSystem._resolve_crusade()`'s arithmetic | |
-| **C6** | Off-map bounty combat calling the same resolver | |
+| **C2** | **The stat rework** — §2–§4 of this file | **scheduled** — prompt C2 in `R2_PROMPTS.md`, before R2a |
+| **C3** | Morale routing, judgement, guidance, wolf packs — §5–§7 | post-R2, alongside R3 (amendment note 5) |
+| **C4** | Necromancer combat spells beyond Command Undead | folds into R5 unlocks (`NECROMANCER_SPEC.md` §7) |
+| **C5** | Real raids replacing `ThreatSystem._resolve_crusade()`'s arithmetic | becomes R4's crusade climax |
+| **C6** | ~~Off-map bounty combat calling the same resolver~~ | **retracted 2026-08-06** — see amendment note 6 |
 
 Gear (§9), classes (§10) and disease (§11) are specified here but deliberately unscheduled — they're named so nothing gets built in a way that blocks them.
 
@@ -253,17 +278,28 @@ Charming (+1 Leadership) is the trait that plugs into this.
 
 ## 7. Creatures
 
-Animals get a **reduced attribute set and no judgement at all.** They don't strategize; a hardcoded behaviour profile per creature is more honest than pretending a wolf weighs options.
+**(Superseded 2026-08-06, amendment note 4: creatures carry all nine attributes.)** The original
+reduced-set rule is kept below, struck through in spirit, because its *behavioural* half survives:
+creatures still get **no judgement and no rout-check subtlety** — a hardcoded behaviour profile per
+creature remains more honest than pretending a wolf weighs options. What changed is the *data*
+shape: every creature authors the same nine attributes as every race, in `stat_rework_roster.xlsx`,
+so combat needs no special case anywhere — an arcane attacker hits a wolf's own (low) Intelligence
+instead of triggering a "creatures have no Int" branch. Low mental stats *are* the reduced set,
+expressed as numbers instead of absences.
 
 | Attribute | Wolf |
 |---|---|
 | Strength | 5 |
+| Dexterity | 3 |
+| Speed | **8** (→ 1.3 cells/sec via the workbook's walk divisor) |
 | Endurance | 5 |
-| Speed | 1.3 |
+| Intelligence | **2** — the arcane-vs-beast knob; tune it if casters trivialize wildlife |
+| Guile | 3 |
 | Perception | 6 |
-| Morale | 6 |
+| Tact | 2 |
+| Loyalty | 5 (pack morale baseline) |
 
-No Intelligence, Dexterity, Guile, Tact or Loyalty. Melee profile, always. Endurance 5 gives `max_hp` 18, which is exactly the shipped `Wolf.MAX_HP` — the creature needs no rebalancing, only re-expressing.
+Melee profile, always (Str 5 is its highest of Str/Dex/Int). Endurance 5 gives `max_hp` 18, which is exactly the shipped `Wolf.MAX_HP` — the creature needs no rebalancing, only re-expressing. Speed is now on the same 1–10 scale as everyone (the old draft wrote "1.3" in cells/sec — that unit mismatch is exactly why one scale everywhere matters).
 
 **Speed matters more than it looks** — it's what lets a melee-only predator close on an archer, and without it two ranged recruits trivialize the entire creature layer. The wolf already has this: `CHASE_SPEED_PX` is 78, which against `CELL_SIZE` 64 is ~1.22 cells/sec. Express it as a Speed attribute so it reads like every other unit, and raise it to 1.3 (83 px/s) rather than treating it as a new capability. `PROWL_SPEED_PX` (34) stays a separate constant — ambling is a behaviour state, not a stat.
 
@@ -320,6 +356,11 @@ The only genuinely new condition value. It plugs into Surgeon (§8.1) and the me
 ---
 
 ## 12. The authoring problem (read before scheduling C2)
+
+**(Resolved 2026-08-06: `stat_rework_roster.xlsx`, beside this file, contains the whole thing —
+attributes, templates, overrides, derived effective skills, and the export order of work. C2 is
+now an engineering task. The workbook also carries the creature and villain rows per amendment
+note 4. The section below stands as the record of the approach.)**
 
 The rework takes each race from 14 authored values to **21** — nine attributes plus twelve skills — across 17 races, plus class variants later. That's roughly 360 hand-picked numbers, and it is a *design-hours* problem, not an engineering one. It is the single most likely thing to stall this work.
 

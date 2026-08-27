@@ -23,8 +23,11 @@ autoload/global).
 
 ## Architecture conventions (the load-bearing ones)
 
-- `GameState` (autoload) — single source of truth for resources/reputation/threat/power/followers.
-  `EventBus` (autoload) — ALL cross-system communication is signals here, not direct references.
+- `GameState` (autoload) — single source of truth for resources/threat/power/followers. Reputation
+  is per-villain (ROGUELITE_REWORK §7/§11, decided 2026-08-06): today's `GameState.reputation` int
+  is legacy, replaced in R3 by five axes on the villain object — never extend it. Threat stays
+  global (world state). `EventBus` (autoload) — ALL cross-system communication is signals here,
+  not direct references.
 - **Sim state lives on data objects (RefCounted); tokens are pure views.** `Worker`/`Follower`
   (extend `Laborer`), `Necromancer` own position/hp/state; `*Token` nodes only draw. Never put
   timers or state on a token — that drift has been unwound twice already.
@@ -33,7 +36,9 @@ autoload/global).
   world_map, world_sites). New content = JSON edit; new *effect types* = extend the relevant system.
 - Combat: `Combat.gd` is THE damage formula (knows nothing); `CombatSystem.gd` is policy.
   Duck-typed contracts: `get_inspect_data()` (inspectables), Combatant methods (fighters).
-- Stats stay minimal: Might/Guile/Influence/Loyalty + 3 labor skills. Resist stat bloat.
+- Stats: the nine-attribute model of `docs/design/COMBAT_SPEC.md` §2 (adopted 2026-08-06; roster
+  numbers live in `stat_rework_roster.xlsx`). Code still reads the old Might until prompt C2 runs.
+  Carry = Endurance. One governing attribute per skill; creatures and villains use the same nine.
 - Indirect control is a pillar: no unit orders. The exceptions are the Necromancer (driven
   directly) and Command Undead (binds the dead as a class, via `alignment: "Undead"`).
 - The Necromancer is NOT a Laborer and not in any labor pool — keep the exclusion structural.

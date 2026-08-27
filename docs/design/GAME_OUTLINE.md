@@ -2,7 +2,15 @@
 
 Design outline for the core game structure, v4 — adds relationships/loyalty, execution-quality grudges, bounty board thresholds, and the Dark Altar body-conversion loop.
 
-> **Current roadmap focus: Stages 1–3 only** (collect → build → recruit & settle). Concrete baseline values live in `FOUNDATION_SPEC.md`. Bounty board, missions, training, market/trade, grudges, and spells are hard-locked until a Stage 1–3 run is smooth. The Barracks Upgrade button exists in UI but is hard-locked as a roadmap placeholder. `CLAUDE.md` covers the code; this file covers *what the player does and in what order*. Where this file and the code disagree, this file is the target — "Implementation gaps" at the bottom lists where the code hasn't caught up.
+> **PARTIALLY SUPERSEDED, 2026-08-03 (recorded 2026-08-06).** **Stages 4–5 and the open-ended
+> campaign structure are superseded by `ROGUELITE_REWORK.md`** — the game is now discrete runs
+> (Hide → Explore → Influence → Rule), recruitment is reputation-gated, and the roadmap is the
+> rework's §13 (R1 done, R2 next, per `docs/prompts/R2_PROMPTS.md`). Timed recruit events are
+> dead. **Still live here:** the concept, the design pillars, and the Stage 1–3 settlement loop
+> description, which remains the in-run base layer. Read "this file is the target" as scoped to
+> the settlement layer only; for everything about the run frame, the rework wins.
+
+> Original header, for context: **Current roadmap focus: Stages 1–3 only** (collect → build → recruit & settle). Concrete baseline values live in `FOUNDATION_SPEC.md`. Bounty board, missions, training, market/trade, grudges, and spells are hard-locked until a Stage 1–3 run is smooth. The Barracks Upgrade button exists in UI but is hard-locked as a roadmap placeholder. `CLAUDE.md` covers the code; this file covers *what the player does and in what order*.
 
 ## Concept in one line
 

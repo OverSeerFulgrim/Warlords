@@ -43,7 +43,7 @@ Roads: `speed 1.35` on cobblestone, `1.2` on the worn track. Tunable. The map do
 
 #### Fog of war
 
-Three states: unexplored (opaque), remembered (dim — terrain you've seen, no live contents), visible. Reveal radius travels with the Necromancer at 7 cells (the map doc's 8–12 is the *Raven's* scouting number, rework §6, and that's R2; a man on foot sees less than a bird).
+Three states: unexplored (opaque), remembered (dim — terrain you've seen, no live contents), visible. Reveal radius travels with the Necromancer at 7 cells. *[Corrected 2026-08-06: this line originally cited the map doc's 8–12 cells as "the Raven's scouting number, and that's R2" — a misreading. Rework §4 amendment 3 deleted the directed-scouting model entirely; the R2 Raven is passive pings only and clears no fog, and directed scouting is deferred post-v1 (rework §6). Fog clears only through the Necromancer's own travel.]*
 
 - **The lair band never dims.** Fiction: it's his own domain. Mechanics: the settlement layer is a management screen, and having the workforce vanish into haze the moment he leaves the valley would break the half of the game that already worked.
 - **Layering:** a child of the settlement layer with `z_index` 100, so it covers terrain, buildings and units — and, being an ordinary Node2D, it stays under the HUD's `CanvasLayer`. Same lesson as `DayNightCycle`'s `CanvasModulate`, which darkens the settlement and leaves the HUD legible. **Not in `hud_root`.**

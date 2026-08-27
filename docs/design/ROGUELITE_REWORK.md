@@ -1,9 +1,9 @@
 # ROGUELITE REWORK — From Hidden Lair to Rising Legend
 
-**Status:** Design target, agreed in discussion 2026-08-03. Supersedes the "recruits arrive on a timer" model and the open-ended campaign structure implied by GAME_OUTLINE Stages 4–5. Does **not** invalidate the Stage 1–3 foundation (settlement grid, priority-list economy, Barracks intake, morale/meals, combat primitive) — that foundation becomes the in-run base layer and is a prerequisite for everything here.
+**Status:** Design target, agreed in discussion 2026-08-03. Amended 2026-08-06 — see §16 for the post-R1 decisions and corrections. Supersedes the "recruits arrive on a timer" model and the open-ended campaign structure implied by GAME_OUTLINE Stages 4–5. Does **not** invalidate the Stage 1–3 foundation (settlement grid, priority-list economy, Barracks intake, morale/meals, combat primitive) — that foundation becomes the in-run base layer and is a prerequisite for everything here.
 
 **Companion documents:**
-- `Warlords_World_Map_Scale_and_Exploration_Plan.docx` — the world map spec. Adopted with three amendments (§4).
+- `WORLD_MAP_PLAN.md` — the world map spec ("the map doc" throughout). Adopted with three amendments (§4). The original `Warlords_World_Map_Scale_and_Exploration_Plan.docx` is the archived source; the `.md` is the live, tooling-readable version and wins on any divergence.
 - `GAME_OUTLINE.md` / `FOUNDATION_SPEC.md` / `RACES.md` — still authoritative for the settlement layer mechanics.
 - `CLAUDE.md` — code conventions; §12 of this doc maps the rework onto the existing systems.
 
@@ -66,15 +66,15 @@ The proposal's Eras map onto a single run's escalation, not a campaign. They ali
 
 **Era II — Influence (mid run).** Deeds accumulate into reputation; rumors spread (emptied graves, vanished caravans, travelers' stories). Recruit offers begin — people *seeking you out*, gated by reputation axes (§7), not time. The estate notices patterns; the church investigates; patrols thicken.
 
-**Era III — Dominion (late run).** The settlement is real, bounty parties operate, exploration becomes optional rather than mandatory. Roads are contested, the lordship fortifies, and the crusade musters. Ends at the manor gates — theirs or yours.
+**Era III — Dominion (late run).** The settlement is real, bounty parties operate — **as visible units travelling the world map, in view** (§16 amendment 2; the old off-map abstraction was deleted with the world map's arrival) — and exploration becomes optional rather than mandatory. Roads are contested, the lordship fortifies, and the crusade musters. Ends at the manor gates — theirs or yours.
 
 ---
 
 ## 4. The world map
 
-**The map doc is adopted as written**, including: 144×144 cells (bounds 128–160), travel-time targets as the primary metric (3–5 min uninterrupted crossing), the four danger bands, region allocation, content density (~10–15 active meaningful locations per run), fog of war, telegraphed danger, roads-vs-wilderness tradeoff, escalation-in-place, and shuffle-based replayability.
+**The map doc (`WORLD_MAP_PLAN.md`) is adopted as written**, including: 144×144 cells (bounds 128–160), travel-time targets as the primary metric (3–5 min uninterrupted crossing), the four danger bands, region allocation, content density (~10–15 active meaningful locations per run), fog of war, telegraphed danger, roads-vs-wilderness tradeoff, escalation-in-place, and shuffle-based replayability.
 
-Sanity check against code: walk speed 1.0 is already literally 1 cell/second (`CELL_SIZE` 64px), so 144 cells ≈ 2.4 min straight-line — inside the target band once terrain and detours exist. A cross-map trip costs a meaningful slice of the 30-minute day, so expeditions interact with dusk, meals, and the wolf spawn *for free*.
+Sanity check against code: walk speed is 1.0 = 1 cell/second (`CELL_SIZE` 64px), so 144 cells ≈ 2.4 min straight-line — inside the target band once terrain and detours exist. (Correction, 2026-08-06: this originally claimed 1.0 was "already" the code's value; the Necromancer was 1.4 when this was written, and R1 tuned him down to 1.0 — see `docs/history/2026-08-world-population-r1.md`. The documented cost: he's only ~11% faster than a skeleton cross-country; roads, not base speed, are what make him fast.) A cross-map trip costs a meaningful slice of the 30-minute day, so expeditions interact with dusk, meals, and the wolf spawn *for free*.
 
 ### Three amendments
 
@@ -112,7 +112,7 @@ gather / fight / choose → carry capacity fills → the return leg → deposit 
 - **Dangerous surprises live only in self-found discoveries.** The "~90% worthwhile / 10% surprise" ratio applies to what the *player* uncovers, never to Raven pings. The familiar stays trustworthy; the world stays treacherous.
 - **The Raven does not solve fog of war.** It surfaces a handful of opportunities; revealing the map remains the Necromancer's job, on foot, at risk.
 
-**Deferred (post-v1):** directed scouting ("scout that area"), and the Raven accompanying bounty parties as an observer — the intelligence-network role (watching a distant bounty succeed, get ambushed, or mutiny). Both are good; neither is needed to prove the loop. When directives arrive, the choice "is the Raven scouting ahead of *you*, or watching *home*?" is the design hook to build them around.
+**Deferred (post-v1):** directed scouting ("scout that area"), and the Raven accompanying bounty parties as an observer. Both are good; neither is needed to prove the loop. When directives arrive, the choice "is the Raven scouting ahead of *you*, or watching *home*?" is the design hook to build them around. (Note: with bounty parties now visible on-map — §16 amendment 2 — the observer role shrinks from "reports on an unseen expedition" to alerts/camera-centering on a party the player could already watch; it may not survive as a feature.)
 
 ---
 
@@ -139,7 +139,7 @@ Five axes, each moved by deeds and each attracting a different kind of follower:
 
 ## 8. Loot and relics
 
-- **Mundane loot:** gold, resources, Dark Essence. **Dark Essence becomes field-loot only** — never worker-gathered (already a code convention), now exclusively found out in the world. It is a *reason to leave*.
+- **Mundane loot:** gold, resources, Dark Essence. **Dark Essence becomes field-loot only** — never worker-gathered, exclusively found out in the world. (Correction, 2026-08-06: this originally claimed field-only was "already a code convention" — it isn't. Workers have never gathered it, but bounties, missions, and events all grant it today; those sources are re-pointed or retired in R2, per `LOOT_SITES_SPEC.md` §5.) It is a *reason to leave*.
 - **Relics:** rare finds — rings, noble seals, heirlooms, journals, tomes, weapons — with rarity tiers. Some grant in-run effects; all are stashable at run end (alive). Relics are the extraction layer's currency (§10).
 - **Exclusivity principle:** the pull of exploration must be *exclusive*, not merely efficient. If workers can gather it at home, the player stays home. Reputation, Dark Essence, relics, recruits, and XP-bearing deeds are all field-only.
 
@@ -236,3 +236,13 @@ Demonologist (as class *and* as AI), multiplayer (constraint in §11 only), dire
 - Whether escort skeletons brought on sorties fully leave the labor pool (current Command Undead rule says yes — probably correct, "the dead can dig or they can fight").
 - Relic effect design space — in-run passive effects vs. activated items.
 - What the victory bonus for taking the manor actually is (XP multiplier? guaranteed relic? unlock acceleration?).
+
+---
+
+## 16. Amendments since R1 (2026-08-06)
+
+R1 shipped to spec. During the post-R1 doc reconciliation, two decisions were made and three stale claims were corrected inline (marked "Correction, 2026-08-06" where they sit).
+
+1. **Reputation ownership — confirmed per-villain.** The five axes (§7) live on the villain object, never in an autoload; today's single `GameState.reputation` int is legacy and is replaced, not extended, in R3. **Threat stays global** — it is world/escalation state, legitimately `GameState`'s. R2's bridge: site *notice* feeds `GameState.add_threat()` (escalation half) while axis consequences are recorded on the villain's deeds ledger (reputation half, `LOOT_SITES_SPEC.md` §6). R3 reads notoriety from the ledger, never from `GameState`. `CLAUDE.md`'s source-of-truth line was corrected to match.
+2. **Bounty parties are on-map units.** The off-map/abstracted follower-travel path was deleted in R1 (commit `3023372`: "travel happens on the world map now, in view"). Era III bounty parties therefore travel the 144×144 map as visible units — larger build scope than the old abstraction, accepted for the sake of one travel model everywhere. §3 and §6 were amended; the Raven-as-bounty-observer deferral in §6 may not survive as a feature now that parties are watchable directly.
+3. **Corrections for the record:** Dark Essence field-only was a design *goal*, not an existing convention (§8; cleanup scheduled in `LOOT_SITES_SPEC.md` §5). Walk speed 1.0 was an R1 *tuning outcome*, not a pre-existing value (§4). The map spec is `WORLD_MAP_PLAN.md`; the `.docx` is the archived original (header, §4).

@@ -16,6 +16,12 @@ A **stat system rework is in design and not yet built.** It replaces Might/Guile
 
 The stat rework will be its own pass with its own document. Nothing here should try to get a head start on it.
 
+> **Update, 2026-08-06:** that pass now exists — the rework is **scheduled as prompt C2 in
+> `docs/prompts/R2_PROMPTS.md`** (COMBAT_SPEC's adoption amendment), with the roster numbers
+> already authored in `stat_rework_roster.xlsx`. The ordering rules above still hold; if C2 runs
+> *before* this plan, rules 2–3 simplify (Perception and Leadership will exist), and the deferred
+> combat effects unblock at C3, not C2 — routing is C3's.
+
 ## 1. Data: `data/traits.json`
 
 New file. One entry per trait from TRAITS.md's table. Schema per entry:

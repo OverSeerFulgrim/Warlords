@@ -78,7 +78,7 @@ walk to node → gather until carry-full or node empty → walk home → deposit
 - **Gather time per unit:** `base_time × 5 / skill`, with `base_time = 4s`.
   - Human peasant (skill 5): 4s per unit — matches the old tick rate, so overall pacing survives.
   - Gray Dwarf mining (9): ~2.2s per stone. Skeleton (3): ~6.7s. Skill is *visible* as speed.
-- **Carry capacity = Might.** An Ogre (9) hauls 9 units per trip; a Gnome (2) makes many small trips. This makes Might matter for labor without a separate stat.
+- **Carry capacity = Endurance.** (Reworded 2026-08-06 per `COMBAT_SPEC.md` §2.1's adopted stat rework — was Might; the code says Might until prompt C2 migrates it.) An Ogre (End 8) hauls 8 units per trip; a Gnome (End 3) makes many small trips. Endurance carrying HP *and* load is deliberate — it opens the tough-porter build without rebuilding Might under a new name.
 - Priority list (Stage 1 system) decides *which* node type a worker heads to on each new trip, using the threshold fall-through rule.
 
 ## 7. Day/night cycle
