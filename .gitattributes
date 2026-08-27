@@ -1,0 +1,15 @@
+# Normalize line endings: store LF in the repo regardless of what the
+# Windows editor writes, so git status stops flagging every *.import file.
+* text=auto
+
+# Binary assets -- never touch
+*.png binary
+*.jpg binary
+*.webp binary
+*.ogg binary
+*.wav binary
+*.ttf binary
+*.otf binary
+*.xlsx binary
+*.docx binary
+*.zip binary
