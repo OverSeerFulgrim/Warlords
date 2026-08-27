@@ -1,0 +1,3790 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Warlords Systems Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --surface-2:#F5F7FA; --line:#D3DAE4; --ink:#1B2330; --muted:#5D6A7E;
+  --accent:#6D3FC8; --accent-soft:#EDE6FA; --built:#2E8B57; --partial:#C4841C; --planned:#4A6FA5;
+  --built-soft:#DFF2E7; --partial-soft:#FBEBD1; --planned-soft:#DDE7F5; --edge:#B8C2D0; --focus:#6D3FC8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131820; --surface:#1B212B; --surface-2:#222A36; --line:#303A48; --ink:#E6EAF0; --muted:#95A2B6;
+    --accent:#B39BF5; --accent-soft:#2C2544; --built:#5FC58B; --partial:#E4A64B; --planned:#7FA3DB;
+    --built-soft:#1E3A2B; --partial-soft:#3E3018; --planned-soft:#1F2E44; --edge:#3B4757; --focus:#B39BF5;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131820; --surface:#1B212B; --surface-2:#222A36; --line:#303A48; --ink:#E6EAF0; --muted:#95A2B6;
+  --accent:#B39BF5; --accent-soft:#2C2544; --built:#5FC58B; --partial:#E4A64B; --planned:#7FA3DB;
+  --built-soft:#1E3A2B; --partial-soft:#3E3018; --planned-soft:#1F2E44; --edge:#3B4757; --focus:#B39BF5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Source Sans 3",ui-sans-serif,system-ui,sans-serif;font-size:15px;line-height:1.5}
+h1,h2,h3{font-family:Cinzel,Georgia,serif;font-weight:600;letter-spacing:.01em;text-wrap:balance;margin:0}
+code,.mono{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px}
+a{color:var(--accent)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+
+header.top{padding:28px 32px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+header.top h1{font-size:28px}
+header.top p.lede{max-width:68ch;margin:8px 0 0;color:var(--muted)}
+nav.tabs{display:flex;gap:4px;margin-top:18px}
+nav.tabs button{padding:8px 14px;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:0;color:var(--muted);font-weight:600}
+nav.tabs button[aria-selected="true"]{background:var(--bg);border-color:var(--line);color:var(--ink)}
+.stats{display:flex;gap:18px;margin-top:10px;font-size:13px;color:var(--muted)}
+.stats b{color:var(--ink);font-variant-numeric:tabular-nums}
+
+.page{display:none;padding:24px 32px}
+.page.active{display:block}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.5}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.built{background:var(--built-soft);color:var(--built)}
+.pill.partial{background:var(--partial-soft);color:var(--partial)}
+.pill.planned{background:var(--planned-soft);color:var(--planned)}
+.chip{display:inline-block;padding:1px 7px;border-radius:4px;background:var(--surface-2);border:1px solid var(--line);margin:2px 3px 2px 0;font-size:12px}
+.chip.mono{font-size:11.5px}
+.chip.sig{cursor:pointer}
+.chip.sig:hover{border-color:var(--accent);color:var(--accent)}
+
+/* overview */
+.ov{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px}
+.card h2{font-size:17px;margin-bottom:10px}
+.pillars{display:grid;gap:10px}
+.pillar b{display:block}
+.pillar p{margin:0;color:var(--muted);font-size:14px}
+.stages{display:grid;gap:0}
+.stage{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.stage:first-child{border-top:0}
+.stage .id{font-family:Cinzel,serif;font-weight:600;font-size:15px}
+.stage p{margin:2px 0 0;font-size:14px;color:var(--muted)}
+.order{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.order .step{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;min-width:0}
+.order .step b{display:block;font-family:Cinzel,serif;font-size:13px}
+.order .step span{font-size:12.5px;color:var(--muted)}
+.order .arrow{color:var(--muted)}
+.gate{margin-top:12px;padding:10px 12px;border-left:3px solid var(--partial);background:var(--partial-soft);border-radius:0 6px 6px 0;font-size:14px}
+.full{grid-column:1/-1}
+
+/* map page */
+.toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:14px}
+.toolbar input[type=search]{padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);min-width:240px}
+.toolbar label{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;cursor:pointer}
+.toolbar .sep{width:1px;height:22px;background:var(--line)}
+.mapwrap{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:18px;align-items:start}
+@media (max-width:1100px){.mapwrap{grid-template-columns:1fr}.ov{grid-template-columns:1fr}}
+.graphbox{background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:auto;position:relative}
+svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
+.gh{font-family:Cinzel,serif;font-size:12px;font-weight:600;fill:var(--muted);letter-spacing:.06em}
+.node rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1;rx:5}
+.node text{font-size:12px;fill:var(--ink)}
+.node .dot{stroke:none}
+.node.built .dot{fill:var(--built)}.node.partial .dot{fill:var(--partial)}.node.planned .dot{fill:var(--planned)}
+.node{cursor:pointer}
+.node:hover rect{stroke:var(--accent)}
+.node.sel rect{stroke:var(--accent);stroke-width:2;fill:var(--accent-soft)}
+.node.dim{opacity:.22}
+.node.hidden{display:none}
+.edge{fill:none;stroke:var(--edge);stroke-width:1;opacity:.5}
+.edge.hi{stroke:var(--accent);stroke-width:1.8;opacity:1}
+.edge.dim{opacity:.06}
+.edge.hidden{display:none}
+.legend{display:flex;gap:14px;padding:8px 12px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);position:sticky;left:0}
+
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:18px 20px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+.detail h2{font-size:19px;margin:4px 0 6px}
+.detail .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.detail section{margin-top:14px}
+.detail section h3{font-family:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.detail p{margin:0 0 8px;max-width:62ch}
+.detail .how{font-size:14px}
+.ilist{display:grid;gap:6px}
+.irow{display:grid;grid-template-columns:auto 1fr;gap:8px;font-size:13.5px;align-items:baseline}
+.irow button{color:var(--accent);font-weight:600;text-align:left;padding:0}
+.irow .via{color:var(--muted);font-size:12px;display:block}
+.notes li{font-size:13.5px;color:var(--muted);margin-bottom:4px}
+.notes{padding-left:18px;margin:0}
+.empty{color:var(--muted);font-style:italic}
+.incoming{font-size:13px}
+.sigrow{display:grid;grid-template-columns:260px 1fr 1fr;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px}
+.sigrow:first-child{border-top:0;font-weight:600;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+.sigrow .btnlink{color:var(--accent);padding:0;font-weight:600}
+.sigrow .btnlink+ .btnlink::before{content:"· ";color:var(--muted);font-weight:400}
+.sighdr{font-family:Cinzel,serif;font-size:14px;margin:18px 0 4px}
+@media (prefers-reduced-motion:no-preference){.node rect,.edge{transition:opacity .15s,stroke .15s}}
+</style></head><body>
+
+<header class="top">
+  <div class="eyebrow">Design &amp; dev reference · Godot 4 · snapshot from code on 2026-08-27</div>
+  <h1>Warlords Systems Map</h1>
+  <p class="lede" id="lede"></p>
+  <div class="stats" id="stats"></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="overview">What the game is</button>
+    <button role="tab" aria-selected="false" data-tab="map">Systems map</button>
+    <button role="tab" aria-selected="false" data-tab="signals">Signal index</button>
+  </nav>
+</header>
+
+<div class="page active" id="page-overview">
+  <div class="ov">
+    <div class="card">
+      <h2>The pitch</h2>
+      <p id="pitch" style="max-width:68ch;margin:0"></p>
+    </div>
+    <div class="card">
+      <h2>Where it stands</h2>
+      <div class="stages" id="stages"></div>
+    </div>
+    <div class="card">
+      <h2>Design pillars</h2>
+      <div class="pillars" id="pillars"></div>
+    </div>
+    <div class="card">
+      <h2>The R2 build order</h2>
+      <div class="order" id="order"></div>
+      <div class="gate" id="gate"></div>
+    </div>
+    <div class="card full">
+      <h2>How the pieces fit</h2>
+      <p style="max-width:75ch;margin:0 0 10px">The whole game runs on three loops that feed each other. Click any name to jump to it on the map.</p>
+      <div id="loops" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-map">
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Search systems, scripts, signals…" aria-label="Search">
+    <span class="sep"></span>
+    <label><input type="checkbox" class="fstat" value="built" checked> <span class="pill built">Built</span></label>
+    <label><input type="checkbox" class="fstat" value="partial" checked> <span class="pill partial">Partial</span></label>
+    <label><input type="checkbox" class="fstat" value="planned" checked> <span class="pill planned">Planned</span></label>
+    <span class="sep"></span>
+    <label><input type="checkbox" id="fplayer"> Player-facing only</label>
+    <label><input type="checkbox" id="fedges" checked> Show all connections</label>
+  </div>
+  <div class="mapwrap">
+    <div class="graphbox">
+      <div id="graph"></div>
+      <div class="legend"><span>Columns are subsystem groups · lines are interactions found in code or specs · click a system for detail; hover to trace its connections</span></div>
+    </div>
+    <aside class="detail" id="detail" aria-live="polite"></aside>
+  </div>
+</div>
+
+<div class="page" id="page-signals">
+  <p style="max-width:70ch;margin:0 0 6px">Every EventBus and GameState signal, with who emits it and who listens. Signals with no listener in code are the loose ends. Planned signals (from the R2 specs) are marked.</p>
+  <div id="signals"></div>
+</div>
+
+<script id="data" type="application/json">{
+ "overview": {
+  "pitch": "Warlords is a villain-power-fantasy roguelite settlement builder: you are a hidden Necromancer whose lair economy self-manages while you personally leave it to explore, rob graves, fight, and haul loot home. The arc of every run is Hide \u2192 Explore \u2192 Influence \u2192 Rule \u2014 unknown and weak in Era I, earning a five-axis reputation that attracts followers and the church's attention in Era II, and fielding bounty parties toward the human lord's manor in Era III. One region is one run: the Necromancer is directly controlled and killable, death ends the run and destroys everything unbanked, fleeing alive banks what he carries, and taking the Manor is victory. Meta-progression between runs adds variety (spells, units, relic slots, encounters), never power.",
+  "pillars": [
+   {
+    "name": "The banking rule",
+    "text": "Nothing is yours until it is home, at three scales: a worker's load banks on deposit, a sortie's haul banks at the Throne, a run's loot banks to the stash only if the run ends alive."
+   },
+   {
+    "name": "Indirect control, with one carve-out",
+    "text": "No unit orders, ever. The Necromancer is driven directly (WASD); everyone else answers to standing orders (Command Undead on the dead as a class) or their own will."
+   },
+   {
+    "name": "Exclusivity",
+    "text": "The pull of exploration must be exclusive, not merely efficient: Dark Essence, gold, relics, reputation, recruits and XP-bearing deeds are field-only. If workers can gather it at home, the player stays home."
+   },
+   {
+    "name": "Danger from choices, not attrition",
+    "text": "Death should follow an encounter, a pursuit or a gamble, never uneventful movement. Danger is telegraphed before commitment; surprises live only in the ~10% self-found budget, never in Raven pings."
+   },
+   {
+    "name": "Variety, not power",
+    "text": "No meta-progression grants in-run stats, reputation or resources. A level-20 Necromancer's skeleton hits exactly as hard as a level-1's; the one sanctioned bend is carried relics, priced by permadeath loss."
+   },
+   {
+    "name": "Per-villain state",
+    "text": "No system may assume exactly one villain on the map. Position, hp, carry, escort, reputation and deeds live on the villain object; threat stays global in GameState."
+   },
+   {
+    "name": "Content is data, rules are code",
+    "text": "Sites, loot tables, relics, choice sheets and terrain legends are JSON; carry capacity, cadence and radii are constants because they are rules, not content."
+   }
+  ],
+  "stages": [
+   {
+    "id": "S1-3",
+    "name": "Settlement foundation",
+    "status": "built",
+    "one_line": "Priority-list economy, Barracks intake, generated recruits, meals/morale/desertion, housing, wolf combat, Command Undead \u2014 the self-managing base layer the rework runs on."
+   },
+   {
+    "id": "R1",
+    "name": "The world exists",
+    "status": "built",
+    "one_line": "144\u00d7144 fixed map, terrain/blocking/roads/fog, directly controlled killable Necromancer (data/view split), camera follow, static village, sealed rival ground, travel times tuned."
+   },
+   {
+    "id": "R2",
+    "name": "The world is worth exploring",
+    "status": "specced",
+    "one_line": "Loot sites and graves, wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the villain's Arcane kit, damage numbers, stat rework, seven tilesheets and a generated world \u2014 exit: a full sortie loop is tense and repeatable."
+   },
+   {
+    "id": "R3",
+    "name": "The world responds",
+    "status": "outline",
+    "one_line": "Five reputation axes moved by the deeds ledger, reputation-gated recruit offers replacing the timer, notoriety feeding patrol escalation; C3 morale/judgement/packs lands alongside."
+   },
+   {
+    "id": "R4",
+    "name": "The run is real",
+    "status": "outline",
+    "one_line": "Run start/end lifecycle, death ends the run, flee-the-region, crusade climax retuned as C5, take-the-manor victory, map shuffle between runs (generator steps 4\u20135)."
+   },
+   {
+    "id": "R5",
+    "name": "The legend persists",
+    "status": "outline",
+    "one_line": "Meta save file, XP banked from deeds, level unlocks (spells/units/items/encounters/relic slots), the Lair hub with stash, relic carry-in/loss, trophies, chronicle."
+   }
+  ],
+  "build_order": [
+   {
+    "id": "P0",
+    "name": "Travel retune + doc corrections",
+    "what": "Split measure_travel's 'lair \u2192 resource' row into worker-node (short by design) vs sortie-scale 10\u201320 cell ring; fix CLAUDE.md's reputation line and the history file's Raven-fog claim. No code, no walk-speed change.",
+    "spec": "WORLD_MAP_PLAN.md \u00a73 / R2_PROMPTS.md"
+   },
+   {
+    "id": "F1",
+    "name": "Red numbers",
+    "what": "EventBus.damage_shown and a pooled floating-number layer; safe anytime, makes every later fight legible.",
+    "spec": "COMBAT_FEEDBACK_SPEC.md"
+   },
+   {
+    "id": "C2",
+    "name": "The stat rework",
+    "what": "Export stat_rework_roster.xlsx to races.json, widen the Combatant contract to profiles, nine attributes everywhere, Might removed; walk speeds must survive unchanged.",
+    "spec": "COMBAT_SPEC.md \u00a72\u2013\u00a74, \u00a77"
+   },
+   {
+    "id": "P1",
+    "name": "Seven sheets",
+    "what": "Wire six new tilesheets into one atlas, add the 4-bit connection-tile layer, extend the legend (marsh 0.6, ice, cliff, forest), convert the ridge to real cliffs; rendering only.",
+    "spec": "TERRAIN_SPEC.md \u00a72\u2013\u00a75"
+   },
+   {
+    "id": "P2",
+    "name": "Roads that lead somewhere",
+    "what": "Rewrite make_world_map.gd as a nine-step rule-based pipeline: relief, river with bridges/fords, forest masses with corridors and one-mouth clearings, A* road network, signposting rules, dressing; fixed seed; measure_travel is the gate.",
+    "spec": "TERRAIN_SPEC.md \u00a76\u2013\u00a79"
+   },
+   {
+    "id": "R2a",
+    "name": "Sites worth stopping at",
+    "what": "The lootable-site layer: 11 site types, channelled looting, the four-way grave sheet, loot tables, gold, relics, deeds ledger, wolf dens with the dusk gate, remainder charges, Dark Essence goes field-only.",
+    "spec": "LOOT_SITES_SPEC.md"
+   },
+   {
+    "id": "R2b",
+    "name": "His own two hands",
+    "what": "Engage-close/cast-far Arcane combat for the villain, retaliation, the lair aura made positional (flag deleted), his death branch.",
+    "spec": "NECROMANCER_SPEC.md"
+   },
+   {
+    "id": "R2c",
+    "name": "Getting it home",
+    "what": "SortieSystem: party capacity, automatic deposit at 1.5 cells from the Throne, relic activation on deposit, the drop action, death clears the haul, HUD carry/dusk readout.",
+    "spec": "SORTIE_SPEC.md"
+   },
+   {
+    "id": "R2d",
+    "name": "The dead who walk with him",
+    "what": "Order.ESCORT + RallyPoint.follow, CombatSystem.hostiles(), escort hauling, cover-the-retreat interpose.",
+    "spec": "ESCORT_SPEC.md"
+   },
+   {
+    "id": "R2e",
+    "name": "The bird that never lies",
+    "what": "Raven.gd passive pings at dawn (70%, cap 3), the honesty invariant, HUD chip and above-fog markers, zero fog interaction.",
+    "spec": "RAVEN_SPEC.md"
+   }
+  ],
+  "gate": "The R1 feel playtest ('does leaving the lair feel like a decision?') must happen before P1/P2 change the map; P0, F1 and C2 are safe anytime because they change no walk, and after R2 the loop is tuned \u2014 never extended \u2014 until 'one more grave, or turn back?' is a real question."
+ },
+ "systems": [
+  {
+   "id": "settlement_grid",
+   "name": "Settlement Grid & Building Placement",
+   "group": "Settlement & Economy",
+   "summary": "A 10x8 grid of 64px cells where the player places one building per cell. Handles placement, demolition (the main building can never be demolished), and recomputes settlement Power from the sum of every placed building's power_value.",
+   "how_it_works": "CELL_SIZE 64, GRID_WIDTH 10, GRID_HEIGHT 8; cells is a plain Dictionary Vector2i->Building (deliberately not TileMap). can_place() rejects off-grid or occupied cells. place_building() parents the Building, positions it at cell*64, emits building_placed and building_count_changed, then calls GameState.recompute_power(sum of power_value). remove_building() refuses is_main_building, queue_frees the node and emits building_removed. cell_from_world() uses floori so clicks just above/left of origin resolve off-grid. Query helpers: has_building(id), has_housing_for(species), get_main_building() (the Crusade target).",
+   "scripts": [
+    "scripts/settlement/SettlementGrid.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.building_placed",
+    "EventBus.building_removed",
+    "EventBus.building_count_changed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.recompute_power"
+   ],
+   "interactions": [
+    {
+     "target": "power_win_lose",
+     "via": "GameState.recompute_power(_total_building_power())",
+     "effect": "Every placement/removal re-derives Power from per-building power_value."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "get_main_building()",
+     "effect": "ThreatSystem's Crusade resolution targets the main building found here."
+    },
+    {
+     "target": "recruit_offers",
+     "via": "has_housing_for(species) / barracks_free_slots()",
+     "effect": "Recruitment is hard-gated on housing existing in the grid."
+    },
+    {
+     "target": "buildings",
+     "via": "add_child(building)",
+     "effect": "Placed Building nodes live under the grid; Building._ready fires on add_child."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and verified; every building is 1x1 (multi-cell footprints are a listed later milestone).",
+   "player_facing": true,
+   "notes": [
+    "Uses a Dictionary rather than TileMap on purpose for the prototype.",
+    "Power used to be a flat count*5 placeholder; now uses buildings.json power_value."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "building_catalog",
+   "name": "Building Catalog",
+   "group": "Settlement & Economy",
+   "summary": "Load-once autoload that owns data/buildings.json and answers 'what buildings exist, what do they cost, and which can the player build right now'. The build menu and the recruitment housing gate both query it without touching Main.",
+   "how_it_works": "Parses res://data/buildings.json in _ready(), strips '_'-prefixed documentation keys so iteration never sees '_comment'. get_building(id) returns the raw row; all_ids() preserves authored order. buildable_ids(settlement) filters out category 'main' (auto-placed), any row flagged locked:true, any 'unique':true row already present (the Barracks, capacity 5), and any row whose 'requires' prerequisite building is missing from the settlement (the Workshop tech-gate).",
+   "scripts": [
+    "scripts/autoload/BuildingCatalog.gd"
+   ],
+   "data_files": [
+    "data/buildings.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "settlement_grid",
+     "via": "direct call settlement.has_building(id)",
+     "effect": "Checks 'requires' and 'unique' constraints against placed buildings."
+    },
+    {
+     "target": "buildings",
+     "via": "Building.make_from_data(id, get_building(id))",
+     "effect": "Supplies the data row every Building instance is built from."
+    },
+    {
+     "target": "build_menu",
+     "via": "buildable_ids()",
+     "effect": "Feeds the build menu's list of purchasable entries."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; 'locked' entries are hidden from the player but still resolvable via get_building for seeding.",
+   "player_facing": false,
+   "notes": [
+    "First loader in the project that iterates every top-level JSON key, hence the '_' stripping."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "buildings",
+   "name": "Buildings (passive production, housing, main building HP)",
+   "group": "Settlement & Economy",
+   "summary": "A placed structure built entirely from a buildings.json row. Buildings can passively tick out a resource, gate a species' recruitment (housing), hold Barracks intake capacity, be a recruit's per-race home, or be the player's main building with hit points that the Crusade attacks.",
+   "how_it_works": "make_from_data() copies display_name, category (main/resource/functional/housing_intake/housing_home/housing), resource_kind, resource_per_tick, tick_interval (default 5s), power_value, sprite_path, description, housing_species, capacity, max_hp; is_main_building = category=='main'. _process only runs when resource_kind != '': a delta-accumulator _tick_timer adds resource_per_tick via GameState.add_resource every tick_interval. Sprites are drawn at SPRITE_MAX_SIDE 104px content height (1.63 tiles) via Anchoring.scale_for_content_height and bottom-centre anchored with Anchoring.cell_base. get_inspect_data() builds the inspection panel rows (Condition hp for main, Produces, Power, Barracks Residents x/capacity with a 'Full' warning, home Resident and race housing_note).",
+   "scripts": [
+    "scripts/settlement/Building.gd"
+   ],
+   "data_files": [
+    "data/buildings.json",
+    "data/races.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [
+    "GameState.add_resource"
+   ],
+   "interactions": [
+    {
+     "target": "barracks_intake",
+     "via": "get_parent().barracks_residents()",
+     "effect": "The Barracks inspect rows ask the grid for occupancy so 'resident' is defined in one place."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.get_race(house_race_id)",
+     "effect": "Recruit houses show the race display_name and housing_note."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "get_inspect_data() duck-typed contract",
+     "effect": "Provides title/subtitle/sprite/description/details rows."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "hp / max_hp fields",
+     "effect": "Crusade damages the main building's hp (EventBus.main_building_damaged is emitted elsewhere)."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; hp is only meaningful on the main building and is consumed by the still-placeholder win/lose flow.",
+   "player_facing": true,
+   "notes": [
+    "Timer is a delta accumulator so Engine.time_scale scales it.",
+    "sprite_path/sprite_tint must be set before place_building() because _setup_sprite runs from _ready."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "barracks_intake",
+   "name": "Barracks Intake",
+   "group": "Followers & Society",
+   "summary": "The Barracks (category housing_intake, unique, capacity 5) is where every new recruit lives until the player funds them a house. No Barracks means zero capacity and therefore no recruit events; a full Barracks means recruits are turned away until someone moves out.",
+   "how_it_works": "SettlementGrid.get_barracks() finds the single housing_intake building; barracks_capacity() returns its capacity (0 if none). barracks_residents() counts GameState.followers with is_housed == false; barracks_free_slots() = max(0, capacity - residents). Funding a house flips is_housed and frees a slot, which is the whole intake loop.",
+   "scripts": [
+    "scripts/settlement/SettlementGrid.gd",
+    "scripts/settlement/Building.gd"
+   ],
+   "data_files": [
+    "data/buildings.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "recruit_offers",
+     "via": "barracks_free_slots()",
+     "effect": "Recruit offers are gated on free Barracks slots; overflow emits recruit_turned_away from the event side."
+    },
+    {
+     "target": "fund_a_house",
+     "via": "follower.is_housed",
+     "effect": "Housing a recruit removes them from the resident count."
+    },
+    {
+     "target": "building_catalog",
+     "via": "'unique': true",
+     "effect": "The Barracks leaves the build menu once placed."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and verified as part of the Stage 1-3 loop.",
+   "player_facing": true,
+   "notes": [
+    "barracks_residents() used to return the whole roster size, only correct before fund-a-house existed."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "fund_a_house",
+   "name": "Fund-a-House (recruit housing placement)",
+   "group": "Followers & Society",
+   "summary": "The player pays a flat 6 wood / 4 stone to build a recruit their own home; the recruit, not the player, picks the cell based on their race's housing_style, so the town's shape emerges from who was recruited. Housed recruits idle at their own doorstep and free a Barracks slot.",
+   "how_it_works": "SettlementGrid.fund_house(follower, resource_field): refuses if already housed or unaffordable (HOUSE_COST {wood:6, stone:4}); HousePlanner.find_cell picks a cell by races.json housing_style \u2014 'clustered' (adjacent, Chebyshev 1, to a same-race house, else communal), 'communal' (within NEAR_DISTANCE 2 of any house, or the Throne/town centre when none), 'spaced' (>= SPACED_MIN_DISTANCE 3 from every house, most isolated first), 'near_feature' (gnome -> Workshop, dwarves -> stone_deposit position; falls through if absent), 'edge' (grid rim, furthest from centre). Every style degrades preferred -> communal -> any free cell so it never blocks. Then spends the cost, builds Building.make_from_data('recruit_house'), sets house_race_id/house_owner_name/display_name, sprite from HouseStyle.sprite_for (Kenney house_1/house_2 in 4 colours) plus a per-race tint, places it, sets follower.is_housed/house_cell and emits recruit_housed.",
+   "scripts": [
+    "scripts/settlement/SettlementGrid.gd",
+    "scripts/settlement/HousePlanner.gd",
+    "scripts/settlement/HouseStyle.gd"
+   ],
+   "data_files": [
+    "data/races.json",
+    "data/buildings.json"
+   ],
+   "emits": [
+    "EventBus.recruit_housed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.can_afford_cost"
+   ],
+   "writes_state": [
+    "GameState.spend_resource"
+   ],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "EventBus.recruit_housed",
+     "effect": "WorkerSystem moves the recruit's idle_anchor to the house cell centre."
+    },
+    {
+     "target": "resource_field",
+     "via": "resource_field.nodes (stone_deposit position)",
+     "effect": "Dwarf housing style targets the Stone Deposit."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.get_race(race_id).housing_style",
+     "effect": "Housing style is read per race."
+    },
+    {
+     "target": "barracks_intake",
+     "via": "follower.is_housed = true",
+     "effect": "Frees a Barracks slot."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; per-race house costs and real per-race house art are listed as later refinements (HouseStyle is an explicit placeholder).",
+   "player_facing": true,
+   "notes": [
+    "Gnoll 'away from other races' is deliberately not modelled as a hard constraint.",
+    "HouseStyle is meant to be deleted outright once real per-race building art exists.",
+    "Town centre is the Throne at (0,0), a corner, not a literal middle."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "resource_nodes",
+   "name": "Resource Nodes",
+   "group": "Settlement & Economy",
+   "summary": "Individual harvestable things on the map \u2014 trees, a stone deposit, a berry grove, carcasses, graves, and roaming deer \u2014 each with a finite stock that laborers walk to and work. Depletion is visible: trees become stumps, graves become dug-up pits, groves fade and regrow at dawn, dead deer vanish.",
+   "how_it_works": "A ResourceNode is a Node2D (position IS gameplay). Fields: kind (wood/stone/food/bones), node_type, skill_key, remaining/capacity, yield_per_action (1 except deer=8), regrows_per_dawn, claims (soft crowding counter). Stocks: TREE 10, STONE_DEPOSIT 250, BERRY_GROVE cap 40 regrowing +8/dawn, CARCASS 5, GRAVE 12 (mining), DEER 8 whole-on-kill. action_time_for_skill = 4.0s * 5 / skill (peasant 5 -> 4s, skeleton 3 -> 6.7s, dwarf 9 -> 2.2s). take(amount) clips at remaining, refreshes the sprite, and emits resource_node_depleted at 0. regrow() only for regrows_per_dawn > 0. Deer wander at DEER_WANDER_SPEED 18px/s inside a roam rect via Roaming.step (terrain-aware), and freeze(true) while hunted. Visual: alpha lerps 0.45..1.0 with fullness when no depleted art exists. hit_radius = max(18, drawn content * 0.6).",
+   "scripts": [
+    "scripts/settlement/ResourceNode.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.resource_node_depleted"
+   ],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "take(), action_time_for_skill(), freeze(), claims",
+     "effect": "The trip loop gathers from nodes and holds soft claims on them."
+    },
+    {
+     "target": "resource_field",
+     "via": "regrow() / is_depleted()",
+     "effect": "The field triggers dawn regrowth and purges dead deer."
+    },
+    {
+     "target": "roaming",
+     "via": "Roaming.step / Roaming.random_point_in(world)",
+     "effect": "Deer share the wolf's terrain-aware wander helpers."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "get_inspect_data()",
+     "effect": "Shows remaining/capacity, skill, yield, regrowth, claims and spent notes."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; stone deposit and deer art are still placeholders.",
+   "player_facing": true,
+   "notes": [
+    "Deer bypass the carry-capacity=Might rule on purpose so a Might-4 skeleton can haul one home.",
+    "Depleted deer/carcass have no empty-state art and simply go transparent."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "resource_field",
+   "name": "Resource Field (map seeding, node picking, dawn upkeep)",
+   "group": "Settlement & Economy",
+   "summary": "Owns every ResourceNode: seeds the lair band around the settlement at fixed positions, answers 'which node should this laborer walk to', and runs dawn upkeep (berry regrowth, a fresh deer wandering in up to a cap). Nothing else reaches into its node list directly.",
+   "how_it_works": "build(grid_w, grid_h) places FOREST_TREE_COUNT 20 trees and FOREST_CARCASS_COUNT 4 carcasses in a cluster 2.2 cells east of the grid (spread 2.6 cells), one Stone Deposit 2 cells south, one Berry Grove 2.4 cells west, GRAVE_COUNT 2 graves (one north by the road, one past the forest), and DEER_STARTING_COUNT 2 deer in a roam rect 3 cells beyond the grid on every side. find_best_node(kind, from_pos) scores each live node by distance + claims * CROWDING_PENALTY_PX 200 (about 3 cells) so workers spread out but still share the lone stone deposit; berries vs deer is just this scan over mixed kind 'food'. has_available(kind) lets the priority list fall through when a resource is exhausted. On dawn_started: every node regrow(), dead deer purged, and a new deer spawns if live count < DEER_CAP 3. add_node() lets CombatSystem drop a wolf carcass in. node_at() does click picking (depleted nodes stay clickable). Node draw heights: tree 96, stump 32, grove 58, stone 45, grave 48, carcass 26, deer 58.",
+   "scripts": [
+    "scripts/settlement/ResourceField.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "EventBus.dawn_started"
+   ],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "day_night_cycle",
+     "via": "EventBus.dawn_started",
+     "effect": "Triggers berry regrowth and deer respawn each dawn."
+    },
+    {
+     "target": "worker_system",
+     "via": "find_best_node / has_available",
+     "effect": "Supplies trip targets and availability for the priority fall-through."
+    },
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "add_node()",
+     "effect": "A killed wolf leaves a gatherable carcass added through here."
+    },
+    {
+     "target": "world_map",
+     "via": "world: WorldMap",
+     "effect": "Deer roaming respects blocking terrain."
+    },
+    {
+     "target": "fund_a_house",
+     "via": "nodes read by HousePlanner._near_feature",
+     "effect": "Dwarves house next to the stone deposit."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; positions are fixed ('procedural later').",
+   "player_facing": true,
+   "notes": [
+    "_on_dawn takes the unused day_number arg because a zero-arg handler silently fails at emit time \u2014 this bit once already.",
+    "Comment still refers to 'Official Sprites/' but paths are assets/official/nodes/."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "laborers",
+   "name": "Laborers (Worker / Follower labor base)",
+   "group": "Followers & Society",
+   "summary": "The shared 'job' half of every unit that can gather: racial labor stats, carry capacity, walk speed, HP, and the trip-loop state that WorkerSystem advances. Skeleton Workers extend it with fixed skeleton stats and no individuality; Followers extend it with personality on top.",
+   "how_it_works": "Laborer (RefCounted) holds might (also carry capacity, min 1), walk_speed (1.0 = 1 cell/s, walk_speed_px = walk_speed*64), woodcutting/mining/foraging, position (authoritative), stage in TripStage {IDLE, WALK_TO_NODE, GATHERING, WALK_HOME, FLEEING}, target_node, carrying_kind/amount, gather timers, idle_anchor with IDLE_WANDER_RADIUS 34. HP: max_hp = 8 + Might*2 (skeleton 16, peasant 18, ogre 26); take_damage/heal/is_alive; flags is_injured (recruits only; can_work_now false), rallied (Command Undead; can_labor false), in_combat; is_undead() reads races.json alignment == 'Undead'. abandon_trip releases the node claim and unfreezes it; begin_flee drops the load and sets FLEEING. skill_for(skill_key) picks the labor skill by the node's key. Worker: RACE_ID 'skeleton_worker', apply_race_baseline with no per-unit variance (fallback might 4, speed 0.9, wood 3, mining 3, foraging 2), no bounty behaviour.",
+   "scripts": [
+    "scripts/settlement/Laborer.gd",
+    "scripts/settlement/Worker.gd"
+   ],
+   "data_files": [
+    "data/races.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "stage/position fields advanced by _advance_laborer",
+     "effect": "WorkerSystem drives the state machine."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.stat/labor/walk_speed",
+     "effect": "Stats are read from races.json."
+    },
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "Combatant contract: take_damage, heal, combat_might, hp_fraction",
+     "effect": "Any laborer can be attacked; policy on death/injury is CombatSystem's."
+    },
+    {
+     "target": "command_undead",
+     "via": "rallied / is_undead()",
+     "effect": "Command Undead binds undead laborers and removes them from the pool."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "get_inspect_data()",
+     "effect": "Shared character panel rows with per-subclass hooks."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Built, but still reads the old four-stat Might model; the nine-attribute COMBAT_SPEC model lands when prompt C2 runs (Carry will become Endurance).",
+   "player_facing": true,
+   "notes": [
+    "Worker and Follower are deliberately separate classes \u2014 do not merge without re-confirming the design call.",
+    "Combat.FLEE_HP_FRACTION is referenced for HP row colouring."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "worker_system",
+   "name": "Worker System (trip loop & priority list)",
+   "group": "Settlement & Economy",
+   "summary": "Runs every laborer's real round trip \u2014 pick a node, walk there, gather until carry-full or the node empties, walk home, deposit \u2014 and owns the global ranked priority list with thresholds that decides what gets gathered. There are no per-worker orders; the player only reorders the list and edits thresholds. Also owns the Skeleton Worker roster (5 bones each).",
+   "how_it_works": "DEFAULT_PRIORITIES: wood 30, stone 20, food 20, bones 15. Each frame, for every laborer in laborers() (workers + followers with can_labor(), others abandon_trip), _advance_laborer runs the stage; in_combat units are skipped. IDLE: _pick_target_for walks the list top-down and takes the first entry whose stock < threshold AND has an available node (find_best_node), claims it, else wanders around idle_anchor at IDLE_SHUFFLE_SCALE 0.6 with 2-5s pauses. WALK_TO_NODE re-reads node.position each frame (chases deer), arrival within ARRIVE_EPSILON 6px freezes the node and starts gathering. GATHERING accumulates delta to gather_action_target = node.action_time_for_skill(skill) then takes min(yield, room) (deer all-or-nothing); heads home when full or node depleted. WALK_HOME deposits via GameState.add_resource and emits worker_deposited \u2014 the only place gathered resources enter GameState. FLEEING runs at full speed to the idle anchor. set_threshold/move_priority emit priorities_changed and _rethink_all aborts only WALK_TO_NODE trips. recruit_worker costs RECRUIT_COST {bones:5}; remove_worker refunds nothing.",
+   "scripts": [
+    "scripts/settlement/WorkerSystem.gd",
+    "scripts/settlement/Laborer.gd",
+    "scripts/settlement/Worker.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.worker_count_changed",
+    "EventBus.worker_deposited",
+    "EventBus.priorities_changed"
+   ],
+   "listens": [
+    "EventBus.follower_recruited",
+    "EventBus.recruit_housed"
+   ],
+   "reads_state": [
+    "GameState.wood",
+    "GameState.stone",
+    "GameState.food",
+    "GameState.bones",
+    "GameState.followers",
+    "GameState.can_afford_cost"
+   ],
+   "writes_state": [
+    "GameState.add_resource",
+    "GameState.spend_resource"
+   ],
+   "interactions": [
+    {
+     "target": "resource_field",
+     "via": "find_best_node / has_available",
+     "effect": "Chooses targets and falls through exhausted resources."
+    },
+    {
+     "target": "resource_nodes",
+     "via": "take(), freeze(), claims",
+     "effect": "Gathers stock and holds soft claims."
+    },
+    {
+     "target": "followers",
+     "via": "GameState.followers in laborers()",
+     "effect": "Recruits run the same trip loop as skeletons; a Gray Dwarf mines ~3x faster."
+    },
+    {
+     "target": "fund_a_house",
+     "via": "EventBus.recruit_housed",
+     "effect": "Housed recruits idle at their doorstep instead of the keep."
+    },
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "in_combat / begin_flee / remove_worker / all_units()",
+     "effect": "Combat pauses trips, scatters units, and destroys skeletons."
+    },
+    {
+     "target": "command_undead",
+     "via": "can_labor() false while rallied",
+     "effect": "Rallied skeletons leave the workforce and drop their claims."
+    },
+    {
+     "target": "economy_tab",
+     "via": "priority_status() / workforce_summary() / EventBus.priorities_changed",
+     "effect": "UI renders Working/Satisfied/None left per row and a census line."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and verified (Stage 1-3 loop). EventBus.worker_assignment_changed is intentionally unemitted until a per-worker manual override is added.",
+   "player_facing": true,
+   "notes": [
+    "_rethink_all only re-plans workers (not followers) \u2014 followers walking to a now-wrong node keep going.",
+    "Loads are always deposited at the keep even for housed recruits.",
+    "resource_field / home_position / keep_zone are set by Main after construction."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "morale_and_meals",
+   "name": "Meals, Morale & Desertion",
+   "group": "Followers & Society",
+   "summary": "Twice a day (dawn and dusk) living recruits eat their race's food_per_meal; skeletons eat nothing. When food runs short the highest-Loyalty eat first, the shorted lose morale, low-morale recruits pilfer the stores, and a recruit at rock-bottom morale gets one warning and then leaves on the next missed meal. Eating is also how living units heal.",
+   "how_it_works": "Listens to dawn_started and dusk_started. At dawn, _score_previous_cycle gives +1 morale (cap Follower.MORALE_MAX) to anyone who ate at least once and missed nothing, then resets counters. _serve_meal sorts living recruits by loyalty descending, spends from a shared pool = GameState.food + fractional _food_remainder (kobold 0.5, troll 3.5 need whole-unit stock handled by remainder carry). Fed: +HEAL_PER_MEAL 2 hp, clears is_injured at full hp (emits recruit_recovered). Shorted: -1 morale, morale_changed. Emits meal_served(phase, fed, shorted). Then _handle_shorted: morale <= DEPARTURE_MORALE 1 -> first time recruit_departure_warning, second time _depart ('starved out': GameState.record_departure, abandon_trip, remove_follower, recruit_departed). _roll_mischief: each follower with morale <= MISCHIEF_MORALE 3 has MISCHIEF_CHANCE_PERCENT 25 to steal 1-3 of food/wood/stone/bones (never dark_essence, never more than exists), emitting recruit_misbehaved with flavor text.",
+   "scripts": [
+    "scripts/settlement/MoraleSystem.gd"
+   ],
+   "data_files": [
+    "data/races.json"
+   ],
+   "emits": [
+    "EventBus.morale_changed",
+    "EventBus.meal_served",
+    "EventBus.recruit_recovered",
+    "EventBus.recruit_departure_warning",
+    "EventBus.recruit_departed",
+    "EventBus.recruit_misbehaved"
+   ],
+   "listens": [
+    "EventBus.dawn_started",
+    "EventBus.dusk_started"
+   ],
+   "reads_state": [
+    "GameState.food",
+    "GameState.wood",
+    "GameState.stone",
+    "GameState.bones",
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.spend_resource",
+    "GameState.record_departure",
+    "GameState.remove_follower"
+   ],
+   "interactions": [
+    {
+     "target": "day_night_cycle",
+     "via": "EventBus.dawn_started / dusk_started; day_night.day_number",
+     "effect": "Meal ticks hang off the clock; departures are stamped with the day."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.food_per_meal(race_id)",
+     "effect": "Per-race appetite (0 for undead)."
+    },
+    {
+     "target": "followers",
+     "via": "Follower.adjust_morale, meals_*_this_cycle, departure_warned, loyalty",
+     "effect": "Morale and meal bookkeeping live on the Follower object."
+    },
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "heal + is_injured clear",
+     "effect": "Living units regenerate only by eating; skeletons repair at the Throne instead."
+    },
+    {
+     "target": "followers",
+     "via": "GameState.record_departure",
+     "effect": "Feeds the data-only departed history for the future GAME_OUTLINE gap #6 system."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and verified; mischief is logged/alert-pinned rather than a modal.",
+   "player_facing": true,
+   "notes": [
+    "Header comment still says 'last unbuilt piece' \u2014 it is now built.",
+    "Consequences are applied after the sitting so removing a follower does not mutate the array mid-iteration."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "day_night_cycle",
+   "name": "Day/Night Cycle & Time Scale",
+   "group": "World",
+   "summary": "The game clock: a 30-minute day and 20-minute night, with dawn/dusk signals that berry regrowth, deer respawn and meal ticks hang off. Also tints the world blue at night and owns the 1x/10x/60x debug time-scale toggle.",
+   "how_it_works": "DAY_SECONDS 1800, NIGHT_SECONDS 1200 (50 min cycle). _process accumulates elapsed_in_phase (delta, so Engine.time_scale applies); when it exceeds the phase length is_day flips \u2014 dawn increments day_number and emits dawn_started(day_number), otherwise dusk_started(day_number). A CanvasModulate cross-fades from the actual current colour to DAY_TINT white / NIGHT_TINT (0.52,0.58,0.82) over TRANSITION_SECONDS 90; the HUD lives on its own CanvasLayer and is not dimmed. current_phase is DAWN/DUSK during the first 90s of a phase, else DAYLIGHT/NIGHT; day_phase_changed(label) fires only when that word changes ('Day 2 \u2014 Dusk'). cycle_time_scale steps TIME_SCALES [1,10,60] via Engine.time_scale.",
+   "scripts": [
+    "scripts/world/DayNightCycle.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.dawn_started",
+    "EventBus.dusk_started",
+    "EventBus.day_phase_changed"
+   ],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "resource_field",
+     "via": "EventBus.dawn_started",
+     "effect": "Berry regrowth and deer respawn."
+    },
+    {
+     "target": "morale_and_meals",
+     "via": "EventBus.dawn_started / dusk_started",
+     "effect": "Two meal ticks per cycle."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "EventBus.day_phase_changed / phase_label()",
+     "effect": "Signal-driven clock label."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; timings are 'tune after feel-testing'. Climate deliberately not implemented.",
+   "player_facing": true,
+   "notes": [
+    "Header still says meal ticks are 'not here' \u2014 MoraleSystem now provides them.",
+    "Night is a dim, not a blackout, because skeleton labour works through the night."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "race_catalog",
+   "name": "Race Catalog & Recruitment Tuning",
+   "group": "Followers & Society",
+   "summary": "Load-once autoload exposing data/races.json (stats, labor skills, walk speed, appetite, sprite, category, rarity, housing style, alignment) and data/recruitment.json (rarity-by-power tiers, exceptional chance, stat roll dice). Every system that needs to know what a race is asks here.",
+   "how_it_works": "Loads both JSON files in _ready(); strips '_'-prefixed keys from races only. Missing race/stat falls back to REFERENCE_VALUE 5 (the Human Peasant baseline) so a typo degrades to 'average' rather than a 0 that would divide-by-zero in the gather-time formula. Accessors: stat(race,'might'|'guile'|'influence'|'loyalty'), labor(race,'woodcutting'|'mining'|'foraging'), walk_speed (default 1.0), food_per_meal (default 1.0, 0 for undead), sprite, category, rarity, recruitable_ids, ids_in_category. Recruitment: rarity_weights_for_power(power) takes the last power_rarity_tiers entry whose min_power is reached; exceptional_chance_percent default 5; defining_stat_for_category; first_run_categories; stat_roll_config default {dice_sides 3, min 1, max 10}.",
+   "scripts": [
+    "scripts/autoload/RaceCatalog.gd"
+   ],
+   "data_files": [
+    "data/races.json",
+    "data/recruitment.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "laborers",
+     "via": "apply_race_baseline -> stat/labor/walk_speed",
+     "effect": "Skeleton and recruit labor stats come from here."
+    },
+    {
+     "target": "morale_and_meals",
+     "via": "food_per_meal",
+     "effect": "Per-race meal cost."
+    },
+    {
+     "target": "recruit_generation",
+     "via": "rarity_weights_for_power, exceptional_chance_percent, stat_roll_config",
+     "effect": "Drives recruit offer rolls."
+    },
+    {
+     "target": "fund_a_house",
+     "via": "get_race(id).housing_style / housing_note",
+     "effect": "Housing placement style per race."
+    },
+    {
+     "target": "command_undead",
+     "via": "get_race(id).alignment",
+     "effect": "Command Undead binds only alignment 'Undead'."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Built on the old four-stat (might/guile/influence/loyalty) model; nine-attribute rework pending prompt C2.",
+   "player_facing": false,
+   "notes": [
+    "Header comment claiming 'only caller is Worker.gd' is stale \u2014 MoraleSystem, HousePlanner, Building, Laborer all read it."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "unit_tokens",
+   "name": "Unit Tokens (Worker / Follower / Necromancer views)",
+   "group": "UI & Presentation",
+   "summary": "Pure-view Node2Ds that draw a Worker, Follower or the Necromancer at the position their data object owns. They hold no simulation state; they only copy position each frame, flip facing, show a '+4 wood' carry tag and an exceptional-recruit star, and provide click hit radii.",
+   "how_it_works": "Each token's _process copies data.position into its own position. WorkerToken/FollowerToken draw at SPRITE_TARGET_SIZE 58px content height (0.90 tile, Medium body family) via Anchoring.scale_for_content_height + Anchoring.foot; flip_h true on WALK_HOME, false on WALK_TO_NODE; carry_label visible while carrying_amount > 0; FollowerToken shows a gold star when follower.is_exceptional. NecromancerToken draws Necromancer.MAP_SPRITE at TOKEN_SIZE 67 (1.05 tile), z_index 5 so he is never behind the Throne, flips on villain.facing_x, and delegates get_inspect_data to the villain while adding a Camera follow row from VillainController. hit_radius = drawn content * Anchoring.HIT_RADIUS_FRACTION.",
+   "scripts": [
+    "scripts/settlement/WorkerToken.gd",
+    "scripts/settlement/FollowerToken.gd",
+    "scripts/settlement/NecromancerToken.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "reads laborer.position/stage/carrying_*",
+     "effect": "Renders the trip loop; can never disagree with the economy because there is one clock."
+    },
+    {
+     "target": "necromancer",
+     "via": "reads villain.position / facing_x / get_inspect_data()",
+     "effect": "Draws and inspects the villain."
+    },
+    {
+     "target": "villain_controller",
+     "via": "controller.follow_status_text() / following",
+     "effect": "Adds the camera-follow inspection row."
+    },
+    {
+     "target": "token_layer",
+     "via": "spawned/despawned by Main/TokenLayer on EventBus signals",
+     "effect": "Lifecycle is owned by the UI layer."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built; FollowerToken's single size constant is a placeholder for per-family body_class scaling (SPRITE_SPEC \u00a73/\u00a79).",
+   "player_facing": true,
+   "notes": [
+    "Hit tests measure the data object's position, not the token's, because a view is a frame stale.",
+    "Old send_away()/return_home() off-map glide was removed; travel now happens on the world map."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "combat_resolution",
+   "name": "Combat Resolution (formula + engagement clock)",
+   "group": "Combat & Threat",
+   "summary": "The single damage formula for the whole game plus the bookkeeping for a fight that lasts over time. Any two duck-typed Combatants (workers, followers, the wolf, the Necromancer) can be hit together; an Engagement runs one attacker against N defenders on a timer.",
+   "how_it_works": "Combat.damage_roll: damage = attacker Might + d3 - floor(defender Might / 2), minimum 1. Combat.exchange(a, b) is a simultaneous opposed exchange: both swings land even if one is lethal, returns {damage_to_a, damage_to_b, a_alive, b_alive}. Engagement holds one attacker + a defenders list and a delta accumulator; every EXCHANGE_INTERVAL = 1.5 s it runs one exchange per living defender (while-loop so 60x time scale resolves multiple exchanges per frame). Many defenders = attacker fights each in turn, so 3 defenders beat it ~3x faster. Combat.FLEE_HP_FRACTION = 0.3 is the living-recruit break-off threshold. The Combatant contract is six duck-typed members: combat_name(), combat_might(), max_hp(), hp, take_damage(n)->int, is_alive(), hp_fraction(); Combat.is_combatant(x) validates it. No dodging, crits, ranged, armour or initiative by design.",
+   "scripts": [
+    "scripts/combat/Combat.gd",
+    "scripts/combat/Engagement.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "CombatSystem calls Engagement.tick / Combat.exchange",
+     "effect": "CombatSystem is the only caller today; it applies consequences per exchange result."
+    },
+    {
+     "target": "necromancer",
+     "via": "Combat.exchange(wolf, villain) works with no special casing",
+     "effect": "The villain implements the full Combatant contract."
+    },
+    {
+     "target": "command_undead",
+     "via": "CombatSystem.engage()",
+     "effect": "Rallied skeletons closing on a wolf join the same Engagement."
+    }
+   ],
+   "status": "built",
+   "status_note": "Formula only reads Might; the nine-attribute model (COMBAT_SPEC \u00a72) is not wired until prompt C2. Planned consumers (Stage-4 bounty resolution, Stage-5 raids) do not exist yet.",
+   "player_facing": false,
+   "notes": [
+    "Deliberately ONE formula: a second damage formula anywhere else is the mistake Combat.gd exists to prevent.",
+    "Minimum damage of 1 prevents a Might 2 Gnome vs Might 9 Ogre fight from hanging forever.",
+    "Engagement.finished is set by the resolver, not by Engagement itself."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "wolves_and_dusk_raids",
+   "name": "Wolves & Dusk Raids",
+   "group": "Combat & Threat",
+   "summary": "The first hostile creature: a wolf prowls in from the eastern treeline at dusk, takes the nearest deer or labourer, and leaves at dawn or when beaten. Its most common outcome is economic (a deer eaten = 8 food lost) rather than lethal; killing it pays out a 9-bone carcass.",
+   "how_it_works": "CombatSystem listens to dusk_started: the first dusk of a run always spawns a wolf, later dusks roll WOLF_SPAWN_CHANCE_PERCENT = 55%, MAX_WOLVES = 1. Spawn point is settlement-relative: (grid_w + 2 cells, grid_h * 0.35), roam rect = settlement + margin. Wolf: MIGHT 5, MAX_HP 18, flees below 5 hp (absolute), HUNT_RADIUS_PX 320 (~5 cells), HUNT_DELAY_SECONDS 25 of visible prowling before it may hunt, ENGAGE_RADIUS_PX 26, speeds prowl 34 / chase 78 / leave 96 px/s. States PROWL -> STALK -> FIGHT -> LEAVING. Targeting (CombatSystem._find_prey): nearest of worker_system.all_units() (alive, not injured, not near the Necromancer) or non-depleted deer nodes. Reaching a deer empties it outright (deer.take(remaining)), sets is_fed (no more hunting tonight, but it stays visible until dawn). Reaching a unit starts an Engagement. Consequences per exchange: (1) a Worker at 0 hp is destroyed (worker_system.remove_worker, no bones refunded); (2) a Follower below 30% hp is injured, -1 morale, begin_flee(), never killed; wolf dead -> ResourceNode.make_carcass with WOLF_CARCASS_BONES = 9 added to the ResourceField; wolf below 5 hp -> depart('beaten off'). dawn_started makes any remaining wolf depart('driven off by the light'). Wolf token is width-scaled (TOKEN_SIZE 74 px, the one quadruped exception) at z_index 6 with an hp label.",
+   "scripts": [
+    "scripts/combat/CombatSystem.gd",
+    "scripts/world/Wolf.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.wolf_spawned",
+    "EventBus.wolf_departed",
+    "EventBus.wolf_killed",
+    "EventBus.combat_started",
+    "EventBus.worker_destroyed",
+    "EventBus.recruit_injured",
+    "EventBus.morale_changed",
+    "EventBus.deer_taken_by_predator"
+   ],
+   "listens": [
+    "EventBus.dusk_started",
+    "EventBus.dawn_started"
+   ],
+   "reads_state": [
+    "worker_system.all_units()",
+    "worker_system.workers",
+    "resource_field.nodes",
+    "settlement.get_main_building()",
+    "villain.position"
+   ],
+   "writes_state": [
+    "worker_system.remove_worker",
+    "resource_field.add_node",
+    "deer.take",
+    "follower.is_injured",
+    "follower.adjust_morale",
+    "laborer.in_combat",
+    "laborer.abandon_trip"
+   ],
+   "interactions": [
+    {
+     "target": "combat_resolution",
+     "via": "Engagement.tick / Combat.exchange",
+     "effect": "Runs the actual damage exchanges."
+    },
+    {
+     "target": "day_night_cycle",
+     "via": "EventBus.dusk_started / dawn_started",
+     "effect": "Dusk spawns, dawn clears."
+    },
+    {
+     "target": "worker_system",
+     "via": "direct call remove_worker / abandon_trip / all_units",
+     "effect": "Destroyed skeletons leave the roster; targets drop their trips."
+    },
+    {
+     "target": "resource_field",
+     "via": "direct call add_node / deer.take",
+     "effect": "Deer are eaten; dead wolves become gatherable carcasses."
+    },
+    {
+     "target": "morale_and_meals",
+     "via": "follower.adjust_morale + EventBus.morale_changed",
+     "effect": "Injury costs 1 morale."
+    },
+    {
+     "target": "emergent_defence",
+     "via": "_begin_fight -> _rally_and_scatter",
+     "effect": "Every new fight triggers the rally/scatter check."
+    },
+    {
+     "target": "lair_aura",
+     "via": "_is_valid_target / _check_necromancer_fear",
+     "effect": "Targets near the villain are invisible; wolf is pushed away."
+    },
+    {
+     "target": "world_map",
+     "via": "Roaming.step(..., world) / WorldMap.slide",
+     "effect": "Wolf routes around blocking terrain."
+    }
+   ],
+   "status": "built",
+   "status_note": "Verified in playtest; several constants (spawn offset, hunt delay, wolf size) were retuned after 'the wolf spawned but I didn't see it' reports.",
+   "player_facing": true,
+   "notes": [
+    "Spawn position must stay relative to SettlementGrid size, not the 144x144 world, or the wolf arrives two minutes' walk away.",
+    "Wolf.should_flee uses absolute 5 hp, not Combat.FLEE_HP_FRACTION -- hand-tuned design number.",
+    "A Follower reaching 0 hp is a defensive branch: it is set to 1 hp and injured, with a push_warning.",
+    "get_inspect_data reads CombatSystem.LAIR_AURA_PROTECTS_VILLAIN so the panel stops promising protection once the flag is flipped."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "emergent_defence",
+   "name": "Emergent Defence Rule",
+   "group": "Combat & Threat",
+   "summary": "Nobody is ordered to fight. When a wolf starts a fight, any living recruit nearby who is Warrior-category or Might >= 6 wades in unbidden; every other living recruit nearby drops what they carry and runs. The player's only lever is who they recruited and where those people happen to be.",
+   "how_it_works": "CombatSystem._rally_and_scatter runs once per _begin_fight. It scans worker_system.all_units() for units within ASSIST_RADIUS_PX = 3 cells (192 px) of the wolf that are alive and not already in combat. Skeletons (non-Followers) are skipped entirely -- they neither rally nor scatter. For Followers, _will_fight() = category == 'Warrior' or might >= ASSIST_MIGHT_THRESHOLD (6): fighters are added to the Engagement as defenders (in_combat = true, abandon_trip) and combat_joined is emitted; everyone else calls begin_flee(). Fighters that drop below 30% hp are pulled out via the injure-and-flee rule.",
+   "scripts": [
+    "scripts/combat/CombatSystem.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.combat_joined"
+   ],
+   "listens": [],
+   "reads_state": [
+    "worker_system.all_units()",
+    "follower.category",
+    "follower.might",
+    "laborer.in_combat",
+    "laborer.position"
+   ],
+   "writes_state": [
+    "laborer.in_combat",
+    "laborer.abandon_trip",
+    "follower.begin_flee"
+   ],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "called from _begin_fight",
+     "effect": "Adds volunteer defenders to the wolf's Engagement."
+    },
+    {
+     "target": "recruit_offers",
+     "via": "reads follower.category / might",
+     "effect": "Recruiting a Warrior or a high-Might recruit is what makes the settlement defended."
+    }
+   ],
+   "status": "built",
+   "status_note": "Uses the legacy single Might stat; threshold semantics will need remapping when the nine-attribute model lands (C2).",
+   "player_facing": true,
+   "notes": [
+    "The Follower check is stated twice on purpose (caller filter + _will_fight) because 'it is the sort of thing a later edit gets wrong'.",
+    "combat_joined is explicitly 'the one the player is meant to notice'."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "lair_aura",
+   "name": "Lair Aura (wolves fear the Necromancer)",
+   "group": "Villain",
+   "summary": "While the flag holds, wolves will not approach the Necromancer, and anything standing in his shadow is invisible to them. It is a lair rule, not invulnerability: he is a full Combatant and can be hit.",
+   "how_it_works": "CombatSystem.LAIR_AURA_PROTECTS_VILLAIN = true (const, deliberately a named switch). _near_necromancer(pos) tests distance to villain.position <= Wolf.NECROMANCER_FEAR_RADIUS_PX = 150. Targets inside it are rejected by _is_valid_target; a wolf that drifts inside gets its target cleared, is pushed 12 px directly away, and necromancer_feared('wolf') is emitted with a 20 s debounce.",
+   "scripts": [
+    "scripts/combat/CombatSystem.gd",
+    "scripts/world/Wolf.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.necromancer_feared"
+   ],
+   "listens": [],
+   "reads_state": [
+    "villain.position"
+   ],
+   "writes_state": [
+    "wolf.position",
+    "wolf.clear_target"
+   ],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "direct: _is_valid_target / _check_necromancer_fear",
+     "effect": "Filters prey and repels the wolf."
+    },
+    {
+     "target": "necromancer",
+     "via": "reads Necromancer.position",
+     "effect": "Aura is centred on wherever he stands, so it follows him."
+    }
+   ],
+   "status": "partial",
+   "status_note": "ROGUELITE_REWORK \u00a75/\u00a715: R2 flips this off or makes it positional (near the Throne only). Flipping it off is necessary but not sufficient for wildlife to hunt him -- he is not in _prey_candidates() and no consequence branch exists for the villain losing (that is R4's run end).",
+   "player_facing": true,
+   "notes": [
+    "Because the aura follows his position, walking him beside a worker currently shields that worker."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "throne_repair",
+   "name": "Throne Repair (skeleton HP maintenance)",
+   "group": "Combat & Threat",
+   "summary": "Idle Skeleton Workers standing at the Throne slowly knit themselves back together. Slow on purpose so a mauled skeleton is out of the workforce for a while; living recruits heal from meals instead (MoraleSystem).",
+   "how_it_works": "CombatSystem._tick_throne_repair: a delta accumulator fires every THRONE_REPAIR_SECONDS = 6 s. For each worker_system.workers entry that is not in combat, below max_hp, at Laborer.TripStage.IDLE and within THRONE_REPAIR_RADIUS_PX = 1.5 cells (96 px) of the main building's cell centre, heal(1).",
+   "scripts": [
+    "scripts/combat/CombatSystem.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "worker_system.workers",
+    "settlement.get_main_building()",
+    "worker.stage",
+    "worker.hp"
+   ],
+   "writes_state": [
+    "worker.heal"
+   ],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "reads workers / TripStage",
+     "effect": "Only idle skeletons repair."
+    },
+    {
+     "target": "settlement_grid",
+     "via": "get_main_building()",
+     "effect": "Repair is anchored on the Throne."
+    }
+   ],
+   "status": "built",
+   "status_note": "Lives in CombatSystem because 'HP is a combat concern and there was no better home'.",
+   "player_facing": false,
+   "notes": [
+    "1 hp / 6 s; replacing a skeleton costs 5 bones, so the time cost is what makes losing a fight sting."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "command_undead",
+   "name": "Command Undead (Rally Point)",
+   "group": "Villain",
+   "summary": "The Necromancer's first spell and the player's only direct lever over unit movement. Casting plants a single Rally Point; every undead labourer drops its load, leaves the labour pool, and marches there to Defend, Patrol or Attack until dismissed. The cost is the economy: the dead can dig or fight, not both.",
+   "how_it_works": "UndeadCommand.cast(at, order) creates/moves the one RallyPoint (a drawn pulsing marker, z_index 3) and binds every unit where Laborer.is_undead() is true (reads alignment: 'Undead' from races.json), setting rallied = true, abandon_trip, carrying cleared. Newly raised skeletons auto-bind each frame. Per frame each bound, non-fighting unit looks for the nearest living, non-LEAVING wolf within the order's radius measured from the rally point: DEFEND 1.2 cells (77 px), PATROL 3 cells (192 px), ATTACK 7 cells (448 px). If a wolf is within ENGAGE_RADIUS_PX = 26 it calls combat_system.engage(wolf, unit); otherwise it steps toward it via Roaming.step at walk_speed_px(). With no hostile: Defend/Attack idle at the point (ARRIVE_EPSILON 8 px); Patrol walks random points on the disc with pauses of 1.5-4 s. set_order() clears patrol targets and re-emits; dismiss() releases all (rallied = false) and frees the marker. No resource cost yet.",
+   "scripts": [
+    "scripts/combat/UndeadCommand.gd",
+    "scripts/combat/RallyPoint.gd"
+   ],
+   "data_files": [
+    "data/races.json"
+   ],
+   "emits": [
+    "EventBus.undead_commanded",
+    "EventBus.undead_dismissed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "worker_system.all_units()",
+    "laborer.is_undead()",
+    "laborer.rallied",
+    "laborer.in_combat",
+    "combat_system.wolves",
+    "wolf.state"
+   ],
+   "writes_state": [
+    "laborer.rallied",
+    "laborer.abandon_trip",
+    "laborer.carrying_amount",
+    "laborer.carrying_kind",
+    "laborer.position",
+    "rally_point.bound_count"
+   ],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "CombatSystem.engage(wolf, unit)",
+     "effect": "Bound skeletons join or start the wolf's Engagement."
+    },
+    {
+     "target": "worker_system",
+     "via": "laborer.rallied flag",
+     "effect": "Rallied undead are removed from the priority list / labour pool."
+    },
+    {
+     "target": "main_wiring",
+     "via": "Main rally mode left-click",
+     "effect": "Main places the rally point on a click (placement > demolish > rally > inspect)."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "RallyPoint.get_inspect_data()",
+     "effect": "Marker is clickable and shows order, bound count, range."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and verified; no Dark Essence cost because essence is locked at 0 until Stage 4. Commands ALL undead by design (no selection UI).",
+   "player_facing": true,
+   "notes": [
+    "RallyPoint pulse uses Time.get_ticks_msec() deliberately -- pure decoration, exempt from the time-scale rule.",
+    "Hostile search only sees combat_system.wolves; any future hostile type must be added here.",
+    "R2's sortie escort is planned to be built on this order model rather than per-unit orders."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "necromancer",
+   "name": "Necromancer (villain data: movement, HP, carry, death)",
+   "group": "Villain",
+   "summary": "The villain as a RefCounted data object: authoritative position, Might, hit points, carried loot and escort list. He is a full Combatant and can die, but is structurally NOT a Laborer and never counts toward the workforce. Left alone for 8 s he falls back to a slow idle pace around wherever he was parked.",
+   "how_it_works": "BASE_MIGHT = 6; max_hp = Laborer.HP_BASE + Might * Laborer.HP_PER_MIGHT (= 20 hp at Might 6, computed never stored). MOVE_SPEED_CELLS = 1.0 cell/s (64 px/s) times WorldMap.speed_multiplier (roads 1.35x); step(move_dir, delta) normalises input, moves via WorldMap.slide (blocking terrain slid along, not stuck), clamps to optional bounds, sets facing_x. After IDLE_RESUME_SECONDS = 8 with no input, pacing begins: random points within IDLE_WANDER_CELLS = 2 of the anchor at 22 px/s with 2.5-6 s pauses. Carry capacity = Might; add_carried/take_carried implement the R2 banking rule (nothing calls them yet). take_damage emits villain_died(self, 'slain') exactly once at 0 hp via a _death_announced latch; heal_full resets it. Provides get_inspect_data with Activity/Health/Stats/Ground/Carrying/Escort rows.",
+   "scripts": [
+    "scripts/villain/Necromancer.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.villain_died"
+   ],
+   "listens": [],
+   "reads_state": [
+    "world.speed_multiplier",
+    "world.slide",
+    "world.terrain_name",
+    "Laborer.HP_BASE",
+    "Laborer.HP_PER_MIGHT"
+   ],
+   "writes_state": [
+    "necromancer.position",
+    "necromancer.hp",
+    "necromancer.carried"
+   ],
+   "interactions": [
+    {
+     "target": "villain_controller",
+     "via": "Necromancer.step() called each frame",
+     "effect": "Controller supplies the key vector; this decides where he ends up."
+    },
+    {
+     "target": "world_map",
+     "via": "WorldMap.slide / speed_multiplier",
+     "effect": "Terrain blocks and roads speed him."
+    },
+    {
+     "target": "combat_resolution",
+     "via": "Combatant contract",
+     "effect": "Combat.exchange can damage him; death announced from take_damage."
+    },
+    {
+     "target": "fog_of_war",
+     "via": "Main passes his position to FogOfWar.update_for",
+     "effect": "He is the sight source."
+    },
+    {
+     "target": "travel_log",
+     "via": "reads villain.position",
+     "effect": "Journeys are timed off him."
+    },
+    {
+     "target": "lair_aura",
+     "via": "CombatSystem.villain reference",
+     "effect": "Aura centred on his position."
+    }
+   ],
+   "status": "partial",
+   "status_note": "R1 done (killable, directly driven). villain_died is only logged by Main -- run end is R4. carried/escort exist but nothing fills them until R2's sortie loop. Stats are a first guess (ROGUELITE_REWORK \u00a715 open tunable) and use the old single Might until C2.",
+   "player_facing": true,
+   "notes": [
+    "Per-villain state lives here, never in GameState -- no system may assume exactly one villain.",
+    "Extends RefCounted directly, not Laborer, so he can never be handed a gathering trip.",
+    "Comment says 1.4 cells/s crosses the grid in 8.5 s but MOVE_SPEED_CELLS is actually 1.0 -- stale comment.",
+    "Camera-follow state deliberately lives on VillainController, not here (view concern)."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "villain_controller",
+   "name": "Villain Controller (WASD + camera follow)",
+   "group": "Villain",
+   "summary": "Turns held WASD keys into Necromancer movement and keeps the camera tracking him. F snaps the camera back to him and re-engages follow; any manual pan (right-drag or arrow keys) drops follow, zooming does not.",
+   "how_it_works": "Polls Input.is_key_pressed for W/A/S/D each _process (state, not events, so losing window focus mid-hold cannot desync) and passes the unnormalised vector to villain.step(). Returns zero input while a LineEdit (e.g. Economy tab SpinBox) has focus. Follow: compares GameCamera.manual_pan_ticks against its last-seen value; a change sets following = false; while following it calls camera.center_on(villain.position) every frame. FOLLOW_KEY = KEY_F handled in _unhandled_input (so a focused text field eats it). follow_status_text() provides the HUD string.",
+   "scripts": [
+    "scripts/villain/VillainController.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "camera.manual_pan_ticks",
+    "villain.position"
+   ],
+   "writes_state": [
+    "villain.step",
+    "camera.center_on"
+   ],
+   "interactions": [
+    {
+     "target": "necromancer",
+     "via": "villain.step(dir, delta)",
+     "effect": "Drives his movement."
+    },
+    {
+     "target": "game_camera",
+     "via": "camera.center_on / manual_pan_ticks",
+     "effect": "Follows him; yields to manual pans."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "follow_status_text()",
+     "effect": "Shows 'Following [F]' / 'Free camera'."
+    }
+   ],
+   "status": "built",
+   "status_note": "R1 deliverable, verified.",
+   "player_facing": true,
+   "notes": [
+    "Keyboard chosen over click-to-move because left-click already has four meanings arbitrated by Main.",
+    "godot-mcp simulated input never reaches Input.is_key_pressed -- needs real keyboard QA."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "world_map",
+   "name": "World Map (144x144 terrain, blocking, roads)",
+   "group": "World",
+   "summary": "The fixed 144x144-cell region a run takes place in: what each cell looks like, whether it can be walked, and how fast. Contents (sites, resources, village) belong to other systems. The settlement's 10x8 grid is a band inside it, and the engine origin stays at the Throne so all settlement-space coordinates are unchanged.",
+   "how_it_works": "Loads data/world_map.json (width/height, lair_origin, lair_band, bands, a legend char -> {name, category, tile, speed}, and 144 row strings). Cells are one PackedByteArray (20 KB) indexing parallel type arrays; terrain is ONE TileMapLayer (20,736 set_cell calls) built from the commissioned 4x4 snow sheet (1254 px, 5 px margin, 8 px gutter, 305 px tiles) resampled once with Lanczos into a 256x256 atlas at CELL_SIZE 64. Categories: ground, road (DEFAULT_ROAD_SPEED 1.35), blocking. Position offset = -lair_origin * 64 so world cell coords are derived. Queries take engine-space points: cell_at, is_walkable (out of bounds = not walkable), speed_multiplier (blocking reports 1.0), band_at (WORLD_MAP_PLAN \u00a76 danger bands, last match wins, default band 2 'Contested Wilderness'), terrain_name, category_at, slide(from, motion) (axis-retry sliding shared by villain/wolf/deer/patrols), nearest_walkable (ring search up to 6 rings), minimap_color_at (colour sampled from the atlas). 144 cells at 1 cell/s = ~2.4 min straight-line crossing.",
+   "scripts": [
+    "scripts/world/WorldMap.gd"
+   ],
+   "data_files": [
+    "data/world_map.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "necromancer",
+     "via": "slide / speed_multiplier / terrain_name",
+     "effect": "Movement and pace."
+    },
+    {
+     "target": "roaming",
+     "via": "Roaming.step / random_point_in pass world",
+     "effect": "Wolf, deer and patrols route around blocking cells."
+    },
+    {
+     "target": "fog_of_war",
+     "via": "cell_at / in_bounds / bounds_px / lair_band",
+     "effect": "Fog image is sized and drawn over the map bounds."
+    },
+    {
+     "target": "world_sites",
+     "via": "cell_centre_px",
+     "effect": "Sites and patrol waypoints are authored in world cells."
+    },
+    {
+     "target": "game_camera",
+     "via": "bounds_px()",
+     "effect": "Camera clamps to the map."
+    },
+    {
+     "target": "minimap",
+     "via": "minimap_color_at",
+     "effect": "Minimap colours never drift from the art."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "band_at",
+     "effect": "Danger band readout."
+    }
+   ],
+   "status": "built",
+   "status_note": "R1 done. Danger bands are data only -- nothing consumes the band number yet beyond one HUD readout (R2 encounter/loot hook).",
+   "player_facing": true,
+   "notes": [
+    "Regenerate the JSON with tools/make_world_map.gd.",
+    "Nearest filtering on terrain to avoid atlas-seam bleed; some shimmer at extreme zoom-out is accepted.",
+    "Road speed is tunable; the 'roads expose you' half arrives with R3 patrol reaction."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "fog_of_war",
+   "name": "Fog of War",
+   "group": "World",
+   "summary": "Three-state fog (unexplored / remembered / visible) over the world map, revealed in a 7-cell disc around the Necromancer. The lair band is permanently visible so the settlement management view never dims; remembered ground shows terrain but no live contents.",
+   "how_it_works": "One 144x144 RGBA8 Image (one pixel per cell) uploaded to an ImageTexture and drawn stretched over WorldMap.bounds_px() with linear filtering (soft one-cell falloff) at z_index 100 in the settlement layer (under the HUD CanvasLayer). update_for(point) early-outs unless the villain crossed a cell boundary; _relight dims the previously lit indices to REMEMBERED (unless permanent) and lights a disc of REVEAL_RADIUS_CELLS = 7.0. Colours: unexplored black alpha 1.0, remembered (0.02,0.02,0.05) alpha 0.62, visible alpha 0. reveal_permanently(lair_band) marks cells that never fall back. Emits the local signal `changed` on every update for the minimap. is_visible_at(point) gates inspection in Main._inspect_at; explored_count() for stats.",
+   "scripts": [
+    "scripts/world/FogOfWar.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "FogOfWar.changed (local signal)"
+   ],
+   "listens": [],
+   "reads_state": [
+    "world.width",
+    "world.height",
+    "world.lair_band",
+    "world.cell_at",
+    "world.bounds_px"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "necromancer",
+     "via": "Main calls update_for(villain.position) each frame",
+     "effect": "He is the only sight source."
+    },
+    {
+     "target": "minimap",
+     "via": "fog_texture() + changed signal",
+     "effect": "Minimap draws the same mask over its terrain image."
+    },
+    {
+     "target": "main_wiring",
+     "via": "is_visible_at()",
+     "effect": "Nothing in a non-visible cell can be inspected."
+    },
+    {
+     "target": "world_map",
+     "via": "bounds_px / cell_at",
+     "effect": "Sized and positioned by the map."
+    }
+   ],
+   "status": "built",
+   "status_note": "R1 done. Reveal radius is a tunable; WORLD_MAP_PLAN \u00a712's 8-12 cell scouting reveal is the R2 Raven's number.",
+   "player_facing": true,
+   "notes": [
+    "Do not move into hud_root -- it must stay under the HUD.",
+    "Units in fog are painted over rather than hidden individually."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "world_sites",
+   "name": "World Sites (village, ritual ground, landmarks)",
+   "group": "World",
+   "summary": "Fixed inert things standing in the world -- village buildings, the sealed rival ritual ground, roadside landmarks -- loaded from data and clickable for flavour text. Deliberately not Buildings: no cost, no power value, no grid cell.",
+   "how_it_works": "WorldSites.build(world) parses data/world_sites.json: each `sites` entry has id, name, subtitle, description, details rows, sprite, optional modulate, cell [x,y] (converted via WorldMap.cell_centre_px), size (canvas WIDTH, default 56 -- the last place that still means that), and landmark: true to register into `landmarks` for TravelLog. WorldSite scales sprite by size / texture width, foots it with Anchoring.foot, z_index -1, pick_radius = max(18, size * 0.6). WorldSites.pick_at(pos) returns the closest patrol first (characters outrank scenery) then the nearest site within its hit radius.",
+   "scripts": [
+    "scripts/world/WorldSites.gd",
+    "scripts/world/WorldSite.gd"
+   ],
+   "data_files": [
+    "data/world_sites.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "world.cell_centre_px"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "main_wiring",
+     "via": "WorldSites.pick_at()",
+     "effect": "Main asks it what was clicked on the world map."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "get_inspect_data()",
+     "effect": "Sites show data-driven flavour rows."
+    },
+    {
+     "target": "travel_log",
+     "via": "landmarks dictionary",
+     "effect": "Landmark sites are what journeys are timed to."
+    },
+    {
+     "target": "patrols",
+     "via": "_add_patrol",
+     "effect": "Owns and spawns patrols from the same file."
+    }
+   ],
+   "status": "built",
+   "status_note": "Static village per ROGUELITE_REWORK \u00a74 amendment 2; sites are inert scenery with no interaction beyond inspection.",
+   "player_facing": true,
+   "notes": [
+    "Sizes still use old canvas-width math; convert only together with Patrol.TOKEN_SIZE and a re-tune of all seven data/world_sites.json sizes (CLAUDE.md graphics exception)."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "patrols",
+   "name": "Human Patrols",
+   "group": "World",
+   "summary": "Human patrols walking fixed waypoint loops through the village. Pure scenery in v1: they walk, they do not detect, react or fight -- they exist so the village reads as inhabited.",
+   "how_it_works": "Patrol.setup takes a data entry (name, subtitle, description, sprite, speed in cells/s default 0.7) and a PackedVector2Array of waypoints (>= 2, authored in world cells). Each frame it steps toward waypoints[_index] via Roaming.step at speed_cells * 64 px/s with terrain sliding; arrival epsilon 6 px advances the index (wrapping). If a step makes no progress (wedged on terrain) it skips to the next waypoint. Sprite is canvas-width scaled to TOKEN_SIZE = 56, footed, z_index 1, flip_h by travel direction. get_inspect_data shows 'Notices you: Not yet'.",
+   "scripts": [
+    "scripts/world/Patrol.gd"
+   ],
+   "data_files": [
+    "data/world_sites.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "world_sites",
+     "via": "owned by WorldSites.patrols; pick_at prefers patrols",
+     "effect": "Spawned from the same JSON and clickable."
+    },
+    {
+     "target": "roaming",
+     "via": "Roaming.step / arrived",
+     "effect": "Shares terrain-sliding movement with wolf and deer."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Walking is done; reaction (detection radius, response, notoriety escalation) is R3.",
+   "player_facing": true,
+   "notes": [
+    "TOKEN_SIZE is still a canvas width; becomes 58 (Medium body height) when world-map sizing converts with WorldSite."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "roaming",
+   "name": "Roaming (shared wander/step helpers)",
+   "group": "Core",
+   "summary": "Two static movement helpers shared by deer, wolf, patrols and bound undead: pick a random walkable point in a rectangle, and step toward a target without overshooting while sliding around blocking terrain.",
+   "how_it_works": "random_point_in(rect, world, attempts=8): uniform point; with a world it retries up to 8 times for walkability then falls back to WorldMap.nearest_walkable. step(from, to, speed, delta, world): moves at most speed*delta toward `to`, never overshoots, and routes through WorldMap.slide when a world is given. arrived(from, to, epsilon=4.0). Delta-driven so it inherits Engine.time_scale.",
+   "scripts": [
+    "scripts/world/Roaming.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "world.is_walkable",
+    "world.slide",
+    "world.nearest_walkable"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "static calls",
+     "effect": "Wolf prowl/stalk/leave movement."
+    },
+    {
+     "target": "patrols",
+     "via": "static calls",
+     "effect": "Waypoint walking."
+    },
+    {
+     "target": "command_undead",
+     "via": "static calls",
+     "effect": "Bound skeletons approach hostiles and walk patrol beats."
+    },
+    {
+     "target": "resource_field",
+     "via": "static calls (deer ResourceNode)",
+     "effect": "Deer graze-wander."
+    }
+   ],
+   "status": "built",
+   "status_note": "Extracted from the deer's private code; static functions rather than a base class because deer and wolf share no ancestor.",
+   "player_facing": false,
+   "notes": [],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "travel_log",
+   "name": "Travel Log (journey timing)",
+   "group": "World",
+   "summary": "Instruments the Necromancer's journeys so travel pacing is a measurement, not a feeling: notes when he leaves the lair band, when he first reaches each landmark, and the round-trip time, checked against WORLD_MAP_PLAN \u00a73 target bands.",
+   "how_it_works": "Each frame checks whether world.lair_band contains the villain's cell. Leaving home starts a trip (_trip_count++, elapsed = 0, 'Left the lair band.'); elapsed accumulates delta (game seconds, time-scale aware). A landmark counts as reached within ARRIVAL_CELLS = 2.5 cells (160 px). Returning home logs 'Home. Round trip X.' and prints a verdict via TARGETS: lair_exit 45-75 s, nearby_resource 10-20 s, first_landmark 20-40 s, village 120-240 s, crossing 180-300 s (FAST/SLOW/in band). Only 'round_trip' is passed to _report today, and it has no TARGETS entry, so verdicts are effectively never printed. elapsed() (-1 at home) and trips() are read by the HUD.",
+   "scripts": [
+    "scripts/world/TravelLog.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.travel_noted"
+   ],
+   "listens": [],
+   "reads_state": [
+    "villain.position",
+    "world.lair_band",
+    "world.cell_at"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "world_sites",
+     "via": "landmarks dictionary copied in by Main",
+     "effect": "Landmark sites are the timing targets."
+    },
+    {
+     "target": "necromancer",
+     "via": "reads position",
+     "effect": "Times his walks."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "elapsed() / EventBus.travel_noted",
+     "effect": "Journey milestones appear in the log/HUD."
+    }
+   ],
+   "status": "built",
+   "status_note": "R1 exit-criterion instrumentation; tools/measure_travel.tscn is the harness. The TARGETS keys do not match the landmark names reached, so band verdicts are not actually produced -- a latent gap.",
+   "player_facing": true,
+   "notes": [
+    "_report is only ever called with 'round_trip', which is absent from TARGETS."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "game_camera",
+   "name": "Game Camera",
+   "group": "UI & Presentation",
+   "summary": "Minimal pan/zoom camera: right-drag or arrow keys pan, scroll wheel zooms, the view is clamped inside the world map. center_on() frames a point in the visible band between the HUD bars, which is what Necromancer-follow uses.",
+   "how_it_works": "zoom_min 0.12 (whole 144-cell region fits a 1400 px window), zoom_max 1.4, zoom_step 0.1, pan_speed 420 px/s multiplied by zoom.x so screen-distance per second is constant. Right-drag: position -= relative * zoom. Arrow keys pan in _process. Both bump manual_pan_ticks (used by VillainController to drop follow); zoom sets player_has_moved_camera only. _clamp_to_world keeps the viewport inside world_bounds (set from WorldMap.bounds_px), centring on any axis where the world is smaller than the view. center_on(pos) offsets by (ui_top_inset, ui_bottom_inset) / zoom so the point lands mid-way between the top bar and command bar, then clamps.",
+   "scripts": [
+    "scripts/GameCamera.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "villain_controller",
+     "via": "manual_pan_ticks / center_on",
+     "effect": "Follow mode and its escape hatch."
+    },
+    {
+     "target": "world_map",
+     "via": "world_bounds = WorldMap.bounds_px()",
+     "effect": "View cannot show the void beyond the map."
+    },
+    {
+     "target": "main_wiring",
+     "via": "Main._sync_camera_insets sets ui_*_inset",
+     "effect": "Framing accounts for HUD panel heights."
+    }
+   ],
+   "status": "built",
+   "status_note": "WASD deliberately removed from camera pan (now the Necromancer's).",
+   "player_facing": true,
+   "notes": [
+    "Clamping is done in code rather than Camera2D limit_* because those leave position free to wander, creating drag dead zones.",
+    "Scroll direction was verified empirically, not from docs."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "anchoring",
+   "name": "Anchoring (sprite sizing & foot placement)",
+   "group": "UI & Presentation",
+   "summary": "The project's one sizing rule: sprite sizes are content heights (the alpha bounding box), not texture widths, and a unit's sprite hangs above its position so its feet stand on the ground. Click radii derive from the drawn content size.",
+   "how_it_works": "content_rect(tex) scans the image's used (alpha) rect once and caches by resource_path. scale_for_content_height(tex, h) = h / content height; scale_for_content_width for the quadruped exception (wolf). foot(sprite) sets Sprite2D.offset (texture pixels, pre-scale) so the content's bottom-centre sits on the node origin; cell_base(sprite, cell) additionally positions at bottom-centre of a grid cell so buildings grow upward from their footprint. drawn_content_size(sprite) returns the on-screen content size; HIT_RADIUS_FRACTION = 0.45 (reduced from 0.6 because the Necromancer's hit circle made the Throne unclickable).",
+   "scripts": [
+    "scripts/Anchoring.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "scale_for_content_width / foot / drawn_content_size",
+     "effect": "Wolf is the single width-scaled sprite."
+    },
+    {
+     "target": "world_sites",
+     "via": "Anchoring.foot only",
+     "effect": "Sites/patrols foot their sprites but still scale by canvas width (deliberate hold-back)."
+    },
+    {
+     "target": "token_layer",
+     "via": "scale_for_content_height / foot / HIT_RADIUS_FRACTION",
+     "effect": "All settlement tokens, nodes and buildings size and click through this."
+    }
+   ],
+   "status": "built",
+   "status_note": "Enforced by tools/check_sprite_scales.tscn (40 assertions). WorldSite/Patrol are the documented exception.",
+   "player_facing": false,
+   "notes": [
+    "Never divide by texture width and never use CELL_SIZE as a sprite size (CLAUDE.md).",
+    "Runtime-generated textures without a resource_path are measured but not cached."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "bounty_board",
+   "name": "Bounty Board",
+   "group": "Followers & Society",
+   "summary": "Majesty-style indirect control: the player posts Harvest/Reanimation bounties and idle followers decide on their own whether to answer them. Successful bounties pay Dark Essence and raise Threat; failures pay nothing and raise Threat double.",
+   "how_it_works": "BountyBoard._process accumulates delta and every evaluation_interval (2.0s) loops GameState.followers, skipping busy ones, and calls Follower.evaluate_bounty() on each open bounty; the first accepted bounty marks the follower is_busy and starts a countdown of bounty.duration (Harvest 8.0s, Reanimation 14.0s). On expiry success_chance = clamp(1 - risk/12, 0.15, 0.95); success adds reward dark_essence (Harvest 5, Reanimation 10) and threat_on_complete (1 / 3); failure adds threat_on_complete*2. Follower interest = reward*0.1 (+0.15*reward if Greedy, +3 Bloodthirsty on Harvest, +3 Fanatic on Reanimation, -4 Cowardly if risk>5, +1 Loyal) - risk*0.2 + randf(-1.5,1.5), accepted if >= 3.0.",
+   "scripts": [
+    "scripts/bounty/Bounty.gd",
+    "scripts/bounty/BountyBoard.gd",
+    "scripts/bounty/Follower.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.bounty_posted",
+    "EventBus.bounty_accepted",
+    "EventBus.bounty_completed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.add_resource",
+    "GameState.add_threat"
+   ],
+   "interactions": [
+    {
+     "target": "threat_crusade",
+     "via": "GameState.add_threat",
+     "effect": "Every resolved bounty pushes Threat up, doubled on failure."
+    },
+    {
+     "target": "followers",
+     "via": "Follower.evaluate_bounty / is_busy",
+     "effect": "Busy followers stop laboring (Follower.can_labor returns false) while on a bounty."
+    },
+    {
+     "target": "history_log_alerts",
+     "via": "EventBus.bounty_posted/accepted/completed",
+     "effect": "Main logs each stage and raises a 'bad' alert on failure."
+    }
+   ],
+   "status": "built",
+   "status_note": "Constructed and wired in Main._build_systems() but nothing calls post_bounty(); the Bounty tab shows a locked placeholder 'Bounty board -- unlocks in Stage 4'.",
+   "player_facing": false,
+   "notes": [
+    "BountyBoard uses a plain _process delta accumulator, so it scales with Engine.time_scale.",
+    "Bounty types are hardcoded to the Undead Empire prototype (Harvest/Reanimation), not data-driven."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "followers",
+   "name": "Followers (recruits)",
+   "group": "Followers & Society",
+   "summary": "A Follower is a recruited settler: a lightweight RefCounted data object extending Laborer that carries name, race, category, rarity, traits, social stats, morale/meal bookkeeping and housing state. GameState.followers is the roster; they gather like workers unless busy, injured or starving out.",
+   "how_it_works": "Follower(name, species, traits, might, guile, influence, loyalty) with defaults might/guile/influence 1 and loyalty 5; heal_full() is called last because max_hp reads Might. Morale is 1-10 starting at 7 (MORALE_START), clamped by adjust_morale(). meals_eaten/missed_this_cycle are reset per dawn by MoraleSystem; departure_warned latches when morale hits 1. is_housed/house_cell track fund-a-house. departure_disposition() = clamp(loyalty - 8 + (morale - 1), -10, 10) is recorded into GameState.departed via record_departure() but never read. mission_check(stat) = stat + randi(0..3). GameState.add_follower/remove_follower emit follower_count_changed and recompute power (3 per follower).",
+   "scripts": [
+    "scripts/bounty/Follower.gd",
+    "scripts/autoload/GameState.gd"
+   ],
+   "data_files": [
+    "data/races.json"
+   ],
+   "emits": [
+    "EventBus.follower_count_changed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.add_follower",
+    "GameState.remove_follower",
+    "GameState.record_departure"
+   ],
+   "interactions": [
+    {
+     "target": "inspection_panel",
+     "via": "get_inspect_data (via Laborer) + inspect_extra_rows/inspect_subtitle/inspect_description",
+     "effect": "Supplies morale, eats-per-meal, housing, busy and traits rows to the inspector."
+    },
+    {
+     "target": "token_layer",
+     "via": "EventBus.follower_count_changed",
+     "effect": "A FollowerToken is spawned/despawned per roster change."
+    },
+    {
+     "target": "power_win_lose",
+     "via": "GameState.recompute_power",
+     "effect": "Each follower adds a flat 3 Power."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.get_race / food_per_meal",
+     "effect": "Alignment and food-per-meal read from races.json by race_id."
+    }
+   ],
+   "status": "built",
+   "status_note": "Core data object fully in use; departure-memory (GameState.departed, departure_disposition) is stored but unread (GAME_OUTLINE gap #6).",
+   "player_facing": true,
+   "notes": [
+    "race_id is blank for legacy followers.json-template recruits; code must tolerate \"\".",
+    "Stats are the old four (Might/Guile/Influence/Loyalty) -- nine-attribute model of COMBAT_SPEC not yet applied (prompt C2).",
+    "Comment says 'Kept to four total on purpose' for social stats."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "recruit_generation",
+   "name": "Recruit Generation",
+   "group": "Followers & Society",
+   "summary": "Rolls the individual recruits who turn up at the Barracks off the race roster, with per-individual stat variance, rarity weighting that shifts with Power, a 5% exceptional-stat star, and a first-run guarantee that the first offers cover Warrior/Economy/Research.",
+   "how_it_works": "RecruitGenerator (one instance owned by EventSystem, because offers_made must persist) picks a race: for the first RaceCatalog.first_run_categories().size() offers it draws from that category's pool, afterwards a roulette-wheel over RaceCatalog.recruitable_ids() weighted by RaceCatalog.rarity_weights_for_power(GameState.power); a rarity missing from the table gets weight 0. Each stat/labor skill = clamp(baseline + d3 - d3, 1, 10) from RaceCatalog.stat_roll_config(). Then a RaceCatalog.exceptional_chance_percent() (5%) roll adds +1 to the category's defining stat (might/guile/foraging/best_labor; 'none' gives no star), followed by heal_full(). Names come from a hardcoded NAME_POOLS dict per race_id; one trait from TRAIT_POOL [Loyal, Greedy, Bloodthirsty, Cowardly, Fanatic].",
+   "scripts": [
+    "scripts/events/RecruitGenerator.gd"
+   ],
+   "data_files": [
+    "data/races.json",
+    "data/recruitment.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "GameState.power"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "recruit_offers",
+     "via": "direct call RecruitGenerator.generate()",
+     "effect": "EventSystem asks for one Follower per recruit offer; generator never adds to GameState itself."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.* lookups",
+     "effect": "All baselines, weights, categories and walk speed come from the catalog (races.json / recruitment.json)."
+    },
+    {
+     "target": "power_win_lose",
+     "via": "GameState.power read",
+     "effect": "Higher Power shifts rarity weights toward Uncommon/Rare ('power attracts power')."
+    }
+   ],
+   "status": "built",
+   "status_note": "Fully in use as the only live recruit path.",
+   "player_facing": false,
+   "notes": [
+    "offers_made counts offers, not acceptances -- turning away the first orc still burns the Warrior guarantee slot.",
+    "Traits are not race-specific yet; race passives deferred until after Stage 4 per RACES.md.",
+    "Name pools are hardcoded in GDScript, not in JSON."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "recruit_offers",
+   "name": "Recruit Offers (Barracks intake)",
+   "group": "Followers & Society",
+   "summary": "Once a Barracks exists, a timer periodically presents a named, fully-statted recruit the player can welcome or turn away. A full Barracks still produces the offer but only with turn-away choices, and an open offer re-evaluates itself live as slots free up.",
+   "how_it_works": "EventSystem.events_enabled() is true only when settlement.has_barracks(); then a delta accumulator fires every randf_range(min_interval 20.0, max_interval 45.0) seconds. _fire_recruit_offer() generates a Follower, checks settlement.barracks_free_slots() > 0 and emits event_triggered with id 'recruit_offer', a stat-block description and choices: with room -> 'Welcome them' {accept_recruit, reputation +1} / 'Turn them away' {turn_away}; without room -> 'Send them on their way' {turn_away} / 'Drive them off' {turn_away, reputation -1, threat +1}. refresh_recruit_offer() (polled by EventPanelUI every 0.4s) rewrites description/choices when has_room flips. resolve_event() re-checks capacity at accept time, then GameState.add_follower + follower_recruited, or recruit_turned_away.",
+   "scripts": [
+    "scripts/events/EventSystem.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.event_triggered",
+    "EventBus.event_resolved",
+    "EventBus.follower_recruited",
+    "EventBus.recruit_turned_away"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.add_follower",
+    "GameState.add_reputation",
+    "GameState.add_threat"
+   ],
+   "interactions": [
+    {
+     "target": "settlement_grid",
+     "via": "settlement.has_barracks / barracks_free_slots / barracks_residents / barracks_capacity",
+     "effect": "The Barracks gates the timer and its capacity gates acceptance."
+    },
+    {
+     "target": "recruit_generation",
+     "via": "recruit_generator.generate()",
+     "effect": "Each offer is a freshly rolled Follower."
+    },
+    {
+     "target": "event_panel_ui",
+     "via": "EventBus.event_triggered / EventSystem.resolve_event",
+     "effect": "The panel renders the offer and hands the chosen index back."
+    },
+    {
+     "target": "reputation",
+     "via": "GameState.add_reputation",
+     "effect": "Welcoming gives +1 reputation; driving off gives -1 and +1 threat."
+    }
+   ],
+   "status": "built",
+   "status_note": "The live Stage-3 loop; verified per CLAUDE.md.",
+   "player_facing": true,
+   "notes": [
+    "Main.gd's comment on event_system.settlement still says 'housing hard-gate needs to query the grid' -- that gate was removed; Barracks capacity is the gate now.",
+    "Offer polling is by design (occupancy changes for several unrelated reasons), not signal-driven."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "flavor_events",
+   "name": "Random Flavor Events",
+   "group": "Events & Missions",
+   "summary": "A pool of moral/flavor events loaded from events.json whose choices apply resource, reputation, threat and template-recruit effects. They are loaded and resolvable but deliberately taken off the timer for the foundation build.",
+   "how_it_works": "EventSystem loads data/events.json and data/followers.json (stripping the '_comment' key) at _ready. _fire_random_event() picks a uniformly random entry and emits event_triggered, but nothing calls it -- _process only fires recruit offers. resolve_event()._apply_effects handles keys dark_essence, bones (negative values spend), reputation, threat, recruit (template id -> _recruit: random name from 'names', trait_count from 'traits_pool', might/guile/influence rolled from [min,max] arrays default [1,3], loyalty default [3,7], gated by barracks_free_slots) and recruit_chance (template 'chance' 0-100, default 40).",
+   "scripts": [
+    "scripts/events/EventSystem.gd"
+   ],
+   "data_files": [
+    "data/events.json",
+    "data/followers.json"
+   ],
+   "emits": [
+    "EventBus.event_triggered",
+    "EventBus.event_resolved",
+    "EventBus.follower_recruited"
+   ],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [
+    "GameState.add_resource",
+    "GameState.spend_resource",
+    "GameState.add_reputation",
+    "GameState.add_threat",
+    "GameState.add_follower"
+   ],
+   "interactions": [
+    {
+     "target": "recruit_offers",
+     "via": "shared EventSystem.resolve_event",
+     "effect": "Same resolution pipeline; flavor events are just not on the timer."
+    },
+    {
+     "target": "event_panel_ui",
+     "via": "EventBus.event_triggered",
+     "effect": "Would render identically to a recruit offer if fired."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Loaded and resolvable but _fire_random_event() is never called; several events.json entries still reference superseded followers.json templates and need porting to the race roster before reintroduction.",
+   "player_facing": false,
+   "notes": [
+    "followers.json template path (_recruit/_recruit_chance) is explicitly marked 'superseded' and slated for deletion once events.json is ported.",
+    "The old per-species housing hard gate in _recruit is gone; comment records it silently made gated species unrecruitable."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "missions",
+   "name": "Missions",
+   "group": "Events & Missions",
+   "summary": "Gorgon's-Alliance-style hand-picked party missions, resolved instantly by an abstracted stat check rather than tactical combat. Outcomes are SUCCESS / COMPLICATED / FAILURE with data-driven rewards, complications and a chance to lose a follower.",
+   "how_it_works": "MissionSystem loads data/missions.json. dispatch(mission, party) marks the party busy, emits mission_dispatched and resolves synchronously: best_check = max over party of Follower.mission_check(mission.relevant_stat default 'might') (stat + d0..3), plus support_bonus = party.size() - 1; total >= difficulty (default 5) + 3 is SUCCESS (apply 'reward'), >= difficulty is COMPLICATED (reward + 'complication_effects'), else FAILURE ('failure_effects'; if follower_captured, a random party member is removed via GameState.remove_follower). Effects keys: dark_essence, bones, reputation, threat. Party is un-busied and mission_resolved emitted.",
+   "scripts": [
+    "scripts/missions/MissionSystem.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [
+    "data/missions.json"
+   ],
+   "emits": [
+    "EventBus.mission_dispatched",
+    "EventBus.mission_resolved"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.add_resource",
+    "GameState.add_reputation",
+    "GameState.add_threat",
+    "GameState.remove_follower"
+   ],
+   "interactions": [
+    {
+     "target": "followers",
+     "via": "Follower.mission_check / is_busy",
+     "effect": "Stat check drives outcome; captured followers leave the roster."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "GameState.add_threat",
+     "effect": "Mission effects can raise Threat."
+    },
+    {
+     "target": "history_log_alerts",
+     "via": "EventBus.mission_resolved -> Main._on_mission_resolved",
+     "effect": "Logs 'Mission X resolved: OUTCOME'."
+    }
+   ],
+   "status": "built",
+   "status_note": "Built and instantiated, but Main._dispatch_random_mission() (sends the first idle follower on a random mission) has no button; hard-locked as Stage 4.",
+   "player_facing": false,
+   "notes": [
+    "Resolution is instant -- no travel/duration; is_busy is set and cleared within the same call.",
+    "Main._dispatch_random_mission always uses party = [idle[0]], so the support bonus is never exercised from UI."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "threat_crusade",
+   "name": "Threat & Crusade",
+   "group": "Combat & Threat",
+   "summary": "Threat is a global 0-100 meter that escalates through Low/Medium/High tiers as the villain draws attention. Reaching High triggers a timed Crusade the player must survive: a Power shortfall becomes damage against the main building, and losing it loses the game.",
+   "how_it_works": "GameState.add_threat clamps to THREAT_MAX 100 and recomputes tier (MEDIUM at 30, HIGH at 70), emitting threat_changed, threat_tier_escalated on any tier change and crusade_incoming on first entry to HIGH. lay_low() subtracts 10 Threat without touching Reputation. ThreatSystem prints a response ladder (Quiet / Noticed / Crusade) on escalation and on crusade_incoming starts a crusade_window_seconds (60.0) delta countdown. _resolve_crusade: shortfall = max(0, CRUSADE_POWER_BAR 30 - GameState.power); damage = shortfall*2 applied to settlement.get_main_building().hp, emitting main_building_damaged; hp <= 0 -> GameState.lose_game, else mark_crusade_survived + crusade_survived. With no main building it falls back to a power-only pass/fail.",
+   "scripts": [
+    "scripts/threat/ThreatSystem.gd",
+    "scripts/autoload/GameState.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.threat_tier_escalated",
+    "EventBus.crusade_incoming",
+    "EventBus.crusade_survived",
+    "EventBus.main_building_damaged",
+    "GameState.threat_changed",
+    "GameState.game_lost"
+   ],
+   "listens": [
+    "EventBus.threat_tier_escalated",
+    "EventBus.crusade_incoming"
+   ],
+   "reads_state": [
+    "GameState.power",
+    "GameState.threat",
+    "GameState.threat_tier"
+   ],
+   "writes_state": [
+    "GameState.add_threat",
+    "GameState.lay_low",
+    "GameState.mark_crusade_survived",
+    "GameState.lose_game"
+   ],
+   "interactions": [
+    {
+     "target": "power_win_lose",
+     "via": "GameState.mark_crusade_survived / lose_game",
+     "effect": "Surviving satisfies half the 'both' win condition; losing the Throne ends the run."
+    },
+    {
+     "target": "settlement_grid",
+     "via": "settlement.get_main_building() + direct hp mutation",
+     "effect": "Crusade damage hits the Throne of Bones' hp."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "EventBus.main_building_damaged / GameState.threat_changed",
+     "effect": "Top bar refreshes Threat tier and Throne hp readouts."
+    },
+    {
+     "target": "economy_tab",
+     "via": "Lay Low button -> GameState.lay_low()",
+     "effect": "Player can spend nothing to drop Threat by 10."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Mechanically complete but only Lay Low and turn-away choices touch Threat from the UI; the main Threat sources (bounties, missions, flavor events) are all unsurfaced. Win/lose is the old placeholder pending R4.",
+   "player_facing": true,
+   "notes": [
+    "ThreatSystem.RESPONSES uses plain int keys to avoid cross-script const resolution ordering issues.",
+    "Crusade is abstract -- no attacking units are spawned; it's a timer and a subtraction.",
+    "Comment notes hp is mutated directly because no GameState setter for building hp exists."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "reputation",
+   "name": "Reputation (legacy int)",
+   "group": "Villain",
+   "summary": "A single global integer tracking how the world regards you, nudged by recruit choices, mission and event effects. It is flagged legacy and slated for replacement by five per-villain axes in R3.",
+   "how_it_works": "GameState.reputation starts at 0; add_reputation(amount) floors at 0 and emits reputation_changed. Written by EventSystem._apply_effects ('reputation' key: +1 for welcoming a recruit, -1 for driving one off), MissionSystem._apply_effects, and reset to 0 by GameState.reset(). Nothing reads it except HudTopBar, which connects reputation_changed to refresh_stats() but does not actually display the value.",
+   "scripts": [
+    "scripts/autoload/GameState.gd",
+    "scripts/events/EventSystem.gd",
+    "scripts/missions/MissionSystem.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "GameState.reputation_changed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "GameState.reputation"
+   ],
+   "writes_state": [
+    "GameState.add_reputation"
+   ],
+   "interactions": [
+    {
+     "target": "recruit_offers",
+     "via": "effects.reputation",
+     "effect": "Welcome/drive-off choices adjust it."
+    },
+    {
+     "target": "hud_top_bar",
+     "via": "GameState.reputation_changed",
+     "effect": "Triggers a stats refresh, though reputation is not shown."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Legacy per CLAUDE.md: 'never extend it'; replaced in R3 by five axes on the villain object. Not displayed in the HUD.",
+   "player_facing": false,
+   "notes": [
+    "lay_low() deliberately does not undo Reputation."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "power_win_lose",
+   "name": "Power & Win/Lose",
+   "group": "Core",
+   "summary": "Power is a derived score of building power values plus followers; the placeholder win requires both surviving the Crusade and reaching a Power threshold. Loss comes from the Crusade destroying the main building. Both currently only log and alert -- nothing ends the run.",
+   "how_it_works": "GameState.recompute_power(building_power) = building_power (sum of buildings.json power_value, from SettlementGrid) + followers.size()*3, emits power_changed and checks win: survived_high_threat_crusade and power >= POWER_WIN_THRESHOLD 50, latched by _has_won so game_won fires once. lose_game(reason) just emits game_lost. Main connects game_won/game_lost to a gold/red history line and an alert. GameState.reset() (Surrender) restores Stage-0 values (dark_essence 0, bones 10, wood 8, stone 5, food 5, threat 0, power 0, clears followers/departed) before reload_current_scene(). EventBus.villain_died is logged loudly with a push_warning but play continues.",
+   "scripts": [
+    "scripts/autoload/GameState.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [
+    "GameState.power_changed",
+    "GameState.game_won",
+    "GameState.game_lost"
+   ],
+   "listens": [
+    "GameState.game_won",
+    "GameState.game_lost",
+    "EventBus.villain_died"
+   ],
+   "reads_state": [
+    "GameState.power",
+    "GameState.survived_high_threat_crusade"
+   ],
+   "writes_state": [
+    "GameState.recompute_power",
+    "GameState.reset",
+    "GameState.lose_game"
+   ],
+   "interactions": [
+    {
+     "target": "threat_crusade",
+     "via": "GameState.mark_crusade_survived / lose_game",
+     "effect": "Crusade outcome supplies the survive flag or the defeat."
+    },
+    {
+     "target": "followers",
+     "via": "GameState.add_follower -> recompute_power",
+     "effect": "Each follower is worth 3 Power."
+    },
+    {
+     "target": "recruit_generation",
+     "via": "GameState.power",
+     "effect": "Power shifts recruit rarity weights."
+    },
+    {
+     "target": "main_wiring",
+     "via": "InspectorActions.surrender_requested -> Main._surrender_and_restart",
+     "effect": "Surrender resets GameState and reloads the scene."
+    }
+   ],
+   "status": "partial",
+   "status_note": "Placeholder win/lose per CLAUDE.md; run lifecycle (incl. villain death ending the run) is roadmap stage R4.",
+   "player_facing": true,
+   "notes": [
+    "Followers are a flat 3 Power each -- comment says 'no per-follower power stat exists yet, tune once real balancing starts'.",
+    "villain_died handler explicitly says 'the run would end here' and continues."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "hud_top_bar",
+   "name": "HUD Top Bar & Necromancer Badge",
+   "group": "UI & Presentation",
+   "summary": "The thin resource strip along the top (Wood/Stone/Bones/Food, Dark Essence with icon, day-phase clock, Threat, Power, Throne hp), a debug time-scale button, the clickable Necromancer portrait, and the camera-follow and orientation readouts beneath it.",
+   "how_it_works": "HudTopBar.build() creates the PanelContainer strip and badge; _connect_signals hooks GameState.resources_changed/reputation_changed/threat_changed/power_changed and EventBus.day_phase_changed/main_building_damaged to refresh_stats(). refresh_orientation() (called every frame by Main._process) reads world_map.cell_at/band_at and formats 'Cell x,y \u00b7 Band n \u2014 name \u00b7 Lair N cells <8-point compass> \u00b7 Away mm:ss' from TravelLog, then nudges the minimap to redraw. refresh_follow_state() polls VillainController.follow_status_text() on Main's 0.4s tick. The time-scale button calls DayNightCycle.cycle_time_scale() (1x/10x/60x) then emits debug_speed_changed; the badge emits badge_pressed which Main routes to the inspector.",
+   "scripts": [
+    "scripts/ui/HudTopBar.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "GameState.resources_changed",
+    "GameState.reputation_changed",
+    "GameState.threat_changed",
+    "GameState.power_changed",
+    "EventBus.day_phase_changed",
+    "EventBus.main_building_damaged"
+   ],
+   "reads_state": [
+    "GameState.wood",
+    "GameState.stone",
+    "GameState.bones",
+    "GameState.food",
+    "GameState.dark_essence",
+    "GameState.threat",
+    "GameState.threat_tier",
+    "GameState.power"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "day_night_cycle",
+     "via": "day_night.phase_label / time_scale_label / cycle_time_scale",
+     "effect": "Clock text and the debug speed cycle."
+    },
+    {
+     "target": "world_map",
+     "via": "world_map.cell_at / band_at / cell_centre_px",
+     "effect": "Orientation line and way-home compass."
+    },
+    {
+     "target": "minimap",
+     "via": "Minimap.queue_redraw",
+     "effect": "Orientation refresh forces a minimap repaint each frame."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "signal badge_pressed -> Main._inspect(necromancer_token)",
+     "effect": "Badge opens the Necromancer's inspect entry."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live; Reputation is connected but not rendered.",
+   "player_facing": true,
+   "notes": [
+    "Time-scale button is explicitly a debug affordance, not a player game-speed feature.",
+    "Only Dark Essence has an icon; other resources are text pending a full icon set."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "build_menu",
+   "name": "Build Menu & Demolish",
+   "group": "Settlement & Economy",
+   "summary": "The Town > Build row of buildable buildings and the Demolish toggle. Pressing an entry arms click-to-place; the next map click pays the cost and places the building. Demolish removes a building on click with no refund and refuses the Throne.",
+   "how_it_works": "populate() rebuilds the row from BuildingCatalog.buildable_ids(settlement) (so a Workshop can unlock Blacksmith/Barracks), with cost as tooltip; re-run on building_placed/removed and recruit_housed. enter_placement_mode() cancels demolish, emits rally_cancel_requested and inspector_close_requested, shows a hint. try_place(cell) checks settlement.can_place, GameState.can_afford_cost, spends each resource (aborting with a warning if spend fails), Building.make_from_data + settlement.place_building, emits placed. try_demolish(cell) emits demolish_refused for is_main_building, else settlement.remove_building and emits demolished, then leaves the mode. Main.gd owns the priority arbitration (placement > demolish > rally > inspect) and Esc handling.",
+   "scripts": [
+    "scripts/ui/BuildMenu.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [
+    "data/buildings.json"
+   ],
+   "emits": [
+    "EventBus.build_failed"
+   ],
+   "listens": [
+    "EventBus.recruit_housed"
+   ],
+   "reads_state": [
+    "GameState.can_afford_cost"
+   ],
+   "writes_state": [
+    "GameState.spend_resource"
+   ],
+   "interactions": [
+    {
+     "target": "settlement_grid",
+     "via": "settlement.can_place / place_building / remove_building / cells",
+     "effect": "Places and removes buildings on the grid."
+    },
+    {
+     "target": "building_catalog",
+     "via": "BuildingCatalog.buildable_ids / get_building",
+     "effect": "Data-driven list and costs, gated by 'requires'."
+    },
+    {
+     "target": "main_wiring",
+     "via": "signals rally_cancel_requested / inspector_close_requested / placed / demolished / demolish_refused",
+     "effect": "Main cancels rally mode, closes the inspector and writes log lines."
+    },
+    {
+     "target": "command_undead",
+     "via": "rally_cancel_requested",
+     "effect": "Arming build/demolish drops rally placement."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live and verified.",
+   "player_facing": true,
+   "notes": [
+    "Demolish gives no resource refund, per explicit user confirmation."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "economy_tab",
+   "name": "Economy Tab (gathering priorities)",
+   "group": "Settlement & Economy",
+   "summary": "Town > Economy: the ordered gathering-priority list with per-resource stop-at thresholds, live Working/Satisfied/None-left status, a workforce and map-stock summary line, plus Recruit Worker (5 Bones) and Lay Low buttons. This is indirect control applied to labor -- policy, not orders.",
+   "how_it_works": "build_priority_rows() (on EventBus.priorities_changed) renders one row per WorkerSystem.priorities entry: up/down buttons call worker_system.move_priority(kind, \u00b11), a SpinBox (0-999, step 5) calls set_threshold(kind, v). refresh_status() runs every frame from Main._process, colouring priority_status(kind) results and writing '%s \u2014 %s' from workforce_summary() and resource_field.stock_summary(). Rows use compact 24px height / font 10. Recruit Worker emits recruit_worker_pressed (Main pays via WorkerSystem.recruit_worker, RECRUIT_COST bones); Lay Low calls GameState.lay_low() directly.",
+   "scripts": [
+    "scripts/ui/EconomyTab.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "EventBus.priorities_changed"
+   ],
+   "reads_state": [],
+   "writes_state": [
+    "GameState.lay_low"
+   ],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "worker_system.priorities / move_priority / set_threshold / priority_status / workforce_summary",
+     "effect": "View and controls over the global priority list."
+    },
+    {
+     "target": "resource_field",
+     "via": "resource_field.stock_summary()",
+     "effect": "Map stock readout."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "GameState.lay_low()",
+     "effect": "Lay Low drops Threat by 10."
+    },
+    {
+     "target": "main_wiring",
+     "via": "signal recruit_worker_pressed -> Main._recruit_worker",
+     "effect": "Raises a Skeleton Worker for Bones and logs it."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live. Forge Equipment / Train Followers / Dispatch Mission buttons were removed from this tab (Stage 4 hard-lock); their handlers remain in Main.gd.",
+   "player_facing": true,
+   "notes": [
+    "Status labels are polled per frame by design; comment says no useful signal exists that wouldn't fire constantly."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "inspection_panel",
+   "name": "Inspection Panel & Inspector Actions",
+   "group": "UI & Presentation",
+   "summary": "The one click-to-inspect panel for everything on the map (units, Necromancer, wolves, rally point, patrols, resource nodes, world sites, buildings) via the duck-typed get_inspect_data() contract, plus the action buttons only the Keep, Barracks, Necromancer and rally point contribute.",
+   "how_it_works": "InspectionPanel.inspect(source, extra) checks has_method('get_inspect_data'), renders title/subtitle/sprite/description/details rows (label:value, muted, color; empty label = full-width line), calls the optional `extra` Callable to append buttons, adds a Close button and fits the scroll body to max_body_height (default 520, MIN_BODY_HEIGHT 90; Main sets it from the visible band). refresh() re-asks the source every 0.4s (INSPECTOR_REFRESH_INTERVAL) while open and closes if freed. Main._inspect_at picks in order fog-check > Necromancer > follower > worker > wolf > rally point > patrol > resource node > world site > building > ground(close), and echoes title/subtitle/first-detail into the bottom-bar info strip. InspectorActions builds: keep_actions (Recruit Worker 5 Bones, 'Upgrades -- coming soon', Surrender), necromancer_actions (Command Undead / move rally, Dismiss, disabled 'Further spells', Follow toggle F), rally_actions (DEFEND/PATROL/ATTACK via UndeadCommand.set_order, Move, Dismiss), barracks_actions (In the Barracks / Settled in town roster with M/G/I/L W/M/F morale, Fund house for SettlementGrid.HOUSE_COST, disabled 'Upgrade \u2014 Locked').",
+   "scripts": [
+    "scripts/ui/InspectionPanel.gd",
+    "scripts/ui/InspectorActions.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "EventBus.recruit_departed",
+    "EventBus.worker_destroyed",
+    "EventBus.building_removed",
+    "EventBus.meal_served",
+    "EventBus.recruit_departure_warning",
+    "EventBus.follower_recruited"
+   ],
+   "reads_state": [
+    "GameState.followers",
+    "GameState.can_afford_cost"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "command_undead",
+     "via": "UndeadCommand.is_active / set_order / dismiss / rally_point",
+     "effect": "Spell and rally-point buttons drive the Command Undead system."
+    },
+    {
+     "target": "main_wiring",
+     "via": "signals recruit_worker_pressed / surrender_requested / rally_placement_requested / fund_house_requested / follow_toggle_requested / close_requested",
+     "effect": "Main performs the side effects (log, reload, mode arbitration, paying for a house)."
+    },
+    {
+     "target": "settlement_grid",
+     "via": "Main._fund_house -> settlement.fund_house(follower, resource_field)",
+     "effect": "Fund house builds a race-styled house and frees a Barracks slot."
+    },
+    {
+     "target": "villain_controller",
+     "via": "villain_controller.following / toggle_follow",
+     "effect": "Follow button toggles camera follow."
+    },
+    {
+     "target": "token_layer",
+     "via": "token_layer.follower_at / worker_at",
+     "effect": "Hit-tests supply the unit under the click."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live; several buttons are visible-promise placeholders (Keep Upgrades, Further spells, Barracks Upgrade \u2014 Locked).",
+   "player_facing": true,
+   "notes": [
+    "Followers/Workers are RefCounted so is_instance_valid() never goes false -- Main closes the panel explicitly on recruit_departed / worker_destroyed / building_removed.",
+    "Fog blocks inspection: clicking into fog closes the panel.",
+    "World sites are queried twice in _inspect_at (patrol first, then sites after resource nodes)."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "event_panel_ui",
+   "name": "Event / Recruit-Offer Panel",
+   "group": "UI & Presentation",
+   "summary": "The floating decision panel that renders any EventBus.event_triggered event (today, recruit offers) with title, description and one button per choice, centred in the visible map band above the command bar.",
+   "how_it_works": "EventPanelUI.build() connects EventBus.event_triggered; _on_event_triggered stores current_event, emits event_opened, renders and calls _show_panel() which move_to_front()s and repositions over two frames (minimum size first, then laid-out size) inside the band Callable Main supplies (top bar height + 8 to viewport height - BOTTOM_BAR_HEIGHT 250 - 8). refresh_open_offer() is polled by Main every 0.4s and asks EventSystem.refresh_recruit_offer(); on change it re-renders and emits offer_room_found if has_room became true. _resolve_choice(idx) calls EventSystem.resolve_event, emits choice_resolved and hides.",
+   "scripts": [
+    "scripts/ui/EventPanelUI.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "EventBus.event_triggered"
+   ],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "recruit_offers",
+     "via": "EventSystem.resolve_event / refresh_recruit_offer",
+     "effect": "Hands the player's choice back and keeps an open offer current."
+    },
+    {
+     "target": "main_wiring",
+     "via": "signals event_opened / choice_resolved / offer_room_found",
+     "effect": "Main writes 'EVENT:' and 'Chose:' history lines and a 'Room found' alert."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live for recruit offers; would also render flavor events if they were fired.",
+   "player_facing": true,
+   "notes": [
+    "Built last in _build_ui so it draws above the command bar -- earlier order made offer buttons unclickable."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "minimap",
+   "name": "Minimap",
+   "group": "UI & Presentation",
+   "summary": "A 144x144 one-pixel-per-cell map of the whole region in the bottom bar: terrain colours, the shared fog texture, the camera's view rectangle, a lair ring and the Necromancer's dot. Deliberately shows no live contents so it cannot undo the fog.",
+   "how_it_works": "Minimap.setup() builds the terrain ImageTexture once from WorldMap.minimap_color_at per cell and connects fog.changed to queue_redraw. _draw() blits terrain then fog.fog_texture() (the very same texture the world fog uses), draws the camera rect (viewport size / zoom, scaled by CELL_SIZE), a lair ring at world.lair_origin + grid centre, and the villain position; MINIMAP_SIZE 144 in Main matches world width so scale is 1:1. Nearest texture filtering. HudTopBar.refresh_orientation also queue_redraw()s it every frame.",
+   "scripts": [
+    "scripts/ui/Minimap.gd",
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "fog_of_war",
+     "via": "fog.fog_texture() / fog.changed",
+     "effect": "Explored-vs-unexplored comes straight from the world fog texture."
+    },
+    {
+     "target": "world_map",
+     "via": "world.minimap_color_at / origin_px / lair_origin / cell_centre_px",
+     "effect": "Terrain colours and coordinate mapping."
+    },
+    {
+     "target": "necromancer",
+     "via": "villain.position",
+     "effect": "Draws the player's dot."
+    },
+    {
+     "target": "game_camera",
+     "via": "camera.position / zoom",
+     "effect": "Draws the view rectangle."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live; mouse_filter IGNORE so it is not clickable.",
+   "player_facing": true,
+   "notes": [
+    "Legend label under it: '\u25cb lair   \u25cf you'."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "token_layer",
+   "name": "Token Layer (unit views)",
+   "group": "UI & Presentation",
+   "summary": "Owns the two y-sorted Node2D layers for Worker and Follower tokens, reconciles one token per data object on count-changed signals, resolves each unit's sprite from races.json, and answers 'which unit is under this click'.",
+   "how_it_works": "build_layers() adds FollowersLayer and WorkersLayer under SettlementGrid and defines followers_idle_zone (a 2-cell-tall strip along the bottom of the grid). connect_signals() wires follower_count_changed -> sync_follower_tokens and worker_count_changed -> sync_worker_tokens, each spawning FollowerToken/WorkerToken for new keys and freeing orphans. Sprite lookup: RaceCatalog.sprite(race_id), else legacy SPECIES_SPRITES (Skeleton/Ghoul/Wraith/Orc/Goblin placeholders), else FALLBACK_SPECIES_SPRITE; workers use RaceCatalog.sprite(Worker.RACE_ID). closest_token_hit() measures the Laborer's own position (not the one-frame-stale token), skips hidden tokens, and uses token.hit_radius().",
+   "scripts": [
+    "scripts/ui/TokenLayer.gd"
+   ],
+   "data_files": [
+    "data/races.json"
+   ],
+   "emits": [],
+   "listens": [
+    "EventBus.follower_count_changed",
+    "EventBus.worker_count_changed"
+   ],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "worker_system.workers",
+     "effect": "Source of truth for which workers need tokens."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "follower_at / worker_at",
+     "effect": "Supplies hit-tests for Main._inspect_at."
+    },
+    {
+     "target": "race_catalog",
+     "via": "RaceCatalog.sprite",
+     "effect": "Data-driven token art."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live.",
+   "player_facing": true,
+   "notes": [
+    "SPECIES_SPRITES is a legacy fallback pointing at assets/placeholder/modular -- comment says 'Don't add to this. Add a sprite to races.json instead.'",
+    "Tokens are pure views: no timers or state here, per CLAUDE.md."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "history_log_alerts",
+   "name": "History Log & Alert Stack",
+   "group": "UI & Presentation",
+   "summary": "Every notable happening is written as a bbcode line into the History tab (filterable by Events/Alerts/Characters chips) and the most important ones also pin a small +/!/x button in a rolling top-right alert stack whose tooltip carries the message.",
+   "how_it_works": "Main._log(msg, category='events') prints, appends a RichTextLabel tagged with space-separated categories, applies the current filters (OR across active chips; unfiltered when none active) and trims past MAX_HISTORY_ENTRIES 200. _alert(msg, kind good/warn/bad/info) prepends a 26px button to alert_stack and drops the oldest past MAX_ALERTS 3. Main._connect_signals subscribes to ~35 EventBus/GameState signals (deposits, depletion, dawn/dusk, meals, misbehaviour, departures, wolves, combat, injuries, villain death, travel, undead command, recruits, bounties, missions, threat, crusade, build failures, placement/removal) to feed both.",
+   "scripts": [
+    "scripts/Main.gd"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [
+    "EventBus.worker_deposited",
+    "EventBus.resource_node_depleted",
+    "EventBus.dawn_started",
+    "EventBus.dusk_started",
+    "EventBus.meal_served",
+    "EventBus.recruit_misbehaved",
+    "EventBus.recruit_departure_warning",
+    "EventBus.recruit_departed",
+    "EventBus.wolf_spawned",
+    "EventBus.wolf_departed",
+    "EventBus.wolf_killed",
+    "EventBus.villain_died",
+    "EventBus.travel_noted",
+    "EventBus.combat_started",
+    "EventBus.combat_joined",
+    "EventBus.worker_destroyed",
+    "EventBus.recruit_injured",
+    "EventBus.recruit_recovered",
+    "EventBus.deer_taken_by_predator",
+    "EventBus.undead_commanded",
+    "EventBus.undead_dismissed",
+    "EventBus.necromancer_feared",
+    "EventBus.follower_recruited",
+    "EventBus.recruit_turned_away",
+    "EventBus.bounty_posted",
+    "EventBus.bounty_accepted",
+    "EventBus.bounty_completed",
+    "EventBus.mission_resolved",
+    "EventBus.threat_tier_escalated",
+    "EventBus.crusade_incoming",
+    "EventBus.crusade_survived",
+    "EventBus.build_failed",
+    "EventBus.building_placed",
+    "EventBus.building_removed",
+    "GameState.game_won",
+    "GameState.game_lost"
+   ],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "main_wiring",
+     "via": "direct _log/_alert calls",
+     "effect": "All UI modules report via signals and Main writes the lines."
+    }
+   ],
+   "status": "built",
+   "status_note": "Live.",
+   "player_facing": true,
+   "notes": [
+    "Trim loops MUST remove_child() before queue_free() -- a deferred-free-only loop previously hard-froze the game on the 4th alert.",
+    "Filter chips: events, alerts, characters."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "main_wiring",
+   "name": "Main Wiring Root & Input Arbitration",
+   "group": "Core",
+   "summary": "Main.gd constructs every system in dependency order, seeds the Stage-0 start (Throne of Bones at (0,0) plus one idle Skeleton Worker), builds the code-only HUD (top bar, alert stack, bottom command bar with Town/History/Research folder tabs and Build/Bounty/Economy category tabs, inspector, event panel), and arbitrates the four click-to-target input modes.",
+   "how_it_works": "_build_systems: SettlementGrid (y-sorted) -> WorldMap/WorldSites/FogOfWar (lair band revealed permanently) -> TokenLayer -> ResourceField -> Necromancer + NecromancerToken -> BountyBoard -> ThreatSystem -> EventSystem -> MissionSystem -> WorkerSystem -> DayNightCycle -> MoraleSystem -> CombatSystem -> UndeadCommand; _build_camera adds GameCamera (zoom 0.72, clamped to world bounds), VillainController and TravelLog. _unhandled_input priority: build placement > demolish > rally placement (_rally_placement_mode, raw world pos, keeps current order) > Esc-closes-inspector > left-click inspect. _process every frame: fog.update_for(villain.position), HUD orientation, economy status; every 0.4s: inspector.refresh, event_panel_ui.refresh_open_offer, follow-state. Surrender: _close_inspector, GameState.reset(), reload_current_scene(). Time scale is delegated to DayNightCycle via the HUD button. Camera frames on the Throne after two frames and on resize unless the player moved it.",
+   "scripts": [
+    "scripts/Main.gd"
+   ],
+   "data_files": [
+    "data/buildings.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [
+    "GameState.followers"
+   ],
+   "writes_state": [
+    "GameState.reset"
+   ],
+   "interactions": [
+    {
+     "target": "command_undead",
+     "via": "undead_command.cast(world_pos, order) from _place_rally_point",
+     "effect": "Rally placement mode casts Command Undead then inspects the rally point."
+    },
+    {
+     "target": "build_menu",
+     "via": "build_menu.is_placing / is_demolishing / try_place / try_demolish / show_hint",
+     "effect": "Arbitrates the build and demolish modes and shares the hint label."
+    },
+    {
+     "target": "worker_system",
+     "via": "worker_system.add_worker / recruit_worker",
+     "effect": "Seeds the first worker and raises new ones for Bones."
+    },
+    {
+     "target": "fog_of_war",
+     "via": "fog.update_for / is_visible_at / reveal_permanently",
+     "effect": "Fog follows the villain and blocks clicks in unseen ground."
+    },
+    {
+     "target": "settlement_grid",
+     "via": "settlement.place_building / fund_house / cell_from_world / cells",
+     "effect": "Seeding, house funding and cell resolution."
+    }
+   ],
+   "status": "built",
+   "status_note": "Wiring root is complete. Instantiated but unsurfaced: BountyBoard (no post buttons), MissionSystem (_dispatch_random_mission has no button), _forge_equipment (Blacksmith, 5 Dark Essence, +1 random stat to one idle follower) and _train_followers (Barracks, 5 Bones, +1 Might to every idle follower) are intact and unreferenced. Research tab is a 'Future roadmap goal' placeholder; Keep 'Upgrades' is a placeholder label.",
+   "player_facing": true,
+   "notes": [
+    "Startup log line still says 'Frozen Wastes climate (placeholder)' -- climate is deliberately not implemented.",
+    "BOTTOM_BAR_HEIGHT 250, INFO_PANEL_WIDTH 170, INSPECTOR_X 60, MINIMAP_SIZE 144.",
+    "Comment at event_system.settlement wiring ('housing hard-gate needs to query the grid') is stale; the gate is Barracks capacity.",
+    "_forge_equipment/_train_followers mutate might/guile/influence directly -- these will need the C2 nine-attribute rework.",
+    "Main holds a single `villain` reference by design (not a singleton) so multi-villain remains possible."
+   ],
+   "spec": "",
+   "prompt": ""
+  },
+  {
+   "id": "travel_harness_p0",
+   "name": "Travel harness retune (P0)",
+   "group": "Core",
+   "summary": "A correction pass on the travel measurement harness before R2 proper. Distinguishes the deliberately short lair\u2192worker-node walk from the sortie-scale 10\u201320 cell resource ring WORLD_MAP_PLAN \u00a73 actually targets, so the one out-of-band row stops being a false regression.",
+   "how_it_works": "measure_travel.tscn reports 'lair \u2192 worker node' (expected ~3s, by design) separately from 'lair \u2192 sortie-scale resource' measured to a ring 10\u201320 cells out; if no site exists there yet it asserts the ring is walkable and reachable in 10\u201320s and leaves the row pending for R2a. Walk speed (1.0 cells/sec) is explicitly not a knob. Also rewrites CLAUDE.md's GameState source-of-truth line (reputation \u2192 villain object) and fixes the history file's claim that the Raven has a reveal radius.",
+   "scripts": [
+    "tools/measure_travel.tscn"
+   ],
+   "data_files": [],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "world_map",
+     "via": "harness measures A* travel over WorldMap",
+     "effect": "Baseline every later terrain pass (P1/P2) must keep in band."
+    },
+    {
+     "target": "loot_sites",
+     "via": "pending harness row",
+     "effect": "R2a seeds at least one Band-2 site in the 10\u201320 cell ring to turn the row green."
+    }
+   ],
+   "status": "planned",
+   "status_note": "First prompt in R2_PROMPTS.md; no gameplay changes.",
+   "player_facing": false,
+   "notes": [
+    "Do not touch walk speed \u2014 tuned against map crossing and village trip."
+   ],
+   "spec": "R2_PROMPTS.md",
+   "prompt": "P0"
+  },
+  {
+   "id": "combat_feedback",
+   "name": "Floating damage numbers",
+   "group": "UI & Presentation",
+   "summary": "Red -N numbers float above whoever got hit, the moment they got hit; muted green +N for Throne repair heals. A pure view layer \u2014 kill it and combat is untouched.",
+   "how_it_works": "CombatSystem emits EventBus.damage_shown(unit, amount, kind) once per landed swing (> 0) while walking each Engagement.tick() result, plus 'heal' from _tick_throne_repair(). New scripts/ui/CombatFeedback.gd (Node2D beside TokenLayer, z above units, below fog/HUD) owns a pool of 32 Labels: spawn at unit.position lifted by drawn content height with \u00b16px jitter, rise ~0.5 cells over FLOAT_SECONDS=0.8 fading over the last half, one delta accumulator in _process (no Tween/SceneTreeTimer) so Engine.time_scale scales it. Color (1.0,0.35,0.35), 4px black outline, font ~13. Floats don't follow the unit.",
+   "scripts": [
+    "scripts/ui/CombatFeedback.gd",
+    "scripts/combat/CombatSystem.gd",
+    "scripts/autoload/EventBus.gd",
+    "tools/verify_combat_feedback.tscn"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.damage_shown"
+   ],
+   "listens": [
+    "EventBus.damage_shown"
+   ],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "EventBus.damage_shown",
+     "effect": "CombatSystem is the only emitter; Combat.gd and Engagement.gd stay signal-free."
+    },
+    {
+     "target": "necromancer_combat",
+     "via": "EventBus.damage_shown",
+     "effect": "Makes the villain's own casting and incoming damage readable; HUD hp readout is his special channel."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Independent of every other R2 slice; can be built the day after P0.",
+   "player_facing": true,
+   "notes": [
+    "No crits, no damage-type colours, no merging of rapid hits.",
+    "unit is the data object, never a token."
+   ],
+   "spec": "COMBAT_FEEDBACK_SPEC.md",
+   "prompt": "F1"
+  },
+  {
+   "id": "stat_rework_c2",
+   "name": "Nine-attribute stat rework (C2)",
+   "group": "Combat & Threat",
+   "summary": "Replaces the four-stat (Might/Guile/Influence/Loyalty) model with nine attributes and twelve skills, one governing attribute per skill, and attack profiles (Melee/Ranged/Arcane) derived from the highest of Str/Dex/Int. The roster diversifies itself the day the numbers are authored.",
+   "how_it_works": "Attributes 1\u201310 (Human Peasant = 5): Strength, Dexterity, Speed, Endurance, Intelligence, Guile, Perception, Tact, Loyalty. effective_skill = skill + floor((attr \u2212 5)/2). max_hp = 8 + Endurance\u00d72; carry = Endurance; walk speed reads Speed through the workbook divisor (villain Speed 5 \u2192 1.0, skeleton Speed 4 \u2192 0.9, wolf Speed 8 \u2192 ~1.3 chase). Damage = attack_attr + d3 \u2212 floor(defence_attr/2), min 1, one exchange per 1.5s, both swings land; pair from the attacker's profile (Str vs End / Dex vs Speed / Int vs Int). Combatant contract widens to combat_profile() \u2192 {attack_attr, defence_key, reach_px} and combat_defence(key); Combat.is_combatant() updated in the same commit. stat_rework_roster.xlsx (153 race values + templates/overrides + villain and wolf rows) is exported by tools/export_roster.gd into data/races.json. RecruitGenerator rolls nine attributes + template skills. FLEE_HP_FRACTION, rout behaviour, judgement (C3) untouched.",
+   "scripts": [
+    "scripts/combat/Combat.gd",
+    "scripts/combat/CombatSystem.gd",
+    "scripts/settlement/Laborer.gd",
+    "scripts/villain/Necromancer.gd",
+    "scripts/world/Wolf.gd",
+    "scripts/ui/InspectionPanel.gd",
+    "tools/export_roster.gd",
+    "tools/verify_stats.tscn"
+   ],
+   "data_files": [
+    "data/races.json",
+    "docs/design/stat_rework_roster.xlsx"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "combat_resolution",
+     "via": "Combat.damage_roll() reads attacker profile",
+     "effect": "Same formula shape, new attribute pair; EXCHANGE_INTERVAL, d3 and MIN_DAMAGE unchanged."
+    },
+    {
+     "target": "worker_system",
+     "via": "carry_capacity() = Endurance",
+     "effect": "Skeleton End 4 and wolf End 5 equal old Might so no shipped number moves."
+    },
+    {
+     "target": "recruit_generation",
+     "via": "attribute rolls",
+     "effect": "Exceptional-roll targets the category-defining attribute (warrior\u2192Str, research\u2192Int, foraging\u2192Perception)."
+    },
+    {
+     "target": "necromancer_combat",
+     "via": "profile rule 3",
+     "effect": "Villain Int 7 \u2192 Arcane, 5-cell reach, with no special case."
+    },
+    {
+     "target": "travel_harness_p0",
+     "via": "measure_travel gate",
+     "effect": "Every travel row must be unchanged; walk speeds moving is a failed export."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Code still reads Might until C2 runs; roster numbers are authored and done.",
+   "player_facing": true,
+   "notes": [
+    "C3 (morale routing, judgement, packs) deliberately post-R2 because it deletes FLEE_HP_FRACTION which the escort reads.",
+    "Might must appear nowhere after this commit.",
+    "/2 divisor is the main balance knob."
+   ],
+   "spec": "COMBAT_SPEC.md",
+   "prompt": "C2"
+  },
+  {
+   "id": "terrain_tilesheets",
+   "name": "Seven tilesheets & connection tiles (P1)",
+   "group": "World",
+   "summary": "Grows the terrain layer from one tilesheet to seven, adds an autotile (4-bit neighbour mask) layer so roads, water and cliffs draw corners and junctions, and extends the legend with water, fords, bridges, ice, cliffs, marsh, farmland, ruins, corrupted/charred ground and forest. Rendering only \u2014 the layout is untouched.",
+   "how_it_works": "All sheets 1254\u00d71254, 4\u00d74, 305px tiles, 5px margin, 8px separation, asserted per file after tools/dump_atlas.gd dumps them. WorldMap.TILESET_PATH becomes TILESET_PATHS; _build_atlas_texture() packs 112 tiles into one atlas; _resolve_connections() runs once at load computing mask = N|E<<1|S<<2|W<<3 per connecting group (road incl. cobble+dirt, water, ice, cliff) and looks up atlas coords from a data 'connections' block \u2014 missing mask is a hard load error. New speeds: ford 0.7, ice 0.85, marsh 0.6 (first sub-1.0), open woodland 0.85, boulder field 0.8; cliff ^, dense forest T, water ~, boulder O blocking. Ridge converts m\u2192^ keeping its two gaps; frozen lakes become walkable ice. Still one TileMapLayer, zero children, ~52 draw calls, 1.3ms.",
+   "scripts": [
+    "scripts/world/WorldMap.gd",
+    "scripts/ui/Minimap.gd",
+    "tools/dump_atlas.gd",
+    "tools/verify_terrain.tscn"
+   ],
+   "data_files": [
+    "data/world_map.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "necromancer",
+     "via": "WorldMap.speed_multiplier()",
+     "effect": "Marsh/ford/ice speeds need no code change \u2014 Necromancer.terrain_speed() and Roaming.step() already multiply."
+    },
+    {
+     "target": "loot_sites",
+     "via": "ruins/charred terrain",
+     "effect": "Sites telegraph via the ground they sit on, not paths."
+    },
+    {
+     "target": "minimap",
+     "via": "minimap_color_at samples the atlas",
+     "effect": "New terrain colours come free; forest floor may need darkening to read distinctly."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Six new sheets already in assets/official/terrain/; nothing wired.",
+   "player_facing": true,
+   "notes": [
+    "SPRITE_SPEC.md does not govern terrain sheets \u2014 record the exception.",
+    "16 tiles give faces + outer corners only; cliffs must be convex."
+   ],
+   "spec": "TERRAIN_SPEC.md",
+   "prompt": "P1"
+  },
+  {
+   "id": "generated_world",
+   "name": "Generated world, rivers & forests (P2)",
+   "group": "World",
+   "summary": "Rewrites tools/make_world_map.gd so the layout is produced by rule \u2014 cliff ranges, a river with bridges and fords, dense forest masses with carved corridors and one-way-in clearings, an A* road network that leads to human places and dirt tracks only to Band 1\u20132 sites. Fixed seed; shuffle stays R4.",
+   "how_it_works": "Nine-step pipeline: base terrain \u2192 relief (convex cliffs, ridge keeps two gaps) \u2192 hydrology (river 1\u20132 wide, 2\u20133 crossings \u226425 cells apart, reserved before roads) \u2192 forests (2\u20134 T masses, 8\u201314% of map, 1\u20133 cell u fringe, 1\u20132 cell u corridors by A*, mouths \u226425 apart, 1\u20132 clearings radius 2\u20134 with exactly one mouth) \u2192 landmarks \u2192 cobble A* between human_landmarks \u2192 dirt A* to signposted:true sites (hard error if Band 3\u20134) \u2192 dressing (farms, corrupted ground, ruins under ruin sites, marsh) \u2192 bake. Cost grid: road 0.5, ground 1.0, woodland 1.5, marsh/boulder 4.0, cliff/dense forest/river \u221e except crossings. Canopy: one MultiMeshInstance2D drawing Pine_Tree.png at ~2/T cell, ~0.3/u cell, deterministic hash jitter, 1.9\u20132.6 tile content height, zero nodes; lair pines grow 96\u2192128px to match. measure_travel re-run is the gate; knobs in order: crossings, forests, marsh, cliffs, landmarks \u2014 never walk speed.",
+   "scripts": [
+    "tools/make_world_map.gd",
+    "scripts/world/WorldMap.gd",
+    "scripts/settlement/ResourceField.gd",
+    "tools/verify_terrain.tscn",
+    "tools/measure_travel.tscn"
+   ],
+   "data_files": [
+    "data/world_map.json",
+    "data/world_sites.json"
+   ],
+   "emits": [],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "wolf_dens",
+     "via": "forest clearings",
+     "effect": "Provides the isolated locations dens and better sites are placed in."
+    },
+    {
+     "target": "loot_sites",
+     "via": "signposted flag in world_sites.json",
+     "effect": "Generator lays dirt tracks to Band 1\u20132 sites and refuses Band 3\u20134."
+    },
+    {
+     "target": "run_lifecycle_r4",
+     "via": "steps 4\u20135 (forests, landmarks)",
+     "effect": "R4's shuffle becomes a change of inputs; steps 6\u20139 re-derive roads, tracks, farms and junctions."
+    },
+    {
+     "target": "reputation_axes_r3",
+     "via": "bridges on the cobble network",
+     "effect": "Fast crossings are exposed to patrols; fords are slow and unwatched."
+    }
+   ],
+   "status": "planned",
+   "status_note": "The world currently has no trees, no river, no real cliffs; scree stands in for mountains.",
+   "player_facing": true,
+   "notes": [
+    "Verification includes flood fill from the lair reaching every walkable cell, every clearing exactly one mouth, no path within 3 cells of a Band 4 site.",
+    "Needs a human: navigate Throne\u2192village with the minimap off."
+   ],
+   "spec": "TERRAIN_SPEC.md",
+   "prompt": "P2"
+  },
+  {
+   "id": "loot_sites",
+   "name": "Loot sites & grave robbing",
+   "group": "World",
+   "summary": "Eleven lootable site types across four danger bands, each a decision rather than a pickup: channelled looting under the moving sun, a four-way grave choice sheet that moves reputation axes, tiered loot tables, gold as a sixth resource, and the first ten relics. Site notice feeds global threat; axis consequences go to a per-villain deeds ledger.",
+   "how_it_works": "Sites: fresh_grave, small_cache (B1); wayside_shrine, abandoned_camp (occupancy rolled at activation), valuable_grave, ruin_pocket, wolf_den (B2); cemetery (B3, notice escalates per grave); crypt, outlaw_cave, cursed_battlefield (B4, guardians). 10\u201315 active per run. Interaction within pick_radius via InspectorActions; choice sheets in EventPanelUI grammar from data/site_choices.json; looting is a delta-accumulated channel (4s grave, 8s shrine/cache, 12s per crypt/battlefield pull), moving cancels; charges 1 or N, spent sites swap to looted_sprite. Grave sheet: Raise (+skeleton, Forbidden Knowledge+, notice+), Steal (loot, Wealth+, notice+), Return (no loot, Mercy+), Destroy evidence (Cruelty+, removes notice). Loot tables in data/loot_tables.json (weighted, rolls, unique entries) with tier targets B1 2\u20134 mundane/~10% trinket \u2192 B4 6\u201310 mundane, 3\u20135 DE, 6\u201312 gold, crypt guaranteed rare. Everything rolls through Necromancer.add_carried(); overflow stays at the site as remainder. Relics (data/relics.json): trinket/uncommon/rare/legendary, 1 carry slot, effects activate only on deposit; six live effects (attribute delta, move speed, carry, heal-at-dawn, fog radius, channel speed), dormant flags for escort cap/XP/axis multipliers. Dark Essence sources in BountyBoard/MissionSystem/EventSystem are re-pointed or retired.",
+   "scripts": [
+    "scripts/world/WorldSite.gd",
+    "scripts/world/WorldSites.gd",
+    "scripts/world/SiteGuardian.gd",
+    "scripts/villain/Necromancer.gd",
+    "scripts/autoload/GameState.gd",
+    "scripts/autoload/EventBus.gd",
+    "scripts/Main.gd",
+    "scripts/ui/InspectionPanel.gd",
+    "scripts/ui/InspectorActions.gd",
+    "tools/verify_loot_tables.tscn"
+   ],
+   "data_files": [
+    "data/world_sites.json",
+    "data/loot_tables.json",
+    "data/relics.json",
+    "data/site_choices.json"
+   ],
+   "emits": [
+    "EventBus.site_looted",
+    "EventBus.site_choice_resolved",
+    "EventBus.relic_found",
+    "EventBus.deed_committed",
+    "EventBus.site_guardian_engaged"
+   ],
+   "listens": [
+    "EventBus.wolf_killed"
+   ],
+   "reads_state": [],
+   "writes_state": [
+    "GameState.add_threat",
+    "GameState.gold (new sixth resource)"
+   ],
+   "interactions": [
+    {
+     "target": "necromancer",
+     "via": "Necromancer.add_carried() / relics_carried / deeds",
+     "effect": "Loot enters the villain's hands; the spec stops there \u2014 banking is SortieSystem's."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "GameState.add_threat()",
+     "effect": "Site notice is the escalation half; cemetery notice escalates per grave."
+    },
+    {
+     "target": "reputation_axes_r3",
+     "via": "EventBus.deed_committed + Necromancer.deeds",
+     "effect": "R2 writes the ordered, day-stamped ledger R3 reads as notoriety; nothing reputation-shaped is reread from GameState."
+    },
+    {
+     "target": "escort",
+     "via": "raise-the-corpse produces a bound undead",
+     "effect": "A skeleton raised at a grave joins the escort with no extra code."
+    },
+    {
+     "target": "inspection_panel",
+     "via": "InspectorActions + EventPanelUI renderer",
+     "effect": "Site actions and choice sheets reuse existing UI machinery; panel shows channel progress and a Looted row."
+    },
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "SiteGuardian Combatant contract",
+     "effect": "Guardians fight through ordinary CombatSystem policy; dead guardian unlocks the site."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Nothing implemented; three existing world_sites.json landmarks map to shrine/camp/ruin types.",
+   "player_facing": true,
+   "notes": [
+    "Exclusivity is the first law: a site whose main yield duplicates the home economy is a design bug.",
+    "Gold is a dead-end resource until R3 (Wealth axis) and R5 (stash value).",
+    "Legendary relics never drop from tables in R2."
+   ],
+   "spec": "LOOT_SITES_SPEC.md",
+   "prompt": "R2a"
+  },
+  {
+   "id": "wolf_dens",
+   "name": "Wolf dens & the dusk gate",
+   "group": "Combat & Threat",
+   "summary": "The first clearable site: 2\u20133 wolf guardians in a forest clearing, and the answer to where the settlement's dusk wolf comes from. Clearing every den quiets dusk raids for the rest of the run \u2014 a systemic reward, not a haul.",
+   "how_it_works": "1\u20132 wolf_den sites (at least one in the mass east of the lair valley) with guardian {kind: 'wolf', count: 2\u20133}: SiteGuardians wearing Wolf.gd's stats and sprite (Str 5/End 5, 18 hp, flee below 5 hp), parked on a small prowl radius, engaging anything that enters, never pursuing past it. Fled pack wolves leave the run (finite defenders \u2192 attrition across visits is legitimate). Last wolf dead/fled unlocks one loot action (charges 1: bones, food, ~20% wolfhide_cloak \u2014 best in game), each kill leaves a carcass at the site, and emits a Power deed with modest notice. CombatSystem._on_dusk asks WorldSites.any_den_uncleared() before its 55% roll; when no den stands, dusk raids stop (post-clearance floor chance default 0). Spawn entry point stays settlement-relative; den wolves never enter CombatSystem.wolves. Tuned so two escorts win it and a solo villain is gambling.",
+   "scripts": [
+    "scripts/world/SiteGuardian.gd",
+    "scripts/world/WorldSites.gd",
+    "scripts/combat/CombatSystem.gd",
+    "scripts/world/Wolf.gd",
+    "scripts/world/Roaming.gd",
+    "tools/verify_loot_tables.tscn"
+   ],
+   "data_files": [
+    "data/world_sites.json",
+    "data/loot_tables.json"
+   ],
+   "emits": [
+    "EventBus.deed_committed",
+    "EventBus.site_guardian_engaged",
+    "EventBus.wolf_killed"
+   ],
+   "listens": [
+    "EventBus.dusk_started"
+   ],
+   "reads_state": [],
+   "writes_state": [
+    "GameState.add_threat"
+   ],
+   "interactions": [
+    {
+     "target": "wolves_and_dusk_raids",
+     "via": "WorldSites.any_den_uncleared() in _on_dusk",
+     "effect": "Dusk wolf spawning becomes conditional on uncleared dens."
+    },
+    {
+     "target": "generated_world",
+     "via": "forest clearings",
+     "effect": "Dens sit behind corridors, telegraphed by a bone-strewn patch at the corridor mouth, never signposted."
+    },
+    {
+     "target": "escort",
+     "via": "CombatSystem.hostiles()",
+     "effect": "Escort-vs-pack works the day hostiles() unions wolves and guardians."
+    },
+    {
+     "target": "necromancer_combat",
+     "via": "1,000-fight harness bands",
+     "effect": "A 3-wolf pack alone should be a loss or flee \u2014 the teaching fight for guardians."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Second amendment to LOOT_SITES_SPEC; built in R2a alongside sites.",
+   "player_facing": true,
+   "notes": [
+    "Not repeatable, not a spawner; harder dens are R4 pool material via the same schema.",
+    "Whether a fled pack wolf counts toward 'cleared' is a tunable (currently yes)."
+   ],
+   "spec": "LOOT_SITES_SPEC.md \u00a73b",
+   "prompt": "R2a"
+  },
+  {
+   "id": "necromancer_combat",
+   "name": "Necromancer Arcane combat kit",
+   "group": "Villain",
+   "summary": "Gives the villain a fight he can win with his own craft without an attack button: walking within biting distance starts a fight, once engaged he casts at 5-cell Arcane reach, walking away disengages. Outside the lair band he is prey; inside it the settlement-era aura holds as a position test.",
+   "how_it_works": "C2 statline Str 4 / Dex 4 / Spd 5 / End 6 (hp 20, carry 6) / Int 7 (\u2192 Arcane) / Guile 6 / Per 6 / Tact 5. A fight opens only when he closes to VILLAIN_ENGAGE_PX = Wolf.ENGAGE_RADIUS_PX (26px) or a hostile hits him first; then exchanges on the shared 1.5s clock at 5 cells, Int vs Int, via an ordinary Engagement he joins as another defender if the escort is already fighting. He is never rooted \u2014 membership lives in CombatSystem, no in_combat on him; beyond 5 cells his swings stop. Kiting is bounded: wolf chases at 78px/s vs his 64, so range buys 2\u20133 free casts. He never auto-seeks. LAIR_AURA_PROTECTS_VILLAIN flag deleted; aura = world.lair_band.has_point(cell_at(villain.position)); outside it he joins _prey_candidates(). Below FLEE_HP_FRACTION (30%) he does NOT flee \u2014 HUD hp goes red, escort interposes, one log line. hp 0 \u2192 villain_died (already emitted by the data object); R2 handling: haul cleared, loud log, respawn at Throne full hp. Only heal: chipped_censer 2 hp at dawn. Spell surface = InspectorActions entries driven by a spells Array (Rally, Escort; Raise the Corpse lives at graves).",
+   "scripts": [
+    "scripts/combat/CombatSystem.gd",
+    "scripts/villain/Necromancer.gd",
+    "scripts/villain/VillainController.gd",
+    "scripts/world/Wolf.gd",
+    "scripts/ui/HudTopBar.gd",
+    "scripts/ui/InspectionPanel.gd",
+    "tools/verify_villain_combat.tscn"
+   ],
+   "data_files": [
+    "docs/design/stat_rework_roster.xlsx"
+   ],
+   "emits": [
+    "EventBus.villain_engaged",
+    "EventBus.villain_disengaged",
+    "EventBus.villain_died"
+   ],
+   "listens": [],
+   "reads_state": [],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "combat_resolution",
+     "via": "Combat.exchange() through Engagement",
+     "effect": "Policy only \u2014 Combat.gd and Engagement.gd are unchanged; if they need an edit the design has drifted."
+    },
+    {
+     "target": "stat_rework_c2",
+     "via": "combat_profile() reach_px",
+     "effect": "5-cell reach comes from the Arcane profile table, not a constant."
+    },
+    {
+     "target": "escort",
+     "via": "FLEE_HP_FRACTION threshold",
+     "effect": "Escort's cover-the-retreat reads the same 30% he announces at."
+    },
+    {
+     "target": "sortie_deposit",
+     "via": "villain_died handler",
+     "effect": "Death branch lands here; R2c only wires haul-clearing into it."
+    },
+    {
+     "target": "necromancer",
+     "via": "VillainController unchanged",
+     "effect": "Disengage-by-walking falls out of the reach check; movement is movement."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Today he can be hit and cannot hit; nothing initiates an exchange for him.",
+   "player_facing": true,
+   "notes": [
+    "Wolf Intelligence (2) is the arcane-vs-beast knob.",
+    "Whether the aura should shrink to Throne radius in later eras is open.",
+    "No out-of-combat regen by default."
+   ],
+   "spec": "NECROMANCER_SPEC.md",
+   "prompt": "R2b"
+  },
+  {
+   "id": "sortie_deposit",
+   "name": "Carry capacity, sortie & deposit-at-lair",
+   "group": "Villain",
+   "summary": "The return leg made real: party carry capacity is one number (Endurance), the haul banks automatically within 1.5 cells of the Throne, what doesn't fit stays at the site, dropping in open country destroys it, and death wipes everything unbanked. The HUD says how full you are and when the sun is low.",
+   "how_it_works": "party_space() = villain.carry_space() + \u03a3(escort.endurance \u2212 escort.carrying_amount): villain alone 6, with two End-4 skeletons 14. Relics take one slot each and ride the villain only. Filling order villain \u2192 escort \u2192 remainder. New scripts/villain/SortieSystem.gd (fields villain, settlement, world; one per villain, never looks him up) checks DEPOSIT_RADIUS_PX = 1.5\u00d7CELL_SIZE (reusing CombatSystem.THRONE_REPAIR_RADIUS_PX's precedent) each frame: GameState.add_resource() for every kind from villain.take_carried() and each escort load, relics banked and effects activated, EventBus.sortie_deposited, TravelLog names the haul. Crossing the lair band edge banks nothing. Partial deposits free. Drop is a panel action per kind/relic: in reach of a site \u2192 returns to that site's remainder; elsewhere \u2192 destroyed, panel warns. villain_died clears carried, relics_carried and every escort load before any other handler; respawn at Throne. HUD adds 'Carrying 6/6 \u2014 full' beside Away timer and a dusk warning when outside the band late in the day.",
+   "scripts": [
+    "scripts/villain/SortieSystem.gd",
+    "scripts/villain/Necromancer.gd",
+    "scripts/world/WorldSite.gd",
+    "scripts/ui/HudTopBar.gd",
+    "scripts/ui/InspectorActions.gd",
+    "scripts/world/TravelLog.gd",
+    "tools/verify_sortie.tscn",
+    "tools/measure_travel.tscn"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.sortie_deposited",
+    "EventBus.sortie_load_dropped",
+    "EventBus.relic_banked"
+   ],
+   "listens": [
+    "EventBus.villain_died"
+   ],
+   "reads_state": [
+    "Necromancer.carried",
+    "Necromancer.relics_carried",
+    "Laborer.carrying_kind/carrying_amount"
+   ],
+   "writes_state": [
+    "GameState.add_resource"
+   ],
+   "interactions": [
+    {
+     "target": "worker_system",
+     "via": "same GameState.add_resource() deposit path",
+     "effect": "The sortie is the trip loop's banking rule at longer range; escort loads reuse Laborer's single-kind fields."
+    },
+    {
+     "target": "loot_sites",
+     "via": "WorldSite.remainder",
+     "effect": "Overflow and in-reach drops live on the site; no ground piles ever."
+    },
+    {
+     "target": "day_night_cycle",
+     "via": "shared clock, no code",
+     "effect": "Dusk, meal ticks and the wolf pressure the return leg for free; R2 only adds legibility."
+    },
+    {
+     "target": "escort",
+     "via": "party_space arithmetic",
+     "effect": "The escort is the relief valve for tight carry and costs the labour pool."
+    },
+    {
+     "target": "run_lifecycle_r4",
+     "via": "villain_died",
+     "effect": "R2 logs 'the run would end here'; R4 owns the actual ending."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Necromancer.carry_capacity()/add_carried()/take_carried() exist from R1; nothing banks yet.",
+   "player_facing": true,
+   "notes": [
+    "Tune yield, not capacity \u2014 capacity is a rule.",
+    "'Send an escort back' was struck: independent delivery would be a spell (R5).",
+    "The band is not the Throne \u2014 TravelLog's home test stays separate."
+   ],
+   "spec": "SORTIE_SPEC.md",
+   "prompt": "R2c"
+  },
+  {
+   "id": "escort",
+   "name": "The escort",
+   "group": "Combat & Threat",
+   "summary": "Command Undead anchored to the villain instead of the ground: every bound undead follows him, hauls overflow loot, engages what comes near him, and closes ranks when he is badly hurt \u2014 with the player never issuing a unit order. Every skeleton walking with him is one not digging at home.",
+   "how_it_works": "RallyPoint gains Order.ESCORT, ESCORT_RADIUS_PX = 2.5 cells (between DEFEND 1.2 and PATROL 3.0) and follow: Object; when set, _process copies follow.position each frame and everything downstream (_advance_bound, arrive epsilon, _hostile_for's measure-from-the-point rule, drawn ring) works unchanged. cast_escort(villain) binds all undead exactly as _bind_all() does (is_undead() reads alignment 'Undead'); no chosen subset, living recruits never escort in R2, no MAX_ESCORT \u2014 party size is the roster. Follow via Roaming.step() at 0.9 cells/sec vs his 1.0. Haul via Laborer.carrying_kind/amount, one kind per member, no speed penalty. Engage via CombatSystem.hostiles() (wolves \u222a live guardians) \u2014 the one real refactor. Cover: below FLEE_HP_FRACTION they target the point between him and the nearest hostile and don't break off, one log line 'The dead close ranks.' Cost: can_labor() returns not rallied, _bind_all() abandons trips. Death through Combat.exchange() with no bespoke path; load dies with them; whole-escort wipe leaves the spell cast binding nobody. Necromancer.escort becomes a per-frame cache written by UndeadCommand.",
+   "scripts": [
+    "scripts/combat/RallyPoint.gd",
+    "scripts/combat/UndeadCommand.gd",
+    "scripts/combat/CombatSystem.gd",
+    "scripts/villain/Necromancer.gd",
+    "scripts/ui/InspectorActions.gd",
+    "tools/verify_escort.tscn"
+   ],
+   "data_files": [],
+   "emits": [
+    "EventBus.escort_bound",
+    "EventBus.escort_member_lost",
+    "EventBus.escort_covering",
+    "EventBus.worker_destroyed"
+   ],
+   "listens": [],
+   "reads_state": [
+    "Laborer.rallied",
+    "Combat.FLEE_HP_FRACTION"
+   ],
+   "writes_state": [
+    "Necromancer.escort (cache)"
+   ],
+   "interactions": [
+    {
+     "target": "command_undead",
+     "via": "Order.ESCORT + RallyPoint.follow",
+     "effect": "One order model, not two; re-cast to ground dismisses, re-cast to him resumes."
+    },
+    {
+     "target": "worker_system",
+     "via": "Laborer.can_labor() = not rallied",
+     "effect": "Bound escorts leave the priority list structurally; wood income visibly stops."
+    },
+    {
+     "target": "sortie_deposit",
+     "via": "escort loads deposited in the same frame",
+     "effect": "Overflow fills escort members and banks at the Throne."
+    },
+    {
+     "target": "loot_sites",
+     "via": "raise-the-corpse",
+     "effect": "A grave-raised skeleton joins the escort within one frame with no explicit add."
+    },
+    {
+     "target": "necromancer_combat",
+     "via": "shared Engagement",
+     "effect": "Escort closes to melee while he casts over their shoulders; interpose reads his 30% threshold."
+    }
+   ],
+   "status": "planned",
+   "status_note": "UndeadCommand/RallyPoint exist with DEFEND/PATROL/ATTACK; ESCORT and follow do not.",
+   "player_facing": true,
+   "notes": [
+    "No corpse recovery in R2 \u2014 re-raising fallen escort is a spell (R5).",
+    "ledger_of_names relic's '+1 escort cap' stays dormant until a cap exists.",
+    "Needs a human: does the leash feel like protection or a tether."
+   ],
+   "spec": "ESCORT_SPEC.md",
+   "prompt": "R2d"
+  },
+  {
+   "id": "raven_pings",
+   "name": "Raven passive pings",
+   "group": "World",
+   "summary": "An unseen familiar that, at dawn, points at one minor undiscovered site the player hasn't found \u2014 always real, never dangerous, never the big stuff, and never revealing fog. The one trustworthy thing in a treacherous world.",
+   "how_it_works": "New scripts/world/Raven.gd (fields villain, world, world_sites, fog; per-villain) subscribes to EventBus.dawn_started, rolls RAVEN_PING_CHANCE_PERCENT = 70, and picks from WorldSites.undiscovered_eligible(fog) under the honesty invariant: reachable on walkable terrain, Band 1\u20132, no guardian or occupant, undiscovered, \u22651 unclaimed charge \u2014 else raven_silent fires and nothing is invented. Eligible: fresh_grave, small_cache, and abandoned_camp only when its activation occupancy roll came up empty (raven_eligible flag in world_sites.json says may; the invariant says must). ping = {site, day_found, seen, claimed}; pings never expire; MAX_OUTSTANDING_PINGS = 3. UI: HudTopBar portrait chip with count, click cycles and calls GameCamera.center_on() dropping villain-follow; markers above fog on world and Minimap (the one sanctioned live-contents exception); inspectable via get_inspect_data() with distance/travel time from TravelLog; one History line per ping. Zero fog interaction \u2014 FogOfWar is read-only from here.",
+   "scripts": [
+    "scripts/world/Raven.gd",
+    "scripts/world/WorldSites.gd",
+    "scripts/world/WorldSite.gd",
+    "scripts/world/FogOfWar.gd",
+    "scripts/ui/HudTopBar.gd",
+    "scripts/ui/Minimap.gd",
+    "tools/verify_raven.tscn"
+   ],
+   "data_files": [
+    "data/world_sites.json"
+   ],
+   "emits": [
+    "EventBus.raven_pinged",
+    "EventBus.raven_ping_seen",
+    "EventBus.raven_ping_claimed",
+    "EventBus.raven_silent"
+   ],
+   "listens": [
+    "EventBus.dawn_started",
+    "EventBus.site_looted"
+   ],
+   "reads_state": [
+    "FogOfWar.state_at / is_visible_at",
+    "WorldSite.discovered"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "day_night_cycle",
+     "via": "EventBus.dawn_started",
+     "effect": "One cadence roll per game day so the bird participates in dusk pacing for free."
+    },
+    {
+     "target": "loot_sites",
+     "via": "pointer to an already-placed site",
+     "effect": "The Raven surfaces content; it never spawns it."
+    },
+    {
+     "target": "fog_of_war",
+     "via": "read-only queries",
+     "effect": "Fog state must be byte-identical before and after 1,000 pings."
+    },
+    {
+     "target": "game_camera",
+     "via": "GameCamera.center_on()",
+     "effect": "Centring on a ping drops villain-follow like an arrow-key pan."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Last R2 prompt; a history file wrongly claims the Raven has a reveal radius \u2014 P0 fixes it.",
+   "player_facing": true,
+   "notes": [
+    "Deferred: directed scouting, Raven token, bounty observation (which now conflicts with on-map bounty parties).",
+    "Widening the pool with reputation is attractive and explicitly not R2."
+   ],
+   "spec": "RAVEN_SPEC.md",
+   "prompt": "R2e"
+  },
+  {
+   "id": "reputation_axes_r3",
+   "name": "Reputation axes & reputation-gated recruitment (R3)",
+   "group": "Followers & Society",
+   "summary": "Five per-villain reputation axes \u2014 Wealth, Power, Cruelty, Mercy, Forbidden Knowledge \u2014 moved by witnessed deeds during the run, each attracting a different kind of follower. Replaces the timed recruit event: people seek you out because of what you did, and the same notoriety thickens patrols.",
+   "how_it_works": "The axes live on the villain object (never GameState; today's GameState.reputation int is legacy and replaced, not extended). R3 replays or subscribes to the deeds ledger R2a writes (EventBus.deed_committed + Necromancer.deeds, ordered and day-stamped). Recruit offers trigger on axis thresholds and pull from race/category pools weighted by which axes are high \u2014 RecruitGenerator's rarity weights, stat rolls, exceptional recruits and Barracks capacity gate survive; only the trigger and weighting input change. Cruelty and Mercy can coexist (no morality meter). Notoriety feeds patrol count/radius escalation; C3 (morale routing, judgement, guidance, wolf packs) lands alongside and deletes FLEE_HP_FRACTION. Threshold numbers and in-run decay are open tunables. Exit: a run reaches Era II \u2014 the first recruit arrives because of something the player did.",
+   "scripts": [
+    "scripts/villain/Necromancer.gd",
+    "scripts/events/EventSystem.gd",
+    "scripts/settlement/RecruitGenerator.gd",
+    "scripts/world/Patrol.gd",
+    "scripts/combat/CombatSystem.gd"
+   ],
+   "data_files": [
+    "data/recruitment.json",
+    "data/races.json"
+   ],
+   "emits": [],
+   "listens": [
+    "EventBus.deed_committed"
+   ],
+   "reads_state": [
+    "Necromancer.deeds",
+    "GameState.gold (Wealth axis reads hoarded gold)"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "loot_sites",
+     "via": "deeds ledger",
+     "effect": "Grave choices, den clearings and encounters are the reputation engine."
+    },
+    {
+     "target": "recruit_generation",
+     "via": "axis-threshold trigger + axis-weighted pools",
+     "effect": "Timed recruit offers die; the machinery survives."
+    },
+    {
+     "target": "threat_crusade",
+     "via": "notoriety \u2192 patrol escalation",
+     "effect": "Power attracts power and the church alike."
+    },
+    {
+     "target": "raven_pings",
+     "via": "possible pool widening",
+     "effect": "A more notorious villain may get a better-fed bird (not R2)."
+    },
+    {
+     "target": "escort",
+     "via": "living volunteers gated on morale/loyalty",
+     "effect": "Living recruits escorting becomes possible only after axes exist."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Outline only; R3 prompts are written after the R2 playtest.",
+   "player_facing": true,
+   "notes": [
+    "Dormant relic effects (noble_seal +Wealth gains) come live here.",
+    "Hard rule: no meta-progression may grant in-run reputation."
+   ],
+   "spec": "ROGUELITE_REWORK.md \u00a77, \u00a713, \u00a716; COMBAT_SPEC.md \u00a75\u2013\u00a77 (C3)",
+   "prompt": "R3 (unwritten)"
+  },
+  {
+   "id": "run_lifecycle_r4",
+   "name": "Run lifecycle: death, flee, victory & shuffle (R4)",
+   "group": "Core",
+   "summary": "Makes the run real: a start/end lifecycle where the Necromancer's death (or the Throne falling) ends the run and destroys everything unbanked, fleeing the region alive banks what he carries with no victory, and taking the human lord's Manor after surviving the crusade is the win. Maps shuffle between runs.",
+   "how_it_works": "Three endings: Death (keep XP + chronicle entry, lose all loot including carried-in relics), Flee (XP + carried loot bank to stash; recommended mechanic: physically reach the lair, then flee), Take the Manor (everything banks + victory bonus + triumph entry). Target 1.5\u20132h per full victory, most deaths earlier. GameState's 'survive crusade AND Power threshold' win becomes Take the Manor (Power threshold survives as an escalation input); ThreatSystem's crusade becomes the climax, C5's real raids replacing _resolve_crusade() arithmetic; raiders can kill living recruits. Reset every run: settlement, recruits, resources, map layout, reputation, carried relics, day counter, threat. Shuffle changes generator steps 4\u20135 (forests, landmarks) within valid templates; steps 6\u20139 re-derive roads and dressing; encounter-pool subsetting; per-run seeds; travel times re-validated across seeds. Sites' pool/active_count schema (specced in R2) is honoured here.",
+   "scripts": [
+    "scripts/autoload/GameState.gd",
+    "scripts/threat/ThreatSystem.gd",
+    "scripts/Main.gd",
+    "tools/make_world_map.gd",
+    "scripts/world/WorldSites.gd"
+   ],
+   "data_files": [
+    "data/world_map.json",
+    "data/world_sites.json"
+   ],
+   "emits": [
+    "EventBus.crusade_incoming",
+    "EventBus.crusade_survived"
+   ],
+   "listens": [
+    "EventBus.villain_died",
+    "EventBus.main_building_damaged"
+   ],
+   "reads_state": [
+    "GameState.threat",
+    "GameState.power"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "sortie_deposit",
+     "via": "EventBus.villain_died",
+     "effect": "Replaces R2's 'the run would end here' log + Throne respawn with an actual run end."
+    },
+    {
+     "target": "generated_world",
+     "via": "steps 4\u20135 of the pipeline",
+     "effect": "Shuffle is a change of inputs, not a rewrite."
+    },
+    {
+     "target": "loot_sites",
+     "via": "pool / active_count",
+     "effect": "Each shuffle draws 10\u201315 active sites from a ~22-max pool; harder dens via same schema."
+    },
+    {
+     "target": "meta_progression_r5",
+     "via": "run end alive/dead",
+     "effect": "Decides what banks to the stash and what the chronicle records."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Win/lose today is the old placeholder; run lifecycle is R4.",
+   "player_facing": true,
+   "notes": [
+    "Open: victory bonus (XP multiplier? guaranteed relic?), flee mechanics.",
+    "Bounty parties travel the map as visible units in Era III (off-map path was deleted in R1)."
+   ],
+   "spec": "ROGUELITE_REWORK.md \u00a71\u2013\u00a73, \u00a712\u2013\u00a713; COMBAT_SPEC.md C5; TERRAIN_SPEC.md \u00a711",
+   "prompt": "R4 (unwritten)"
+  },
+  {
+   "id": "meta_progression_r5",
+   "name": "Meta-progression & the Lair hub (R5)",
+   "group": "Core",
+   "summary": "What persists across runs: villain XP banked the instant it is earned, levels that unlock variety (spells, undead unit types, starting items, relic slots, encounter-pool entries) but never power, a permanent stash of extracted relics that can be risked on the next run, a decorated Lair hub, and a chronicle that gives every run an epitaph.",
+   "how_it_works": "Meta save file (no longer optional; mid-run save is separate and later). XP from discoveries, encounters, buildings, battles, reputation milestones, run endings \u2014 banked immediately so a death two hours in is a chapter, not a refund. Unlocks widen the option pool: new spells (Command Undead is spell one; re-raise fallen escort and 'send loot home' are candidates), ghouls/wraiths (commandable via alignment the day they exist), relic slots 1\u2192max 3, encounter entries. Relic carry-in: carried relics grant in-run effects and are lost forever on death; a relic that survives a risked run earns bonus XP and legend (anti-hoarding). Lair hub reuses settlement placement-mode code for trophies/decorations earned by feats. Chronicle: 'Run 4 \u2014 slain by the church's hunters on day 6, having emptied eleven graves.' Dormant relic effects (XP multipliers) go live. Later: class selection (Demonologist), unlock browser, run statistics.",
+   "scripts": [
+    "scripts/villain/Necromancer.gd",
+    "scripts/combat/UndeadCommand.gd",
+    "scripts/ui/InspectorActions.gd",
+    "scripts/settlement/SettlementGrid.gd"
+   ],
+   "data_files": [
+    "data/relics.json",
+    "data/races.json",
+    "data/events.json"
+   ],
+   "emits": [],
+   "listens": [
+    "EventBus.deed_committed",
+    "EventBus.villain_died",
+    "EventBus.relic_banked"
+   ],
+   "reads_state": [
+    "Necromancer.relics_carried",
+    "Necromancer.deeds"
+   ],
+   "writes_state": [],
+   "interactions": [
+    {
+     "target": "run_lifecycle_r4",
+     "via": "run end",
+     "effect": "Alive endings bank relics to the stash; death loses carried-in relics."
+    },
+    {
+     "target": "loot_sites",
+     "via": "relics.json tiers and dormant flags",
+     "effect": "Relics are the extraction layer's currency; legendary tier reserved for feats."
+    },
+    {
+     "target": "necromancer_combat",
+     "via": "spells Array on the class",
+     "effect": "New spells land as InspectorActions entries on the surface R2 formalised."
+    },
+    {
+     "target": "command_undead",
+     "via": "alignment 'Undead'",
+     "effect": "Unlocked unit types are commandable and escort-eligible with no new code."
+    }
+   ],
+   "status": "planned",
+   "status_note": "Outline; GAME_IMPROVEMENT_REVIEW \u00a712 says build meta-progression only after repeated runs are enjoyable without it.",
+   "player_facing": true,
+   "notes": [
+    "Hard rule: a level-20 skeleton hits exactly as hard as a level-1's.",
+    "Never exceed 3 relic slots.",
+    "Villain classes are the Slay-the-Spire characters; Demonologist is character two, multiplayer gated on the per-villain constraint only."
+   ],
+   "spec": "ROGUELITE_REWORK.md \u00a72, \u00a79\u2013\u00a711, \u00a713",
+   "prompt": "R5 (unwritten)"
+  }
+ ]
+}</script>
+<script>
+const DATA = JSON.parse(document.getElementById('data').textContent);
+const S = DATA.systems, byId = Object.fromEntries(S.map(s=>[s.id,s]));
+const GROUPS = ['Villain','Settlement & Economy','Followers & Society','Combat & Threat','World','Events & Missions','UI & Presentation','Core'];
+const $ = s=>document.querySelector(s);
+const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------- header
+const counts = {built:0,partial:0,planned:0}; S.forEach(s=>counts[s.status]++);
+$('#lede').textContent = 'Every gameplay system in the project — what it does, which scripts implement it, and how it talks to the rest — read straight from the GDScript and the R2 specs.';
+$('#stats').innerHTML = `<span><b>${S.length}</b> systems</span><span><b>${counts.built}</b> built</span><span><b>${counts.partial}</b> partial</span><span><b>${counts.planned}</b> planned</span>`;
+
+// ---------- tabs
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+function showTab(t){document.querySelectorAll('nav.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+t));}
+
+// ---------- overview
+const O = DATA.overview;
+$('#pitch').textContent = O.pitch;
+$('#pillars').innerHTML = O.pillars.map(p=>`<div class="pillar"><b>${esc(p.name)}</b><p>${esc(p.text)}</p></div>`).join('');
+const stStatus={built:'built',specced:'partial',outline:'planned'};
+$('#stages').innerHTML = O.stages.map(s=>`<div class="stage"><div class="id">${esc(s.id)}</div><div><b>${esc(s.name)}</b> <span class="pill ${stStatus[s.status]}">${esc(s.status)}</span><p>${esc(s.one_line)}</p></div></div>`).join('');
+$('#order').innerHTML = O.build_order.map((b,i)=>`${i?'<span class="arrow">→</span>':''}<div class="step" title="${esc(b.what)}"><b>${esc(b.id)}</b><span>${esc(b.name)}</span></div>`).join('');
+$('#gate').innerHTML = `<b>Gate.</b> ${esc(O.gate)}`;
+const LOOPS = [
+ {t:'The home economy (built)', ids:['worker_system','resource_field','resource_nodes','settlement_grid','buildings','day_night_cycle','morale_and_meals'], txt:'Skeleton workers walk the priority list, gather from nodes, and bank loads at the Throne. Buildings tick out resources; dawn and dusk drive regrowth and meals; short rations bleed morale.'},
+ {t:'Followers, threat & power (built, mostly unsurfaced)', ids:['recruit_offers','recruit_generation','barracks_intake','fund_a_house','followers','threat_crusade','power_win_lose','bounty_board','missions'], txt:'Recruits arrive at the Barracks, get housed, and add Power. Power raises recruit rarity. Bounties and missions would push Threat toward the Crusade — but their buttons are locked until Stage 4.'},
+ {t:'The villain in the world (R1 built → R2 planned)', ids:['necromancer','villain_controller','world_map','fog_of_war','command_undead','wolves_and_dusk_raids','loot_sites','sortie_deposit','escort','necromancer_combat','raven_pings'], txt:'You drive the Necromancer out through fog to sites worth robbing, fight with the dead at your side, and haul loot home before dusk. Nothing is yours until it is deposited.'}
+];
+$('#loops').innerHTML = LOOPS.map(l=>`<div class="card" style="padding:14px 16px"><b style="font-family:Cinzel,serif">${esc(l.t)}</b><p style="font-size:14px;color:var(--muted);margin:6px 0 8px">${esc(l.txt)}</p>${l.ids.filter(i=>byId[i]).map(i=>`<button class="chip" data-go="${i}">${esc(byId[i].name)}</button>`).join('')}</div>`).join('');
+document.body.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){showTab('map');select(b.dataset.go,true);}});
+
+// ---------- graph layout
+const colW=192, nodeH=30, gapY=8, padX=14, topPad=44, boxW=172;
+const cols = GROUPS.map(g=>S.filter(s=>s.group===g));
+const pos={};
+cols.forEach((list,ci)=>list.forEach((s,ri)=>{pos[s.id]={x:padX+ci*colW,y:topPad+ri*(nodeH+gapY)};}));
+const H = topPad + Math.max(...cols.map(c=>c.length))*(nodeH+gapY)+20, W = padX*2+GROUPS.length*colW;
+const edges=[]; const seen=new Set();
+S.forEach(s=>s.interactions.forEach(i=>{ if(!byId[i.target]||i.target===s.id) return; const k=s.id+'>'+i.target; if(seen.has(k)) return; seen.add(k); edges.push({a:s.id,b:i.target,via:i.via,effect:i.effect}); }));
+function path(a,b){const A=pos[a],B=pos[b]; let x1,x2; if(A.x===B.x){ x1=A.x+boxW; x2=B.x+boxW; const y1=A.y+nodeH/2,y2=B.y+nodeH/2; return `M${x1},${y1} C${x1+40},${y1} ${x2+40},${y2} ${x2},${y2}`;} if(A.x<B.x){x1=A.x+boxW;x2=B.x;}else{x1=A.x;x2=B.x+boxW;} const y1=A.y+nodeH/2,y2=B.y+nodeH/2,dx=(x2-x1)/2; return `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;}
+function label(n){n=n.split(' (')[0];return n.length>26?n.slice(0,25)+'…':n;}
+$('#graph').innerHTML = `<svg class="graph" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+ ${GROUPS.map((g,ci)=>`<text class="gh" x="${padX+ci*colW}" y="${topPad-18}">${esc(g.toUpperCase())}</text>`).join('')}
+ <g id="edges">${edges.map(e=>`<path class="edge" data-a="${e.a}" data-b="${e.b}" d="${path(e.a,e.b)}"><title>${esc(byId[e.a].name)} → ${esc(byId[e.b].name)}: ${esc(e.effect)}</title></path>`).join('')}</g>
+ <g id="nodes">${S.map(s=>`<g class="node ${s.status}" data-id="${s.id}" tabindex="0" transform="translate(${pos[s.id].x},${pos[s.id].y})"><rect width="${boxW}" height="${nodeH}"/><circle class="dot" cx="12" cy="${nodeH/2}" r="4"/><text x="22" y="${nodeH/2+4}">${esc(label(s.name))}</text><title>${esc(s.name)} — ${s.status}</title></g>`).join('')}</g>
+</svg>`;
+const nodeEls = Object.fromEntries([...document.querySelectorAll('.node')].map(n=>[n.dataset.id,n]));
+const edgeEls = [...document.querySelectorAll('.edge')];
+let selected=null, hovered=null;
+function neighbors(id){const n=new Set(); edges.forEach(e=>{if(e.a===id)n.add(e.b); if(e.b===id)n.add(e.a);}); return n;}
+function paint(){
+  const focus = hovered||selected; const nb = focus?neighbors(focus):null; const allEdges=$('#fedges').checked;
+  S.forEach(s=>{const el=nodeEls[s.id]; el.classList.toggle('sel',s.id===selected); el.classList.toggle('dim',!!focus && s.id!==focus && !nb.has(s.id));});
+  edgeEls.forEach(p=>{const on=focus&&(p.dataset.a===focus||p.dataset.b===focus); p.classList.toggle('hi',!!on); p.classList.toggle('dim',!!focus&&!on); p.classList.toggle('hidden', !allEdges && !on || nodeEls[p.dataset.a].classList.contains('hidden') || nodeEls[p.dataset.b].classList.contains('hidden'));});
+}
+Object.values(nodeEls).forEach(el=>{
+  el.addEventListener('click',()=>select(el.dataset.id));
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();select(el.dataset.id);}});
+  el.addEventListener('mouseenter',()=>{hovered=el.dataset.id;paint();});
+  el.addEventListener('mouseleave',()=>{hovered=null;paint();});
+});
+function select(id,scroll){selected=id; location.hash=id; paint(); renderDetail(id); if(scroll){const el=nodeEls[id]; el&&el.scrollIntoView({block:'nearest',inline:'nearest'}); $('#detail').scrollTop=0;}}
+
+// ---------- filters
+function applyFilters(){
+  const q=$('#q').value.trim().toLowerCase(); const st=new Set([...document.querySelectorAll('.fstat:checked')].map(c=>c.value)); const pf=$('#fplayer').checked;
+  S.forEach(s=>{let ok=st.has(s.status)&&(!pf||s.player_facing); if(ok&&q){const hay=[s.name,s.summary,s.how_it_works,...s.scripts,...s.emits,...s.listens,...(s.data_files||[])].join(' ').toLowerCase(); ok=hay.includes(q);} nodeEls[s.id].classList.toggle('hidden',!ok);});
+  paint();
+}
+['#q','#fplayer','#fedges'].forEach(s=>$(s).addEventListener('input',applyFilters));
+document.querySelectorAll('.fstat').forEach(c=>c.addEventListener('change',applyFilters));
+
+// ---------- detail
+function chips(arr,cls='chip mono',sig=false){return arr&&arr.length?arr.map(x=>sig?`<button class="chip mono sig" data-sig="${esc(x)}">${esc(x)}</button>`:`<span class="${cls}">${esc(x)}</span>`).join(''):'<span class="empty">none</span>';}
+function renderDetail(id){
+  const s=byId[id]; if(!s){$('#detail').innerHTML='<p class="empty">Select a system on the map.</p>';return;}
+  const incoming=S.filter(o=>o.id!==id&&o.interactions.some(i=>i.target===id)).map(o=>({o,i:o.interactions.find(i=>i.target===id)}));
+  $('#detail').innerHTML=`
+   <div class="eyebrow">${esc(s.group)}</div>
+   <h2>${esc(s.name)}</h2>
+   <div class="meta"><span class="pill ${s.status}">${s.status}</span>${s.player_facing?'<span class="chip">player-facing</span>':'<span class="chip">under the hood</span>'}${s.prompt?`<span class="chip">prompt ${esc(s.prompt)}</span>`:''}${s.spec?`<span class="chip mono">${esc(s.spec)}</span>`:''}</div>
+   <p>${esc(s.summary)}</p>
+   ${s.status_note?`<p style="font-size:13.5px;color:var(--muted)"><b>Status:</b> ${esc(s.status_note)}</p>`:''}
+   <section><h3>How it works</h3><p class="how">${esc(s.how_it_works)}</p></section>
+   <section><h3>Scripts</h3>${chips(s.scripts)}</section>
+   ${s.data_files&&s.data_files.length?`<section><h3>Data files</h3>${chips(s.data_files)}</section>`:''}
+   <section><h3>Emits</h3>${chips(s.emits,'',true)}</section>
+   <section><h3>Listens to</h3>${chips(s.listens,'',true)}</section>
+   ${s.reads_state&&s.reads_state.length?`<section><h3>Reads</h3>${chips(s.reads_state)}</section>`:''}
+   ${s.writes_state&&s.writes_state.length?`<section><h3>Writes</h3>${chips(s.writes_state)}</section>`:''}
+   <section><h3>Affects (${s.interactions.length})</h3><div class="ilist">${s.interactions.map(i=>`<div class="irow"><button data-go="${i.target}">${esc(byId[i.target]?byId[i.target].name:i.target)}</button><div>${esc(i.effect)}<span class="via">via ${esc(i.via)}</span></div></div>`).join('')||'<span class="empty">none recorded</span>'}</div></section>
+   <section><h3>Affected by (${incoming.length})</h3><div class="ilist incoming">${incoming.map(({o,i})=>`<div class="irow"><button data-go="${o.id}">${esc(o.name)}</button><div>${esc(i.effect)}<span class="via">via ${esc(i.via)}</span></div></div>`).join('')||'<span class="empty">nothing points here</span>'}</div></section>
+   ${s.notes&&s.notes.length?`<section><h3>Notes &amp; gotchas</h3><ul class="notes">${s.notes.map(n=>`<li>${esc(n)}</li>`).join('')}</ul></section>`:''}`;
+}
+document.body.addEventListener('click',e=>{const b=e.target.closest('[data-sig]');if(b){showTab('signals');const el=document.getElementById('sig-'+b.dataset.sig.replace(/[^\w]/g,'_'));if(el){el.scrollIntoView({block:'center'});el.style.background='var(--accent-soft)';setTimeout(()=>el.style.background='',1500);}}});
+
+// ---------- signals index
+const sigs={};
+S.forEach(s=>{s.emits.forEach(x=>{(sigs[x]=sigs[x]||{e:[],l:[],planned:true}).e.push(s); if(s.status!=='planned')sigs[x].planned=false;}); s.listens.forEach(x=>{(sigs[x]=sigs[x]||{e:[],l:[],planned:true}).l.push(s); if(s.status!=='planned')sigs[x].planned=false;});});
+const names=Object.keys(sigs).sort();
+const groups=[['EventBus (built)',n=>n.startsWith('EventBus.')&&!sigs[n].planned],['GameState',n=>n.startsWith('GameState.')],['Planned in R2 specs',n=>sigs[n].planned],['Other / local',n=>!n.startsWith('EventBus.')&&!n.startsWith('GameState.')&&!sigs[n].planned]];
+const used=new Set();
+$('#signals').innerHTML=groups.map(([t,f])=>{const list=names.filter(n=>!used.has(n)&&f(n)); list.forEach(n=>used.add(n)); if(!list.length)return ''; return `<div class="sighdr">${t}</div><div class="sigrow"><span>Signal</span><span>Emitted by</span><span>Listened to by</span></div>`+list.map(n=>`<div class="sigrow" id="sig-${n.replace(/[^\w]/g,'_')}"><code>${esc(n)}</code><span>${sigs[n].e.map(s=>`<button class="btnlink" data-go="${s.id}">${esc(s.name)}</button>`).join('')||'<span class="empty">—</span>'}</span><span>${sigs[n].l.map(s=>`<button class="btnlink" data-go="${s.id}">${esc(s.name)}</button>`).join('')||'<span class="empty">no listener in code</span>'}</span></div>`).join('');}).join('');
+
+// ---------- init
+renderDetail(null);
+applyFilters();
+if(location.hash&&byId[location.hash.slice(1)]){showTab('map');select(location.hash.slice(1),true);}
+</script>
+</body></html>
