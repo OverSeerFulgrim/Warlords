@@ -108,8 +108,8 @@
 			"category": "ground",
 			"name": "Bone-strewn ground",
 			"tile": [
-				3,
-				3
+				7,
+				1
 			]
 		},
 		"C": {
@@ -117,16 +117,16 @@
 			"name": "Cobblestone road",
 			"speed": 1.35,
 			"tile": [
-				2,
-				1
+				6,
+				0
 			]
 		},
 		"D": {
 			"category": "ground",
 			"name": "Snow-edged dirt",
 			"tile": [
-				1,
-				1
+				5,
+				0
 			]
 		},
 		"S": {
@@ -134,15 +134,15 @@
 			"name": "Stony snow-grass",
 			"tile": [
 				0,
-				2
+				1
 			]
 		},
 		"b": {
 			"category": "ground",
 			"name": "Log-strewn dirt",
 			"tile": [
-				1,
-				3
+				5,
+				1
 			]
 		},
 		"c": {
@@ -182,8 +182,8 @@
 			"category": "blocking",
 			"name": "Frozen water",
 			"tile": [
-				3,
-				1
+				7,
+				0
 			]
 		},
 		"k": {
@@ -192,15 +192,15 @@
 			"speed": 1.2,
 			"tile": [
 				2,
-				2
+				1
 			]
 		},
 		"m": {
 			"category": "blocking",
 			"name": "Rocky scree",
 			"tile": [
-				2,
-				3
+				6,
+				1
 			]
 		},
 		"r": {
@@ -208,15 +208,15 @@
 			"name": "Sealed ritual ground",
 			"tile": [
 				3,
-				2
+				1
 			]
 		},
 		"s": {
 			"category": "ground",
 			"name": "Snow scrub",
 			"tile": [
-				0,
-				1
+				4,
+				0
 			]
 		},
 		"t": {
@@ -225,15 +225,15 @@
 			"speed": 1.2,
 			"tile": [
 				1,
-				2
+				1
 			]
 		},
 		"w": {
 			"category": "ground",
 			"name": "Deep snow",
 			"tile": [
-				0,
-				3
+				4,
+				1
 			]
 		}
 	},

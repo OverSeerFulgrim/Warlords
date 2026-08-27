@@ -41,16 +41,53 @@ const DEFAULT_HEIGHT: int = 144
 
 const DATA_PATH := "res://data/world_map.json"
 
-## The commissioned 4x4 terrain sheet. 1254px square with a 5px margin and 8px
-## gutters, so each tile is 305px -- measured off the file, not assumed.
-## Everything else in the project scales commissioned art down at use; this does
-## the same, once, into a 4x64 atlas (see _build_tileset).
-const TILESET_PATH := "res://assets/official/terrain/Terrain_Tileset_Snow.png"
+## The commissioned terrain sheets, `sheet id -> path`. Each is 4x4 at 1254px
+## square with a 5px margin and 8px gutters, so each tile is 305px -- measured
+## off the files by `tools/dump_atlas.gd`, not assumed.
+##
+## **Order is load-bearing**: it fixes each sheet's block in the combined atlas
+## (see `atlas_coord_for`), so `data/world_map.json`'s tile and mask coordinates
+## are stated against this order. Appending a sheet is safe; reordering
+## silently repaints the whole map.
+const TILESET_PATHS := {
+	"snow": "res://assets/official/terrain/Terrain_Tileset_Snow.png",
+	"road_cobble": "res://assets/official/terrain/Terrain_Tileset_Road_Cobble.png",
+	"path_dirt": "res://assets/official/terrain/Terrain_Tileset_Path_Dirt.png",
+	"roads_snow": "res://assets/official/terrain/Terrain_Tileset_Roads_Snow.png",
+	"water_ice": "res://assets/official/terrain/Terrain_Tileset_Water_Ice.png",
+	"rock_ruins": "res://assets/official/terrain/Terrain_Tileset_Rock_Ruins.png",
+	"marsh_corrupt": "res://assets/official/terrain/Terrain_Tileset_Marsh_Corrupt.png",
+}
+
 const SHEET_COLUMNS: int = 4
 const SHEET_ROWS: int = 4
+const SHEET_TILES: int = SHEET_COLUMNS * SHEET_ROWS
+
+## Nominal slicing geometry. **The real values are measured per file at load**
+## (see `_measure_sheet`), because one sheet carries a thicker outer border than
+## its siblings and assuming 5 there shifts every tile in it by a few pixels --
+## a difference invisible in the source and clearly wrong at 64px.
 const SHEET_MARGIN: int = 5
 const SHEET_SEPARATION: int = 8
 const SHEET_TILE: int = 305
+
+## The combined atlas: seven sheets x sixteen tiles = 112, laid out 8 wide.
+## 8 x 14 is exactly 112 with no wasted slot, and it puts each sheet on its own
+## two consecutive rows -- which makes the dump readable by eye and the
+## coordinate arithmetic a division rather than a lookup table.
+const ATLAS_COLUMNS: int = 8
+const ATLAS_ROWS: int = 14
+
+## Where sheet `sheet_index`'s tile `tile_index` (0-15, row-major within the
+## 4x4 sheet) lands in the combined atlas.
+##
+## Static and public because three things need to agree on it exactly:
+## `_build_atlas_texture()` writing the pixels, `tools/dump_atlas.gd` labelling
+## the dump a human reads coordinates off, and `tools/verify_terrain.gd`
+## checking them. A second copy of this arithmetic anywhere is a bug waiting.
+static func atlas_coord_for(sheet_index: int, tile_index: int) -> Vector2i:
+	var flat: int = sheet_index * SHEET_TILES + tile_index
+	return Vector2i(flat % ATLAS_COLUMNS, flat / ATLAS_COLUMNS)
 
 ## Terrain categories. Deliberately three, and deliberately not an enum with
 ## per-type behaviour: the *layout* and the *category of each tile* are both
@@ -194,22 +231,25 @@ func _build_layer() -> void:
 			var t: Dictionary = _types[_cells[y * width + x]]
 			terrain_layer.set_cell(Vector2i(x, y), 0, t["atlas"])
 
-## Slices the 4x4 sheet into a single 256x256 atlas at exactly CELL_SIZE per
-## tile, resampling each 305px tile down once at load.
+## Slices all seven 4x4 sheets into a single 512x896 atlas at exactly CELL_SIZE
+## per tile, resampling each ~305px tile down once at load.
 ##
-## The alternative -- pointing the TileSet at the 1254px sheet and scaling the
+## The alternative -- pointing the TileSet at the 1254px sheets and scaling the
 ## layer by 64/305 -- keeps more source detail but minifies on the GPU every
 ## frame with no mipmaps, which shimmers badly while panning. Resampling once
 ## with Lanczos is sharper, and it also lets the atlas be gutter-free so the
 ## tile regions are a plain 64px grid.
+##
+## Growing from one sheet to seven changed only the **destination offset**: the
+## per-sheet slicing arithmetic is the R1 code, unchanged.
 func _build_tileset() -> TileSet:
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(CELL_SIZE, CELL_SIZE)
 	var source := TileSetAtlasSource.new()
 	source.texture = _build_atlas_texture()
 	source.texture_region_size = Vector2i(CELL_SIZE, CELL_SIZE)
-	for row in range(SHEET_ROWS):
-		for col in range(SHEET_COLUMNS):
+	for row in range(ATLAS_ROWS):
+		for col in range(ATLAS_COLUMNS):
 			source.create_tile(Vector2i(col, row))
 	ts.add_source(source, 0)
 	return ts
@@ -235,28 +275,207 @@ func minimap_color_at(cell: Vector2i) -> Color:
 	return _map_colors[i]
 
 func _build_atlas_texture() -> Texture2D:
-	var sheet: Texture2D = load(TILESET_PATH)
-	if sheet == null:
-		push_error("WorldMap: terrain sheet missing at %s" % TILESET_PATH)
-		return null
-	var src: Image = sheet.get_image()
-	if src.is_compressed():
-		src.decompress()
-	src.convert(Image.FORMAT_RGBA8)
 	var out := Image.create_empty(
-		SHEET_COLUMNS * CELL_SIZE, SHEET_ROWS * CELL_SIZE, false, Image.FORMAT_RGBA8)
-	for row in range(SHEET_ROWS):
-		for col in range(SHEET_COLUMNS):
-			var region := Rect2i(
-				SHEET_MARGIN + col * (SHEET_TILE + SHEET_SEPARATION),
-				SHEET_MARGIN + row * (SHEET_TILE + SHEET_SEPARATION),
-				SHEET_TILE, SHEET_TILE)
-			var piece: Image = src.get_region(region)
-			piece.resize(CELL_SIZE, CELL_SIZE, Image.INTERPOLATE_LANCZOS)
-			out.blit_rect(piece, Rect2i(0, 0, CELL_SIZE, CELL_SIZE),
-				Vector2i(col * CELL_SIZE, row * CELL_SIZE))
+		ATLAS_COLUMNS * CELL_SIZE, ATLAS_ROWS * CELL_SIZE, false, Image.FORMAT_RGBA8)
+	var sheet_index: int = 0
+	for sheet_id in TILESET_PATHS.keys():
+		var path: String = TILESET_PATHS[sheet_id]
+		var sheet: Texture2D = load(path)
+		if sheet == null:
+			push_error("WorldMap: terrain sheet missing at %s" % path)
+			return null
+		var src: Image = sheet.get_image()
+		if src.is_compressed():
+			src.decompress()
+		src.convert(Image.FORMAT_RGBA8)
+		var geo: Dictionary = measure_sheet_geometry(src)
+		for row in range(SHEET_ROWS):
+			for col in range(SHEET_COLUMNS):
+				var region := Rect2i(
+					geo["margin"] + col * (geo["tile"] + geo["separation"]),
+					geo["margin"] + row * (geo["tile"] + geo["separation"]),
+					geo["tile"], geo["tile"])
+				var piece: Image = src.get_region(region)
+				piece.resize(CELL_SIZE, CELL_SIZE, Image.INTERPOLATE_LANCZOS)
+				var dest: Vector2i = atlas_coord_for(sheet_index, row * SHEET_COLUMNS + col)
+				out.blit_rect(piece, Rect2i(0, 0, CELL_SIZE, CELL_SIZE),
+					Vector2i(dest.x * CELL_SIZE, dest.y * CELL_SIZE))
+		sheet_index += 1
 	_sample_map_colors(out)
 	return ImageTexture.create_from_image(out)
+
+## How close a pixel must be to the sheet's background colour to count as
+## gutter rather than art. Generous: the sheets are lossy-compressed, so a flat
+## background still carries a little noise.
+const GUTTER_COLOR_TOLERANCE: float = 0.06
+
+## How much better than nominal an alternative geometry must score before it is
+## believed.
+##
+## Not zero, and the reason is concrete: the scoring signal is a handful of
+## columns per gutter, so a one-pixel shift changes the score by two or three
+## and several sheets have a slightly thicker painted edge that nudges it. At a
+## threshold of zero, five of the seven sheets "differed" from nominal by a
+## point or two and were sliced at geometries no one had verified. At 8 -- a
+## whole gutter's worth of evidence -- only `Road_Cobble` still differs, which
+## matches what the dump shows: it is the one sheet whose tiles came out with a
+## black frame around them when sliced at 5.
+const DECISIVE_MARGIN: int = 8
+
+## What fraction of a column's sampled pixels must be background for the column
+## to count as gutter. Half, because the **edge columns of a real gutter carry
+## antialiasing bleed from the art either side** and a stricter rule would shave
+## them off -- which is how three earlier versions of this measured 8px gutters
+## as 2, 6 or 7.
+const GUTTER_COLUMN_FRACTION: float = 0.5
+
+## The slicing geometry for one sheet, `{margin, separation, tile}`.
+##
+## **Measured per file, not assumed, and the difference is real.** Six sheets
+## slice at the nominal 5/8/305. `Terrain_Tileset_Road_Cobble.png` does not: it
+## carries a **17px outer border** and 299px tiles. Slicing it at 5 would shift
+## every one of its sixteen road pieces by twelve pixels -- which at 1254px is
+## invisible, and at 64px puts a black frame around every junction on the map.
+## `tools/dump_atlas.gd` is where that shows up; it calls straight into here, so
+## the tool reports exactly what the loader will do.
+##
+## ## Colour, not flatness
+##
+## Three earlier versions of this scored candidates on how *flat* their implied
+## gutter columns were, and all three failed in the same way, so the reasoning
+## is recorded rather than the code:
+##
+## 1. **Taking flat-column run lengths directly** measured 1, 2 and 7 across the
+##    sheets, because art antialiases into its gutter.
+## 2. **Scoring by mean gutter flatness** rewarded picking a gutter's flattest
+##    *middle*: the snow sheet came out 0/2/312, a strict subset of the real
+##    gutters and a geometry R1 had already disproved by hand.
+## 3. **Requiring flatness and maximising separation**, edges trimmed for bleed,
+##    drifted the other way -- a wider gutter always fits inside a real one once
+##    trimmed, so snow came out 4/10/304.
+##
+## Flatness is the wrong signal because *art is often flat too* -- a tile of open
+## snow has flat columns at its edge, indistinguishable from a gutter. What is
+## unambiguous is **colour**: the gutter is the sheet's background, and a column
+## is gutter if most of its pixels are that exact colour. Measured on the first
+## gutter, the background-match fraction per column reads:
+##
+##   snow          310: 7%  311:100%  312: 80% ... 316:100%  317:  7%
+##   road_cobble   315:15%  316: 76%  317: 90% ... 323: 82%  324: 23%
+##
+## Two clean populations, and they place road_cobble's first gutter eight
+## columns to the right of snow's. Scoring candidates on how many
+## background-coloured columns land inside their gutters versus outside them
+## then picks each sheet's geometry outright; ties go to the nominal, which is
+## what keeps the six ordinary sheets on the numbers R1 measured.
+func measure_sheet_geometry(img: Image) -> Dictionary:
+	var w: int = img.get_width()
+	var background: Color = img.get_pixel(0, 0)
+	var is_gutter: PackedByteArray = PackedByteArray()
+	is_gutter.resize(w)
+	for x in range(w):
+		is_gutter[x] = 1 if _column_matches(img, x, background) else 0
+
+	# Six of the seven sheets are nominal, and the nominal geometry is the one
+	# R1 measured by hand and the game has shipped on. So it is the default and
+	# an alternative has to *clearly* beat it -- see DECISIVE_MARGIN.
+	var nominal := {"margin": SHEET_MARGIN, "separation": SHEET_SEPARATION, "tile": SHEET_TILE}
+	var best: Dictionary = nominal
+	var best_score: int = _score_gutters(is_gutter, w, nominal) + DECISIVE_MARGIN
+	for margin in range(0, 40):
+		for separation in range(1, 25):
+			var span: int = w - margin * 2 - (SHEET_COLUMNS - 1) * separation
+			if span <= 0 or span % SHEET_COLUMNS != 0:
+				continue
+			var tile: int = span / SHEET_COLUMNS
+			if tile < 16:
+				continue
+			var candidate := {"margin": margin, "separation": separation, "tile": tile}
+			var score: int = _score_gutters(is_gutter, w, candidate)
+			if score > best_score:
+				best_score = score
+				best = candidate
+	return best
+
+## +1 for every background-coloured column inside a gutter this geometry
+## implies, -1 for every one outside it and outside the margins. The second term
+## is what stops a narrow gutter scoring well by hiding inside a wide one --
+## the failure mode of every flatness-based version.
+func _score_gutters(is_gutter: PackedByteArray, w: int, geo: Dictionary) -> int:
+	var margin: int = int(geo["margin"])
+	var separation: int = int(geo["separation"])
+	var tile: int = int(geo["tile"])
+	var inside: PackedByteArray = PackedByteArray()
+	inside.resize(w)
+	for i in range(margin):
+		inside[i] = 1
+		inside[w - 1 - i] = 1
+	for g in range(SHEET_COLUMNS - 1):
+		var start: int = margin + (g + 1) * tile + g * separation
+		for x in range(start, mini(start + separation, w)):
+			inside[x] = 1
+	var score: int = 0
+	for x in range(w):
+		if is_gutter[x] == 0:
+			continue
+		# Margins are neither evidence for nor against -- every candidate calls
+		# the sheet's border background, so counting it would just add a
+		# constant that favours wide margins.
+		if x < margin or x >= w - margin:
+			continue
+		score += 1 if inside[x] == 1 else -1
+	return score
+
+func _is_nominal(geo: Dictionary) -> bool:
+	return int(geo["margin"]) == SHEET_MARGIN and int(geo["separation"]) == SHEET_SEPARATION \
+		and int(geo["tile"]) == SHEET_TILE
+
+## Whether most of a column is the sheet's background colour.
+##
+## Sampled every few rows rather than exhaustively: 1254 rows per column across
+## seven sheets is a lot of `get_pixel` calls at load, and a gutter is
+## background nearly everywhere or nearly nowhere.
+func _column_matches(img: Image, x: int, background: Color) -> bool:
+	var hits: int = 0
+	var n: int = 0
+	var step: int = maxi(1, img.get_height() / 48)
+	for y in range(0, img.get_height(), step):
+		var c: Color = img.get_pixel(x, y)
+		if absf(c.r - background.r) + absf(c.g - background.g) + absf(c.b - background.b) \
+				+ absf(c.a - background.a) < GUTTER_COLOR_TOLERANCE:
+			hits += 1
+		n += 1
+	return float(hits) / float(maxi(1, n)) >= GUTTER_COLUMN_FRACTION
+
+## How many background-coloured columns a sheet leads with, reported by the dump
+## tool so a human can see the odd sheet out. Not used for slicing.
+func leading_flat_columns(img: Image) -> Vector2i:
+	var w: int = img.get_width()
+	var background: Color = img.get_pixel(0, 0)
+	var left: int = 0
+	while left < w and _column_matches(img, left, background):
+		left += 1
+	var right: int = 0
+	while right < w and _column_matches(img, w - 1 - right, background):
+		right += 1
+	return Vector2i(left, right)
+
+## Mean absolute deviation from the column's own first pixel, alpha included.
+## Sampled every few rows -- a gutter is flat everywhere or nowhere, and 1254
+## rows per column across seven sheets is a lot of get_pixel calls at load.
+func _column_variation(img: Image, x: int) -> float:
+	if x < 0 or x >= img.get_width():
+		return 0.0
+	var first: Color = img.get_pixel(x, 0)
+	var total: float = 0.0
+	var n: int = 0
+	var step: int = maxi(1, img.get_height() / 32)
+	for y in range(0, img.get_height(), step):
+		var c: Color = img.get_pixel(x, y)
+		total += absf(c.r - first.r) + absf(c.g - first.g) \
+			+ absf(c.b - first.b) + absf(c.a - first.a)
+		n += 1
+	return total / float(maxi(1, n))
 
 # ---------------- Queries ----------------------------------------------------
 #
