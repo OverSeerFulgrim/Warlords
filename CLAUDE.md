@@ -63,7 +63,8 @@ named per SPRITE_SPEC, in the same commit that wires it. Never at repo root.
 ```
 scripts/Main.gd            wiring root + input-mode arbitration (placement > demolish > rally > inspect)
 scripts/ui/                InspectionPanel (the one inspect panel), Minimap, HudTopBar, BuildMenu,
-                           EconomyTab, EventPanelUI, InspectorActions, TokenLayer
+                           EconomyTab, EventPanelUI, InspectorActions, TokenLayer,
+                           CombatFeedback (pooled floating damage numbers)
 scripts/autoload/          GameState, EventBus, BuildingCatalog, RaceCatalog (load-once JSON catalogs)
 scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                            MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
@@ -84,6 +85,8 @@ assets/official|placeholder|vendor/      see Graphics rules
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
 - `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3 (after speed/layout changes)
+- `tools/verify_combat_feedback.tscn` — 31 assertions: one emit per landed swing both ways,
+  the 32-float cap, no leak over 1000 exchanges, and Combat/Engagement still signal-free
 - `tools/check_fog_and_minimap.tscn` — 41 assertions: multi-source fog (villain 7 cells, friendly
   units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs

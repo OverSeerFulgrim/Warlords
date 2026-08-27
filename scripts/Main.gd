@@ -134,6 +134,9 @@ var _poll_timer: float = 0.0
 ## proximity hit-test the inspect path picks with. See scripts/ui/TokenLayer.gd.
 var token_layer: TokenLayer
 
+## The floating damage numbers. Pure view -- see scripts/ui/CombatFeedback.gd.
+var combat_feedback: CombatFeedback
+
 # The map's resource nodes live in ResourceField now, not in a Dictionary of
 # fixed marker positions here -- see _build_systems().
 var worker_keep_zone: Rect2         # deposit point + idle-wander area around the main building
@@ -296,6 +299,13 @@ func _build_systems() -> void:
 	token_layer.name = "TokenLayer"
 	add_child(token_layer)
 	token_layer.build_layers(settlement, grid_w, grid_h)
+
+	# Floating damage numbers. A sibling of the token layers in the settlement's
+	# coordinate space; it subscribes to EventBus.damage_shown itself and is
+	# handed nothing, because a view of an event needs no references.
+	combat_feedback = CombatFeedback.new()
+	combat_feedback.name = "CombatFeedback"
+	settlement.add_child(combat_feedback)
 
 	# The map's harvestable resources. A child of `settlement` so it shares the
 	# same coordinate space workers walk in -- ResourceNode positions are the

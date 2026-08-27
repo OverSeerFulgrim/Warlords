@@ -391,6 +391,16 @@ func _advance_engagement(e: Engagement, delta: float) -> void:
 
 	for result in e.tick(delta):
 		var defender = result["defender"]
+		# Both halves of the swap become floating numbers. This is a **read** of
+		# the result Dictionary the exchange already returns -- `Engagement` is
+		# not asked for anything new and `Combat` is not touched at all, which
+		# is the whole point of the policy layer owning the announcements.
+		#
+		# Before the consequence checks below, deliberately: a unit that dies on
+		# this exchange must still show the number that killed it, and
+		# `_resolve_defeat` may remove it from the engagement.
+		_show_hp_change(defender, result["damage_to_b"], "damage")
+		_show_hp_change(wolf, result["damage_to_a"], "damage")
 		# Consequences are checked per exchange, not per frame, so a unit can
 		# never take two lethal hits before anyone notices.
 		if not defender.is_alive():
@@ -509,7 +519,26 @@ func _tick_throne_repair(delta: float) -> void:
 		if w.stage != Laborer.TripStage.IDLE:
 			continue
 		if w.position.distance_to(throne_pos) <= THRONE_REPAIR_RADIUS_PX:
-			w.heal(1)
+			# heal() returns what it actually restored, so a worker already at
+			# max never floats a +0 -- the guard in _show_hp_change catches it
+			# either way, but taking the real number is what makes that true.
+			_show_hp_change(w, w.heal(1), "heal")
+
+## The one place this system announces an hp change for the floating numbers
+## (`CombatFeedback.gd`, COMBAT_FEEDBACK_SPEC §2).
+##
+## Funnelled through a single guard rather than emitted inline at each site so
+## the "> 0" invariant is stated once. `Combat.MIN_DAMAGE` is 1 so a landed
+## swing cannot be zero -- but a heal on a full-hp unit can be, and a future
+## damage source might be, and a stream of "+0" over a healthy skeleton would
+## be worse than no feedback at all.
+##
+## `unit` is the data object every caller already has in hand. The view reads
+## its position when it draws.
+func _show_hp_change(unit, amount: int, kind: String) -> void:
+	if unit == null or amount <= 0:
+		return
+	EventBus.damage_shown.emit(unit, amount, kind)
 
 # ---------------- Queries (HUD / smoke tests) ----------------
 

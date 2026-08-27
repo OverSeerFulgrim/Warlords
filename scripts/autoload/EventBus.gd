@@ -83,6 +83,19 @@ signal deer_taken_by_predator(node, predator_name: String)
 ## Flavor only: something hostile came too close to the Necromancer and thought
 ## better of it. Only fires while CombatSystem.LAIR_AURA_PROTECTS_VILLAIN holds.
 signal necromancer_feared(predator_name: String)
+## One unit's hp visibly changed, for the floating numbers (`CombatFeedback.gd`,
+## COMBAT_FEEDBACK_SPEC §2). `kind` is "damage" or "heal"; `amount` is always
+## positive and always the hp *actually* applied, not the roll.
+##
+## **`unit` is the data object, never a token** -- the layer reads
+## `unit.position` at emit time, because a token's position is a frame stale.
+##
+## Emitted by `CombatSystem` alone. `Combat.gd` (the formula) and
+## `Engagement.gd` (the clock) stay signal-free by design: both of their headers
+## say they know nothing about anyone, and a view is not a good enough reason to
+## make that stop being true. Anything else that ever changes hp -- traps, the
+## crusade, a spell -- emits this from its own policy layer.
+signal damage_shown(unit, amount: int, kind: String)
 
 # The villain (see scripts/villain/Necromancer.gd)
 ## He hit 0 hp. **Carries the villain object** rather than assuming there is one
