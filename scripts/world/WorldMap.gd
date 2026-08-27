@@ -173,6 +173,12 @@ var bands: Array = []
 
 var terrain_layer: TileMapLayer
 
+## The world's trees, drawn as ONE MultiMeshInstance2D over the forest cells --
+## zero per-tree nodes (TERRAIN_SPEC section 6b). Null until the map actually
+## has forest cells to draw; the terrain draw-call budget counts this plus the
+## tile layer and nothing else.
+var canopy: MultiMeshInstance2D = null
+
 ## Engine-space pixel offset of world cell (0,0). Negative, because the engine
 ## origin is the Throne's corner and the Throne is deep inside the map.
 var origin_px: Vector2 = Vector2.ZERO
@@ -329,8 +335,12 @@ func _resolve_connections() -> void:
 				missing["%s mask %d" % [table_id, mask]] = true
 				continue
 			var entry: Dictionary = masks[key]
+			# An entry may name its own sheet. Cliff mask 15 does: the interior
+			# of a ridge thicker than one cell is plateau *top*, which lives on
+			# the snow sheet, not another copy of a south face.
 			terrain_layer.set_cell(cell, 0,
-				atlas_coord_for_cell(String(table.get("sheet", "snow")), entry.get("cell", [0, 0])),
+				atlas_coord_for_cell(String(entry.get("sheet", table.get("sheet", "snow"))),
+					entry.get("cell", [0, 0])),
 				transform_id(entry))
 	if not missing.is_empty():
 		push_error("WorldMap: connection table incomplete -- %s. "

@@ -13,25 +13,21 @@ extends Node
 ## TERRAIN_SPEC §4 says nobody ever finds). The rest guard the performance trap
 ## R1 documented: one TileMapLayer, zero children, no node per cell.
 
-## Draw-call ceiling. **R1 measured 52; the scene now draws 70 before this pass
-## and 71 after**, measured by A/B with the terrain change stashed. So the
-## connection layer costs exactly **one** draw call -- the second atlas page the
-## flipped alternatives reference -- and the other eighteen accumulated between
-## R1 and here (the combat-feedback label pool, the minimap's friendly dots, the
-## HUD additions). Worth knowing and worth watching; not worth failing this pass
-## for, and not something this pass can fix.
+## Draw-call ceiling **for the terrain alone** -- the TileMapLayer, plus the
+## canopy when it exists.
 ##
-## The ceiling is the measured baseline plus a little headroom, so a real
-## regression still trips it.
-const MAX_DRAW_CALLS: int = 75
+## Measured by hiding everything that is not terrain and sampling, rather than
+## reading the whole viewport. The viewport number is not a terrain budget: it
+## drew 52 at R1 and 71 on 2026-08-27, and eighteen of that difference is UI
+## added since (the combat-feedback label pool, the minimap's friendly dots, the
+## HUD). Gating terrain work on a number the HUD moves would mean trimming UI to
+## make a terrain test pass, which is the wrong repair every time.
+##
+## What this budget is actually protecting is R1's trap: **no node per cell**.
+## One TileMapLayer is one draw call per atlas page it touches, and the canopy
+## is one more. Anything that starts drawing per cell shows up here immediately.
+const MAX_TERRAIN_DRAW_CALLS: int = 6
 
-## **Frame time is not asserted, deliberately.** A windowed run is vsync-bound,
-## so wall-clock frame time reads ~16.6 ms whatever the game is doing -- the
-## first version of this "failed" at 18.61 ms and was measuring the display. The
-## A/B above showed process time identical to two decimal places with and
-## without the change. What actually guards the trap R1 documented is
-## structural, and it is asserted below: one TileMapLayer, zero children, no
-## node per cell.
 var _passed: int = 0
 var _failed: int = 0
 
@@ -53,7 +49,7 @@ func _ready() -> void:
 	_build_type_names(world)
 	_map_uses_them(world)
 	_speeds_need_no_code(world)
-	await _performance(world)
+	await _performance(main, world)
 
 	print("\n%d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
@@ -322,31 +318,72 @@ func _speeds_need_no_code(world: WorldMap) -> void:
 
 # ---------------- The performance trap has not moved --------------------------
 
-func _performance(world: WorldMap) -> void:
+func _performance(main, world: WorldMap) -> void:
 	_check("terrain is still ONE TileMapLayer", world.terrain_layer != null)
 	_check("with ZERO children", world.terrain_layer.get_child_count() == 0,
 		"%d children -- something added a node per cell" % world.terrain_layer.get_child_count())
 
-	var frames: int = 0
-	var total: float = 0.0
-	while frames < 60:
-		await get_tree().process_frame
-		total += get_process_delta_time()
-		frames += 1
-	var draw_calls: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	var frame_ms: float = (total / float(frames)) * 1000.0
-	print("    note: %d draw calls, %.2f ms average frame" % [draw_calls, frame_ms])
+	var everything: int = await _sample_draw_calls()
+	var hidden: Array = _hide_all_but_terrain(main)
+	var terrain_only: int = await _sample_draw_calls()
+	for node in hidden:
+		node.visible = true
+	print("    note: %d draw calls for the terrain alone, %d for the whole viewport"
+		% [terrain_only, everything])
+	var draw_calls: int = terrain_only
 	# **Headless draws nothing**, so the draw-call counter reads 0 and the frame
 	# time is this harness's own work rather than the game's. R1's 52 / 1.3ms
 	# were measured windowed, and comparing against them here would assert a
 	# number that does not exist. The structural invariant -- one layer, zero
 	# children, no node per cell -- is what holds in both, and it is the one
 	# that actually prevents the trap.
-	if draw_calls > 0:
-		_check("draw calls still <= %d" % MAX_DRAW_CALLS,
-			draw_calls <= MAX_DRAW_CALLS, "%d -- something started drawing per cell" % draw_calls)
+	if everything > 0:
+		_check("the terrain draws in <= %d calls" % MAX_TERRAIN_DRAW_CALLS,
+			draw_calls <= MAX_TERRAIN_DRAW_CALLS,
+			"%d -- something started drawing per cell" % draw_calls)
 	else:
 		print("    note: headless draws nothing -- run windowed for the draw-call gate")
+
+## Hides every visible CanvasItem that is not the terrain layer or the canopy,
+## and returns what it hid so the caller can put it back.
+##
+## Blunt on purpose: the alternative is a list of node paths that goes stale the
+## first time someone adds a UI element, and a stale exclusion list would quietly
+## start counting that element as terrain.
+func _hide_all_but_terrain(main) -> Array:
+	var keep: Array = [main.world_map.terrain_layer]
+	if main.world_map.canopy != null:
+		keep.append(main.world_map.canopy)
+	var hidden: Array = []
+	_hide_recursive(get_tree().root, keep, hidden)
+	return hidden
+
+func _hide_recursive(node: Node, keep: Array, hidden: Array) -> void:
+	if node in keep:
+		return
+	if (node is CanvasItem or node is CanvasLayer) and node.visible:
+		# Hiding a parent hides its children, so stop descending -- and do not
+		# hide an ancestor of something we are keeping.
+		if not _contains_any(node, keep):
+			node.visible = false
+			hidden.append(node)
+			return
+	for child in node.get_children():
+		_hide_recursive(child, keep, hidden)
+
+func _contains_any(node: Node, keep: Array) -> bool:
+	for k in keep:
+		if k != null and is_instance_valid(k) and node.is_ancestor_of(k):
+			return true
+	return false
+
+func _sample_draw_calls() -> int:
+	var peak: int = 0
+	for i in range(12):
+		await get_tree().process_frame
+		peak = maxi(peak, int(Performance.get_monitor(
+			Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)))
+	return peak
 
 # ---------------- Helpers -----------------------------------------------------
 

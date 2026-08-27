@@ -251,7 +251,11 @@ const CONNECTIONS := {
 			"14": {"cell": [1, 1], "note": "~ tee approximated by the E-W face"},
 			"7": {"cell": [1, 2], "note": "~ tee approximated by the N-S face"},
 			"13": {"cell": [1, 2], "note": "~ tee approximated by the N-S face"},
-			"15": {"cell": [1, 0], "note": "~ cross approximated by the lone crag"},
+			# **Plateau top, not a cliff face.** A ridge thicker than one cell has an
+			# interior, and its interior is snow you walk on top of -- the lone crag
+			# drew a south face on every one of them, so a 7-wide ridge rendered as a
+			# grid of crags. Changed 2026-08-27 after P1 showed exactly that.
+			"15": {"sheet": "snow", "cell": [3, 0]},
 		},
 	},
 }

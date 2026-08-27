@@ -430,7 +430,14 @@ re-validating travel times across many seeds rather than one.
   has exactly one corridor mouth** (§6b) — zero is a softlock, two is a crossroads
 - no cobble or dirt cell inside a clearing or a dense mass (the §6b hard error, asserted)
 - the canopy is **one MultiMeshInstance2D** — instance count within budget (~1.5× the `T`+`u`
-  cell count), zero per-tree nodes, and total draw calls still ≤ R1's 52 + the one canopy call
+  cell count), zero per-tree nodes
+- **the draw-call budget is TERRAIN-ONLY**, measured by hiding everything that is not the terrain
+  layer or the canopy. It is not "R1's 52 plus one": the whole-viewport count drew 52 at R1 and
+  **71 on 2026-08-27**, and eighteen of that difference is UI added since (the combat-feedback
+  label pool, the minimap's friendly dots, HUD additions) with **one** of it terrain. Gating
+  terrain work on a number the HUD moves would mean trimming UI to make a terrain test pass,
+  which is the wrong repair every time. The thing the budget protects is R1's trap — no node per
+  cell — and one TileMapLayer plus one MultiMesh is what that looks like from the outside.
 - still one `TileMapLayer`, still zero children, frame time no worse than R1's 1.3ms
 - **`measure_travel` re-run, every row in band** (§9) — this is the gate, not a nice-to-have
 
