@@ -1,61 +1,103 @@
-# Undead Empire Prototype — README
+# Warlords
 
-## What's here
+*Working title: Undead Empire Prototype.*
 
-A Godot 4.3 project implementing the Phase 1 slice of the villain-settlement-builder design doc: Undead Empire class, Frozen Wastes climate, Bounty Board, Reputation/Threat escalation, 15 random events, and a 4-mission party system. See `CLAUDE.md` in this folder for architecture notes, and the design doc (`villain_settlement_builder_design_doc.docx`, one folder up) for the full game concept.
+A villain-power-fantasy roguelite settlement builder. Think Against the Storm or RimWorld with the
+morality inverted: you are the Necromancer, hiding in a lair because you are weak, and the game is
+about the arc from **Hide → Explore → Influence → Rule**. One region is one run. Permadeath. What
+persists between runs is variety, never power.
 
-## How to run it
+Built in **Godot 4.7.1**, GDScript, GL Compatibility renderer. No external dependencies.
 
-1. Install [Godot 4.3 or later](https://godotengine.org/download) (free) — the standard build, not Godot 3.
-2. Open Godot, choose **Import**, and select the `project.godot` file in this folder.
-3. Once it opens in the editor, press **F5** (or the Play button) to run.
-4. `Main.tscn` is already set as the main scene, so it should just run.
+## Where the project stands
 
-## First-run smoke test
+The **roguelite rework** (`docs/design/ROGUELITE_REWORK.md`) is the plan of record. It is built in
+stages, each playable before the next begins:
 
-Because I (Claude) built this in a sandboxed environment that couldn't download and run the actual Godot engine — the sandbox's network access doesn't reach Godot's binary releases — **none of this has been executed yet.** It's carefully hand-written, standard-pattern GDScript, but you're the first real test. Here's what to check, in order:
+| Stage | Status |
+|---|---|
+| Stage 1–3 settlement loop — grid, priority-list economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat, Command Undead | **Built and verified** |
+| **R1 — The world exists.** 144×144 fixed world, terrain/blocking/roads, fog of war, directly-controlled killable Necromancer with camera follow, static village, sealed rival ground, travel times in band | **Built and verified** |
+| **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **Fully specced, nothing implemented** |
+| R3 — reputation axes and reputation-gated recruitment | Designed at outline level |
+| R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | Designed at outline level |
+| R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | Designed at outline level |
 
-1. **Does it open without errors?** Check the Output panel at the bottom of the editor immediately after opening the project. Any red text there is a parse error — most likely a small typo, not a structural problem.
-2. **Does it run (F5) without errors?** You should see a window with a stats line at the top (Dark Essence / Bones / Reputation / Threat / Power), a row of buttons, and a log panel.
-3. **Click "Place Bone Pile."** A log line should appear confirming placement, and after ~5 seconds Bones should start ticking up.
-4. **Click "Post Harvest Bounty."** Within a few seconds one of the three starting followers (Grix, Morra, or Vash) should accept it and, after ~8 seconds, resolve it — Dark Essence should go up (or Threat should tick up slightly on failure).
-5. **Click "Dispatch Mission (auto-party)."** Should immediately resolve and log SUCCESS/COMPLICATED/FAILURE.
-6. **Let it run for a while** (or repeatedly post bounties / trigger events) and watch Threat climb through its tiers — you should see log messages when it escalates, and eventually a "CRUSADE INCOMING" message with a 60-second timer, followed by either victory or defeat depending on your Power at that point.
+Win/lose is still the old placeholder until R4. Climate and additional villain classes are
+deliberately deferred. `docs/CURRENT_STATE.md` is the dated snapshot that reconciles every design
+document into one picture; read it before anything else in `docs/`.
 
-If any step breaks, the error in the Output panel will point at a specific script and line — that's the fastest way back to me (or into your own fix) for a follow-up pass.
+### The build order for R2
 
-## What's actually implemented
+`docs/prompts/R2_PROMPTS.md` is the only live prompt set. Nothing in it runs before a human has
+playtested R1 for feel:
 
-- Settlement grid with 3 building types (Bone Pile, Dark Altar, Crypt) — placement, passive resource ticking, Power contribution
-- Majesty-style Bounty Board — post a bounty, followers with matching traits decide whether to answer it, resolves with a risk-weighted success chance
-- Reputation/Threat system with the three-tier escalation ladder from the design doc, culminating in a timed Crusade climax
-- 15 random events across all four categories (hazard, visitor, moral-choice, opportunity) from the design doc's Section 8, wired to fire on a randomized timer with a simple choice UI
-- 4 hand-picked-party missions (Smuggling Run, Robbery, Mass Grave Recovery, Court Infiltration) resolved via the Might/Guile/Influence/Loyalty stat-check system from Section 5's recommendation
-- "Both" win condition wired end-to-end: survive the High-Threat Crusade **and** hit the Power threshold
-- 13 placeholder sprites (buildings, followers, resource/UI icons, a frozen-ground tile) — see below
+```
+playtest R1 → P0 (travel harness + doc fixes) → F1 (damage numbers) → C2 (stat rework)
+            → P1 (tilesheets) → P2 (generated world + forests)
+            → R2a (sites + dens) → R2b (villain combat) → R2c (deposit)
+            → R2d (escort) → R2e (raven)
+```
 
-## What's deliberately stubbed for this pass
+## Running it
 
-- **The UI is a debug UI, not a real one.** Built entirely in GDScript rather than laid out in the Godot editor, on purpose — see `CLAUDE.md` for why. Swap it for a proper `.tscn`-based UI once the loop is confirmed working.
-- **Balancing is placeholder.** Numbers (resource yields, threat thresholds, mission difficulty, the Power-vs-30 crusade check) are rough guesses to prove the systems connect, not tuned for fun. Expect to need a real balancing pass once you're playing it.
-- **No save/load.** Every run starts fresh from `_seed_starting_state()`.
-- **Only Undead Empire / Frozen Wastes is implemented.** The other three villain classes and climates from the design doc are still just design-doc content, not code.
+1. Install [Godot 4.7](https://godotengine.org/download) (the standard build, not Godot 3 and not
+   .NET).
+2. **Import** `project.godot` from this folder.
+3. Press **F5**. `Main.tscn` is the main scene.
 
-## Recently completed
+Controls: **WASD** moves the Necromancer, **arrow keys** pan the camera, **F** toggles camera
+follow. Building placement, demolish, rally and inspect are mouse-driven from the HUD. A debug
+time-scale control (1×/10×/60×) is available for watching the economy run.
 
-- **Buildings and followers now render with real art.** Buildings use Kenney's Roguelike/RPG pack (`art/`). Followers get a portrait in the debug UI's roster row, sourced from the "Characters" asset pack in `Characters/Character - 128 x 128/` (added via the Godot Asset Library) — hand-picked per species by look (see the comment above `SPECIES_SPRITES` in `Main.gd` for which numbered portrait maps to which species). The earlier Kenney-recolor versions are still in `art/` as `follower_*_kenney.png` but are no longer used.
-- **A "Buildings" asset pack also landed in the project** (`Buildings/` — castles, houses, towers, bridges in 4 team colors) from the same Asset Library import. Not currently wired up; its high-fantasy medieval look doesn't match the Bone Pile / Dark Altar / Crypt villain aesthetic as well as the Kenney set does, but it's there if you want a rival-kingdom or human-settlement visual later.
-- **Recruitment is fully wired.** Events like "Orcs Seeking a Home" now instantiate a real `Follower` via `data/followers.json` (species, name pool, trait pool, stat ranges) instead of printing a stub. `EventSystem._recruit()` / `_recruit_chance()` handle it; `EventBus.follower_recruited` fires so the UI can log it and the roster row updates automatically.
+Headless checks worth knowing about (see `CLAUDE.md` for the full list):
 
-## Placeholder art
+```
+godot --headless --path . --import                   # required after adding any class_name
+godot --headless --path . --quit-after 200            # clean-boot check
+godot --headless --path . res://tools/check_sprite_scales.tscn
+godot --headless --path . res://tools/measure_travel.tscn
+```
 
-I don't have an image-generation tool in this environment, so the 13 sprites in `art/` are procedurally generated flat-color icons (Python/PIL) — simple, readable shapes rather than real illustration, in line with the "bright, stylized, not grimdark" art direction from the design doc. They're meant to make the prototype legible while you're testing systems, not to represent final art quality.
+## Layout
 
-When you're ready for something more visually interesting without commissioning custom art yet, [Kenney.nl](https://kenney.nl/assets) is the standard go-to for free, CC0-licensed game art — they have several fantasy/RPG-flavored 2D asset packs that would drop in cleanly here and read a lot better than these flat placeholders.
+```
+scripts/        Main.gd (wiring root), ui/, autoload/, settlement/, villain/, combat/, world/,
+                plus bounty/events/missions/threat (Stage-4 systems, built but mostly unsurfaced)
+data/           all game content as JSON — races, buildings, events, missions, recruitment,
+                world_map, world_sites. New content is a JSON edit.
+assets/         official/ (commissioned art), placeholder/ (stand-ins), vendor/ (cold storage)
+tools/          generators and verification harnesses; they re-derive every tuned number
+docs/           design/ (specs), art/ (sprite rules), prompts/ (build order), history/ (dated
+                dev narrative), archive/ (completed or superseded — nothing there is live)
+```
 
-## Suggested next session
+## Which document wins
 
-1. Run the smoke test above and fix whatever the Output panel flags.
-2. Wire the placeholder sprites onto buildings/followers so it's visually legible.
-3. Build the real `followers.json` + recruitment flow.
-4. Start a balancing pass once it's playable end-to-end.
+Stated once, in `docs/README.md`, and repeated here because it matters:
+**`ROGUELITE_REWORK.md` wins on design intent; the newest `docs/history/` file wins on what the
+code actually does; `CLAUDE.md` wins on code conventions.** The nine-attribute stat model in
+`COMBAT_SPEC.md` §2 is adopted, with `stat_rework_roster.xlsx` as the authoritative statline
+source until prompt C2 exports it to `data/races.json` — the code still reads the old Might until
+then.
+
+## Design pillars (short form)
+
+- **Indirect control.** No unit orders. The two exceptions are the Necromancer himself and
+  Command Undead, which binds the dead as a class.
+- **Nothing is yours until it is home.** Worker loads bank on deposit, sortie loot banks at the
+  lair, a run's haul banks only if you leave the region alive.
+- **Power attracts power.** Followers come because of deeds the world has heard about, never on
+  a timer.
+- **No meta-progression grants in-run numbers.** A level-20 Necromancer's skeleton hits exactly
+  as hard as a level-1's; the veteran has more options, not bigger stats.
+- **Bright and stylized, not grimdark.** See `docs/art/SPRITE_SPEC.md`.
+
+## Working on it with Claude
+
+`CLAUDE.md` is the orientation file (hard budget ~8 KB) and lists the load-bearing conventions:
+sim state on RefCounted data objects with tokens as pure views, all cross-system communication
+through `EventBus` signals, delta-accumulator timers so `Engine.time_scale` scales everything, and
+the sprite sizing rules. Session write-ups go in `docs/history/`, never in `CLAUDE.md`.
+
+Repo: https://github.com/OverSeerFulgrim/Warlords
