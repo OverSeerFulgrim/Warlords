@@ -66,9 +66,14 @@ var _first_dusk_done: bool = false
 ## inside it join, everyone else inside it runs. 3 grid cells.
 const ASSIST_RADIUS_PX: float = 3.0 * float(SettlementGrid.CELL_SIZE)
 
-## A recruit counts as "armed with Might" -- and so wades in rather than running
-## -- at this Might or above, regardless of category. Warriors always qualify.
-const ASSIST_MIGHT_THRESHOLD: int = 6
+## A recruit counts as "strong enough to be useful" -- and so wades in rather
+## than running -- at this **Strength** or above, regardless of category.
+## Warriors always qualify.
+##
+## Reworded from Might to Strength by COMBAT_SPEC section 6.2, which asks for
+## exactly this and nothing more: the *shape* of the rule is unchanged, and the
+## judgement/guidance layer that eventually replaces the threshold is C3.
+const ASSIST_STRENGTH_THRESHOLD: int = 6
 
 ## Necromantic maintenance: an idle Skeleton Worker standing at the Throne
 ## knits itself back together at one hit point per this many seconds. Slow on
@@ -381,7 +386,7 @@ func _rally_and_scatter(wolf: Wolf, e: Engagement) -> void:
 func _will_fight(l) -> bool:
 	if not (l is Follower):
 		return false
-	return l.category == "Warrior" or l.might >= ASSIST_MIGHT_THRESHOLD
+	return l.category == "Warrior" or l.strength >= ASSIST_STRENGTH_THRESHOLD
 
 func _advance_engagement(e: Engagement, delta: float) -> void:
 	var wolf: Wolf = e.attacker

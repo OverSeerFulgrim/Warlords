@@ -29,12 +29,33 @@ extends RefCounted
 ## anchor (their house, or the keep). They rejoin the loop as IDLE on arrival.
 enum TripStage { IDLE, WALK_TO_NODE, GATHERING, WALK_HOME, FLEEING }
 
-# --- Labor stats. Subclasses fill these from races.json. ---
-var might: int = 5           # also the carry capacity, per FOUNDATION_SPEC section 6
+# --- Stats. Subclasses fill these from races.json (COMBAT_SPEC section 2). ---
+#
+# **Attributes and skills are two layers, and the distinction is load-bearing.**
+# An attribute is what the unit *is* and moves rarely; a skill is what it has
+# *learned* and moves slowly. Nothing here stores an effective value -- see
+# `skill_for()` -- because a stored copy goes stale the moment gear, training or
+# a trait moves the attribute underneath it.
+
+## The nine, on the 1-10 Human-Peasant-is-5 scale. Baseline for Workers, rolled
+## per-recruit for Followers.
+var strength: int = 5
+var dexterity: int = 5
+var speed: int = 5
+var endurance: int = 5
+var intelligence: int = 5
+var guile: int = 5
+var perception: int = 5
+var tact: int = 5
+var loyalty: int = 5
+
+## The twelve baselines, `skill name -> 1-10`. A Dictionary rather than twelve
+## fields: every consumer looks them up by the node's own `skill_key` string,
+## and twelve fields plus a twelve-arm match would be the same data written
+## twice. Filled from the race's template plus overrides.
+var skills: Dictionary = {}
+
 var walk_speed: float = 1.0  # multiplier on 1 grid cell/sec
-var woodcutting: int = 5
-var mining: int = 5
-var foraging: int = 5
 
 # --- Trip state (advanced by WorkerSystem, read by the tokens) ---
 var position: Vector2 = Vector2.ZERO
@@ -58,20 +79,24 @@ var idle_wait: float = 0.0
 # different for the two (a skeleton is destroyed, a recruit is only ever
 # injured) -- that policy is CombatSystem's, not this class's.
 
-## `max_hp = 8 + Might * 2`. Computed, never stored: Might is already the stat
-## that makes a unit durable in every other system (it's carry capacity too),
-## and a stored copy would silently go stale the moment anything changed Might
-## -- which the Blacksmith's +1 Might already does, and equipment will do more
-## of. Human Peasant 18, Skeleton Worker 16, an Ogre recruit 26.
+## `max_hp = 8 + Endurance * 2` (COMBAT_SPEC section 2.4). Computed, never
+## stored: a stored copy would silently go stale the moment anything changed
+## Endurance -- which the Barracks' training already does, and equipment will do
+## more of.
+##
+## **The formula is the C1 one with Endurance substituted for Might**, and the
+## roster was authored so that no shipped number moves: Skeleton Worker End 4
+## keeps hp 16, the wolf's End 5 keeps 18, the Necromancer's End 6 keeps 20.
+## Human Peasant 18, an Ogre recruit 24.
 const HP_BASE: int = 8
-const HP_PER_MIGHT: int = 2
+const HP_PER_ENDURANCE: int = 2
 
 func max_hp() -> int:
-	return HP_BASE + maxi(1, might) * HP_PER_MIGHT
+	return HP_BASE + maxi(1, endurance) * HP_PER_ENDURANCE
 
 ## Current hit points. Initialised by heal_full() in each subclass's `_init`
 ## (and again by RecruitGenerator once the stat rolls have settled), because
-## Might isn't known until then and max_hp() depends on it.
+## Endurance isn't known until then and max_hp() depends on it.
 var hp: int = 1
 
 ## True while a living recruit is recovering from being beaten up. They keep
@@ -125,8 +150,38 @@ func is_alive() -> bool:
 func hp_fraction() -> float:
 	return float(hp) / float(maxi(1, max_hp()))
 
-func combat_might() -> int:
-	return might
+## The Combatant contract's profile (COMBAT_SPEC section 3.1 rule 3). Derived
+## from the unit's own attributes every time -- no race is named, and no unit
+## carries a hand-written profile. A Goblin picks up a sling because Dexterity
+## is its highest attribute, not because anything checked for "goblin".
+func combat_profile() -> Dictionary:
+	return Combat.profile_for(strength, dexterity, intelligence)
+
+## One attribute by name, for whichever one an attacker's profile defends
+## against. Deliberately the general accessor rather than three getters: the
+## defence key is data travelling in a Dictionary, so resolving it has to be a
+## lookup, and a new profile must not need a new method here.
+func combat_defence(key: String) -> int:
+	return attribute(key)
+
+## Any of the nine, by name. Returns the Human Peasant reference for an unknown
+## name, for the same reason RaceCatalog does: an "average" answer is a far less
+## damaging failure than a zero, which would make a unit invulnerable to
+## whichever profile named it.
+func attribute(key: String) -> int:
+	match key:
+		"strength": return strength
+		"dexterity": return dexterity
+		"speed": return speed
+		"endurance": return endurance
+		"intelligence": return intelligence
+		"guile": return guile
+		"perception": return perception
+		"tact": return tact
+		"loyalty": return loyalty
+		_:
+			push_warning("Laborer: unknown attribute '%s'" % key)
+			return RaceCatalog.REFERENCE_VALUE
 
 func combat_name() -> String:
 	return display_name()
@@ -170,26 +225,38 @@ func display_name() -> String:
 func can_labor() -> bool:
 	return not rallied
 
-## Carry capacity = Might (FOUNDATION_SPEC section 6). An Ogre hauls 9 units
-## per trip; a Gnome 2. This is what makes Might matter for labor without
-## inventing a separate carry stat.
+## Carry capacity = **Endurance** (COMBAT_SPEC section 2.1, confirmed by the
+## 2026-08-06 amendment note 2). An Ogre hauls 8 units per trip; a Gnome 3.
+##
+## Moved off Strength deliberately: Strength was already damage plus two labor
+## skills, and adding carry would have rebuilt Might under a new name. Endurance
+## carrying hp *and* load also opens a high-Endurance/low-Strength porter, which
+## is a real build rather than a strictly-worse one.
 func carry_capacity() -> int:
-	return max(1, might)
+	return max(1, endurance)
 
-## Which labor skill applies to a given node. Takes the node's own skill_key
-## rather than switching on resource kind, because the two aren't 1:1 -- bones
-## come from both carcasses (foraging: finding them in the underbrush) and
-## graves (mining: digging).
+## The **effective** skill for a node's `skill_key`: baseline plus the governing
+## attribute's modifier, computed here and never stored (COMBAT_SPEC 2.3).
+##
+## Takes the node's own `skill_key` rather than switching on resource kind,
+## because the two aren't 1:1 -- bones come from both carcasses (foraging:
+## finding them in the underbrush) and graves (mining: digging). An unknown key
+## falls back to Foraging, which is the pre-rework behaviour.
+##
+## This is where the rework pays out in the settlement: a Gray Dwarf's Mining 9
+## and a Skeleton Worker's 3 were already different, but the governing attribute
+## now drags them further apart, and gather time is `4.0s * 5 / skill` -- so the
+## margin shows up in the trip loop rather than in a stat panel.
 func skill_for(skill_key: String) -> int:
-	match skill_key:
-		"woodcutting":
-			return woodcutting
-		"mining":
-			return mining
-		"foraging":
-			return foraging
-		_:
-			return foraging
+	var key: String = skill_key if skills.has(skill_key) else "foraging"
+	var governing: String = RaceCatalog.governing_attribute(key)
+	return RaceCatalog.effective_skill(int(skills.get(key, 1)), attribute(governing))
+
+## The unmodified authored value, for anything that wants to show the two apart.
+## The inspection panel prints effective, because effective is what the game
+## actually uses.
+func skill_baseline(skill_key: String) -> int:
+	return int(skills.get(skill_key, 1))
 
 ## Pixels per second. FOUNDATION_SPEC section 4: walk speed 1.0 = 1 grid cell
 ## per second, so a 0.9 skeleton covers 0.9 cells/sec and a 1.2 gnoll 1.2.
@@ -250,12 +317,6 @@ func inspect_race_id() -> String:
 func inspect_category() -> String:
 	return ""
 
-## The three social stats. Only Might lives on Laborer (it doubles as carry
-## capacity); Guile/Influence/Loyalty are Follower's, and Worker reads them off
-## the flat skeleton baseline rather than storing fields it never uses.
-func inspect_social_stats() -> Dictionary:
-	return {"guile": 0, "influence": 0, "loyalty": 0}
-
 ## Rows appended after the shared block -- morale, housing, traits. Empty for
 ## anything that has none of those.
 func inspect_extra_rows() -> Array:
@@ -281,18 +342,53 @@ func _hp_row() -> Dictionary:
 		row["color"] = Color(0.95, 0.70, 0.40)
 	return row
 
+## Untrained skills are hidden rather than printed as 1s. Twelve skills is more
+## than a panel can show without becoming a spreadsheet, and a race's identity
+## is in the handful it is actually good at -- a Gnoll's Foraging 10, not its
+## Research 1. The threshold is the template floor: at or below it, the race was
+## never taught the thing.
+const SKILL_SHOWN_ABOVE: int = 1
+
+## Attributes are shown in COMBAT_SPEC section 2.1's own two groups, abbreviated
+## to three letters so nine numbers fit on two lines. The profile row above them
+## says which of the nine is currently doing the fighting, because that is the
+## one the player most needs and it is derived rather than authored.
+func _attribute_rows() -> Array:
+	var p: Dictionary = combat_profile()
+	return [
+		{"label": "Profile", "value": "%s — %s %d vs %s" % [
+			p["profile"], Combat.ATTACK_FOR_PROFILE[p["profile"]].capitalize(),
+			p["attack_attr"], String(p["defence_key"]).capitalize()]},
+		{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
+			strength, dexterity, speed, endurance]},
+		{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d   Loy %d" % [
+			intelligence, guile, perception, tact, loyalty]},
+	]
+
+## **Effective** values, not baselines -- effective is what the game uses, and
+## showing the authored number next to a gather time it does not explain would
+## be worse than showing nothing.
+func _skills_row() -> Dictionary:
+	var shown: Array = []
+	for key in RaceCatalog.all_skill_names():
+		if int(skills.get(key, 0)) <= SKILL_SHOWN_ABOVE:
+			continue
+		shown.append("%s %d" % [String(key).capitalize(), skill_for(key)])
+	if shown.is_empty():
+		return {"label": "Skills", "value": "None trained", "muted": true}
+	return {"label": "Skills", "value": "   ".join(shown)}
+
 func get_inspect_data() -> Dictionary:
-	var social: Dictionary = inspect_social_stats()
 	var rows: Array = [
 		{"label": "Activity", "value": status_label()},
 		_hp_row(),
-		{"label": "Stats", "value": "Might %d   Guile %d   Influence %d   Loyalty %d" % [
-			might, social.get("guile", 0), social.get("influence", 0), social.get("loyalty", 0)]},
-		{"label": "Labor", "value": "Woodcutting %d   Mining %d   Foraging %d" % [
-			woodcutting, mining, foraging]},
+	]
+	rows.append_array(_attribute_rows())
+	rows.append(_skills_row())
+	rows.append_array([
 		{"label": "Carries", "value": "%d per trip" % carry_capacity()},
 		{"label": "Walk speed", "value": "%s cells/sec" % String.num(walk_speed, 2)},
-	]
+	])
 	rows.append_array(inspect_extra_rows())
 	return {
 		"title": display_name(),
@@ -302,16 +398,28 @@ func get_inspect_data() -> Dictionary:
 		"details": rows,
 	}
 
-## Copies the four character stats / three labor skills for `race_id` straight
-## off the race baseline, with no variance. Used by Worker (which is
-## interchangeable by design); Follower rolls per-recruit variance instead --
-## see RecruitGenerator.
+## Copies the nine attributes and twelve skill baselines for `race_id` straight
+## off the race row, with no variance. Used by Worker (which is interchangeable
+## by design); Follower rolls per-recruit variance instead -- see
+## RecruitGenerator.
 func apply_race_baseline(race_id: String) -> void:
 	if RaceCatalog.get_race(race_id).is_empty():
 		push_warning("Laborer: no '%s' row in races.json -- keeping fallback stats." % race_id)
 		return
-	might = RaceCatalog.stat(race_id, "might")
+	apply_attributes(RaceCatalog.attributes(race_id))
+	skills = RaceCatalog.skill_baselines(race_id)
 	walk_speed = RaceCatalog.walk_speed(race_id)
-	woodcutting = RaceCatalog.labor(race_id, "woodcutting")
-	mining = RaceCatalog.labor(race_id, "mining")
-	foraging = RaceCatalog.labor(race_id, "foraging")
+
+## Writes whichever of the nine a Dictionary carries, leaving the rest where
+## they were. Shared by the race baseline and by RecruitGenerator's rolls, so
+## exactly one place knows the field names.
+func apply_attributes(attrs: Dictionary) -> void:
+	strength = int(attrs.get("strength", strength))
+	dexterity = int(attrs.get("dexterity", dexterity))
+	speed = int(attrs.get("speed", speed))
+	endurance = int(attrs.get("endurance", endurance))
+	intelligence = int(attrs.get("intelligence", intelligence))
+	guile = int(attrs.get("guile", guile))
+	perception = int(attrs.get("perception", perception))
+	tact = int(attrs.get("tact", tact))
+	loyalty = int(attrs.get("loyalty", loyalty))

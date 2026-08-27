@@ -1214,13 +1214,15 @@ func _forge_equipment() -> void:
 	for kind in cost.keys():
 		GameState.spend_resource(kind, cost[kind])
 	var f = idle[randi() % idle.size()]
-	var stats := ["might", "guile", "influence"]
+	# Gear is a physical thing, so it moves a physical attribute. Real equipment
+	# slots that set the attack profile are COMBAT_SPEC section 9 and unbuilt;
+	# until then this stays the flat +1 it always was, just to a stat that still
+	# exists.
+	var stats := ["strength", "dexterity", "endurance"]
 	var stat: String = stats[randi() % stats.size()]
-	match stat:
-		"might": f.might += 1
-		"guile": f.guile += 1
-		"influence": f.influence += 1
-	_log("[color=lightgreen]The Blacksmith forges gear for %s (+1 %s).[/color]" % [f.follower_name, stat], "characters")
+	f.apply_attributes({stat: mini(10, f.attribute(stat) + 1)})
+	_log("[color=lightgreen]The Blacksmith forges gear for %s (+1 %s).[/color]" % [
+		f.follower_name, stat.capitalize()], "characters")
 
 func _train_followers() -> void:
 	if not settlement.has_building("barracks"):
@@ -1237,8 +1239,8 @@ func _train_followers() -> void:
 	for kind in cost.keys():
 		GameState.spend_resource(kind, cost[kind])
 	for f in idle:
-		f.might += 1
-	_log("[color=lightgreen]The Barracks trains %d idle follower(s) (+1 Might each).[/color]" % idle.size(), "characters")
+		f.apply_attributes({"strength": mini(10, f.strength + 1)})
+	_log("[color=lightgreen]The Barracks trains %d idle follower(s) (+1 Strength each).[/color]" % idle.size(), "characters")
 
 func _dispatch_random_mission() -> void:
 	var missions := mission_system.get_missions()

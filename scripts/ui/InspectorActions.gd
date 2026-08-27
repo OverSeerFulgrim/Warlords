@@ -204,10 +204,14 @@ func _add_roster_section(box: VBoxContainer, heading: String, housed: bool, with
 		info.add_theme_font_size_override("font_size", 11)
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		info.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
-		info.text = "%s — %s (%s)  M%d G%d I%d L%d  W%d M%d F%d  morale %d/10  [%s]" % [
+		# One roster line has room for the profile and the four physical
+		# attributes, not for all nine plus twelve skills -- the panel is for
+		# picking someone out of a list, and the inspection panel is where you
+		# read them properly.
+		info.text = "%s — %s (%s)  %s  Str%d Dex%d Spd%d End%d  morale %d/10  [%s]" % [
 			f.label(), f.species, f.category,
-			f.might, f.guile, f.influence, f.loyalty,
-			f.woodcutting, f.mining, f.foraging,
+			f.combat_profile()["profile"],
+			f.strength, f.dexterity, f.speed, f.endurance,
 			f.morale, f.status_label(),
 		]
 		# Morale colour beats the exceptional gold when someone is in trouble --

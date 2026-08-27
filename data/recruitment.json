@@ -18,10 +18,10 @@
   "_comment_exceptional": "5% chance per recruit of +1 to their category-defining stat after the roll. 'best_labor' means whichever of woodcutting/mining/foraging rolled highest for that individual -- an Economy race's defining trait is that it is good at *its* speciality, which varies by race (Gray Dwarf mines, Minotaur does both). 'none' means the category has no defining stat and never rolls exceptional: Versatile is the flat-5 jack-of-all-trades by definition, and Labor is the interchangeable-by-design Skeleton Worker.",
   "exceptional_chance_percent": 5,
   "category_defining_stat": {
-    "Warrior": "might",
-    "Economy": "best_labor",
-    "Research": "guile",
-    "Foraging": "foraging",
+    "Warrior": "strength",
+    "Economy": "best_labor_attribute",
+    "Research": "intelligence",
+    "Foraging": "perception",
     "Versatile": "none",
     "Labor": "none"
   },

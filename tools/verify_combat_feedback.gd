@@ -133,6 +133,13 @@ func _total_for(unit, kind: String) -> int:
 ## Runs at `Engine.time_scale = 10` rather than waiting six real seconds. That
 ## is also a free check of the thing the spec cares about: the repair timer and
 ## the float clock are both delta accumulators, so both scale together.
+##
+## **`_wait` counts game seconds, not wall-clock ones** -- `get_process_delta_time()`
+## is already scaled. So the wait is the full THRONE_REPAIR_SECONDS and the time
+## scale only decides how fast that arrives. Dividing the wait by the scale as
+## well, which the first version did, asked for 0.9s of game time against a 6s
+## timer and passed only when an earlier test had left the accumulator nearly
+## full -- an intermittent green that had nothing to do with the code under test.
 func _throne_repair_heals(main) -> void:
 	var throne: Building = main.settlement.get_main_building()
 	var victim = _a_worker(main)
@@ -160,7 +167,7 @@ func _throne_repair_heals(main) -> void:
 
 	_seen.clear()
 	Engine.time_scale = 10.0
-	await _wait(CombatSystem.THRONE_REPAIR_SECONDS / 10.0 + 0.3)
+	await _wait(CombatSystem.THRONE_REPAIR_SECONDS + 0.5)
 	Engine.time_scale = 1.0
 	worker_system.set_process(true)
 

@@ -4,11 +4,17 @@ extends Node
 ## pattern as BuildingCatalog, and the consumer the previous pass predicted
 ## when it added races.json as data-ahead-of-its-loader.
 ##
-## Right now the only caller is Worker.gd (the "skeleton_worker" row: might,
-## walk_speed, and the three labor skills). The recruit generator, food/morale
-## tick, and fund-a-house placement rules will all read from here too -- which
-## is why this exposes the whole row rather than just the handful of fields
-## Worker currently needs.
+## Since the C2 stat rework this also owns the **derivation layer**: the six
+## skill templates, the one-governing-attribute-per-skill map, and the formula
+## that turns a baseline skill plus an attribute into the number the game
+## actually uses. All three are DATA (`data/races.json`, written by
+## `tools/export_roster.gd` from the workbook), not code -- COMBAT_SPEC §12
+## step 3 is explicit that rebalancing must stay a data edit.
+##
+## `data/races.json` also carries the villain and wolf rows, which are units
+## rather than recruitable races (COMBAT_SPEC amendment 2026-08-06 note 4).
+## They have `attributes` and no skills; `recruitable_ids()` and
+## `ids_in_category()` already exclude them by reading `recruitable`.
 
 const RACES_PATH := "res://data/races.json"
 ## Recruitment tuning lives in its own file because it's the playtest knobs
@@ -27,12 +33,22 @@ const REFERENCE_VALUE: int = 5
 
 var _races: Dictionary = {}
 var _recruitment: Dictionary = {}
+## Pulled out of races.json before the "_"-key strip below, because they are
+## documentation-keyed by convention but genuinely load-bearing data.
+var _templates: Dictionary = {}
+var _governing: Dictionary = {}
+var _derivation: Dictionary = {}
 
 func _ready() -> void:
 	_load()
 
 func _load() -> void:
 	_races = _load_json(RACES_PATH)
+	# Read the derivation blocks BEFORE the strip. They are "_"-prefixed to keep
+	# them out of all_ids(), but unlike the comment keys they are real data.
+	_templates = _races.get("_skill_templates", {})
+	_governing = _races.get("_governing_attribute", {})
+	_derivation = _races.get("_derivation", {})
 	# Same "_"-prefixed documentation-key convention as buildings.json --
 	# stripped here for the same reason BuildingCatalog strips it: all_ids()
 	# below iterates every top-level key.
@@ -74,15 +90,84 @@ func recruitable_ids() -> Array:
 			result.append(id)
 	return result
 
-## One of the four character stats (might/guile/influence/loyalty).
-func stat(race_id: String, stat_name: String) -> int:
-	return _races.get(race_id, {}).get("stats", {}).get(stat_name, REFERENCE_VALUE)
+# ---------------- Attributes, skills, derivation (COMBAT_SPEC §2) -----------
 
-## One of the three labor skills (woodcutting/mining/foraging). These drive
-## work *speed*, not permissions -- anyone can chop, skill decides how fast
-## (FOUNDATION_SPEC section 1).
-func labor(race_id: String, skill_name: String) -> int:
-	return _races.get(race_id, {}).get("labor", {}).get(skill_name, REFERENCE_VALUE)
+## The nine attributes for a race, as authored in the workbook. Empty for an
+## unknown id -- callers get REFERENCE_VALUE per attribute through
+## `attribute()`, which is what keeps a typo'd id "average" rather than zero.
+func attributes(race_id: String) -> Dictionary:
+	return _races.get(race_id, {}).get("attributes", {})
+
+## One of the nine. Falls back to the Human Peasant's 5 (see REFERENCE_VALUE) --
+## except that a genuinely absent attribute is a data question, so an unknown
+## *name* is worth noticing rather than silently averaging.
+func attribute(race_id: String, attr_name: String) -> int:
+	return int(attributes(race_id).get(attr_name, REFERENCE_VALUE))
+
+## Baseline (pre-derivation) value for one of the twelve skills: the race's
+## template value, unless the race overrides it.
+##
+## Template-plus-overrides rather than 204 authored numbers is COMBAT_SPEC §12
+## step 2, and keeping it resolved *here* rather than flattened at export time
+## is step 3: editing a template in the workbook still moves every race that
+## did not opt out.
+func skill_baseline(race_id: String, skill_name: String) -> int:
+	var row: Dictionary = _races.get(race_id, {})
+	var overrides: Dictionary = row.get("skill_overrides", {})
+	if overrides.has(skill_name):
+		return int(overrides[skill_name])
+	var template: Dictionary = _templates.get(row.get("skill_template", ""), {})
+	return int(template.get(skill_name, REFERENCE_VALUE))
+
+## All twelve baselines for a race. Creature rows return {} -- a wolf has
+## attributes but does not mine.
+func skill_baselines(race_id: String) -> Dictionary:
+	var out: Dictionary = {}
+	if not _races.get(race_id, {}).has("skill_template"):
+		return out
+	for skill in _governing.keys():
+		out[skill] = skill_baseline(race_id, skill)
+	return out
+
+## Which attribute governs a skill -- exactly one, never two (COMBAT_SPEC §2.2).
+func governing_attribute(skill_name: String) -> String:
+	return String(_governing.get(skill_name, ""))
+
+func all_skill_names() -> Array:
+	return _governing.keys()
+
+## `effective_skill = clamp(skill + floor((attr - 5) / divisor), 1, 10)`.
+##
+## **Computed at use time, never stored** (COMBAT_SPEC §2.3): a stored copy goes
+## stale the moment gear, training or a trait moves the attribute -- the same
+## reasoning that keeps `max_hp()` computed.
+##
+## The float division is not incidental. Integer division truncates toward
+## zero, so `(2 - 5) / 2` would give -1 where the formula wants -2, and every
+## below-average attribute would quietly round in the unit's favour.
+##
+## The floor of 1 is **not cosmetic**: gather time is `4.0s * 5 / skill`, so a 0
+## divides by zero, and a low template value plus a -2 modifier reaches 0 easily
+## (a Skeleton Worker's Research lands at -1 before the clamp).
+func effective_skill(baseline: int, attribute_value: int) -> int:
+	var divisor: float = float(_derivation.get("divisor", 2))
+	if divisor == 0.0:
+		divisor = 2.0
+	var modifier: int = floori(float(attribute_value - REFERENCE_VALUE) / divisor)
+	return clampi(baseline + modifier, int(_derivation.get("min", 1)),
+		int(_derivation.get("max", 10)))
+
+## The race's effective value for a skill, resolving template, override and
+## governing attribute in one call. What every consumer should use.
+func effective_skill_for_race(race_id: String, skill_name: String) -> int:
+	return effective_skill(skill_baseline(race_id, skill_name),
+		attribute(race_id, governing_attribute(skill_name)))
+
+func skill_templates() -> Dictionary:
+	return _templates
+
+func derivation() -> Dictionary:
+	return _derivation
 
 ## Racial constant, 1.0 = the Human Peasant = 1 grid cell per second.
 func walk_speed(race_id: String) -> float:
@@ -131,8 +216,10 @@ func rarity_weights_for_power(power: int) -> Dictionary:
 func exceptional_chance_percent() -> float:
 	return float(_recruitment.get("exceptional_chance_percent", 5))
 
-## "might" / "guile" / "foraging" / "best_labor" / "none" -- see
-## recruitment.json's _comment_exceptional for what best_labor means.
+## The **attribute** the 5% exceptional roll bumps for a category:
+## "strength" / "intelligence" / "perception" / "best_labor_attribute" / "none".
+## See recruitment.json's _comment_exceptional for why the bump moved from a
+## skill to an attribute, and what best_labor_attribute resolves to per recruit.
 func defining_stat_for_category(cat: String) -> String:
 	return _recruitment.get("category_defining_stat", {}).get(cat, "none")
 

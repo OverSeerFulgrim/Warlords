@@ -36,9 +36,13 @@ autoload/global).
   world_map, world_sites). New content = JSON edit; new *effect types* = extend the relevant system.
 - Combat: `Combat.gd` is THE damage formula (knows nothing); `CombatSystem.gd` is policy.
   Duck-typed contracts: `get_inspect_data()` (inspectables), Combatant methods (fighters).
-- Stats: the nine-attribute model of `docs/design/COMBAT_SPEC.md` §2 (adopted 2026-08-06; roster
-  numbers live in `stat_rework_roster.xlsx`). Code still reads the old Might until prompt C2 runs.
-  Carry = Endurance. One governing attribute per skill; creatures and villains use the same nine.
+- Stats: the nine-attribute model of `docs/design/COMBAT_SPEC.md` §2. **Live since C2** —
+  Might is gone. `stat_rework_roster.xlsx` is the editing surface; `tools/export_roster.gd` derives
+  `data/races.json` from it, templates and overrides included. Carry = Endurance, max_hp =
+  8 + End×2, walk speed derives from Speed. One governing attribute per skill; effective =
+  skill + floor((attr−5)/2), clamped 1–10 and **computed at use time, never stored**. Attack
+  profile (Melee/Ranged/Arcane) falls out of highest Str/Dex/Int — a unit needing a hand-written
+  profile means the rule is wrong, not the unit special. Creatures and villains use the same nine.
 - Indirect control is a pillar: no unit orders. The exceptions are the Necromancer (driven
   directly) and Command Undead (binds the dead as a class, via `alignment: "Undead"`).
 - The Necromancer is NOT a Laborer and not in any labor pool — keep the exclusion structural.
@@ -74,7 +78,8 @@ scripts/world/             WorldMap (one TileMapLayer), FogOfWar (one 144×144 i
                            WorldSite(s), Patrol, Wolf, Roaming, TravelLog
 scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
 data/                      the JSON content (races/buildings/events/missions/recruitment/world_*)
-tools/                     generators + verification harnesses (KEEP: they re-derive every number)
+tools/                     generators + verification harnesses (KEEP: they re-derive every number),
+                           export_roster.gd (stat_rework_roster.xlsx → data/races.json)
 docs/design|art|prompts|history/         specs, art rules, prompt libraries, dated dev narrative
 assets/official|placeholder|vendor/      see Graphics rules
 ```
@@ -85,6 +90,9 @@ assets/official|placeholder|vendor/      see Graphics rules
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
 - `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3 (after speed/layout changes)
+- `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
+  workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
+  roster or stat change)
 - `tools/verify_combat_feedback.tscn` — 31 assertions: one emit per landed swing both ways,
   the 32-float cap, no leak over 1000 exchanges, and Combat/Engagement still signal-free
 - `tools/check_fog_and_minimap.tscn` — 41 assertions: multi-source fog (villain 7 cells, friendly

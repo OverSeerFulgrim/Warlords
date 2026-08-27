@@ -49,13 +49,6 @@ const MAP_SPRITE := "res://assets/official/characters/Necromancer_Full_Body.png"
 
 # ---------------- Tunables (ROGUELITE_REWORK section 15 lists these as open) --
 
-## His combat stat, and therefore his durability (`max_hp` below) and his carry
-## capacity. **Tunable, and currently a first guess:** at Might 6 he has 20 hp
-## and beats a lone wolf (Might 5, 18 hp) without walking away clean. Section 15
-## flags "Necromancer combat stats" as an open question; this is the number to
-## move when it gets answered.
-const BASE_MIGHT: int = 6
-
 ## Cells per second while the player is holding a movement key. **Tunable.**
 ## Deliberately faster than a Skeleton Worker's 0.9 (he is the player, and
 ## trudging is not a fantasy) but not so fast that the settlement reads as small
@@ -87,7 +80,23 @@ var class_id: String = CLASS_ID
 ## Authoritative map position. The token reads it; nothing else writes it.
 var position: Vector2 = Vector2.ZERO
 
-var might: int = BASE_MIGHT
+## The nine, loaded from the workbook's villain row via `races.json`
+## (COMBAT_SPEC amendment 2026-08-06 note 4 -- the villain is authored beside
+## the races, not in code). Endurance 6 keeps hp 20 and carry 6, both R1 values;
+## Intelligence 7 is his highest of Str/Dex/Int, so §3.1 rule 3 makes him
+## **Arcane with no special case anywhere**.
+##
+## Loyalty is deliberately absent from the workbook row -- loyalty to whom? --
+## so it keeps the 5 default and nothing reads it.
+var strength: int = 4
+var dexterity: int = 4
+var speed: int = 5
+var endurance: int = 6
+var intelligence: int = 7
+var guile: int = 6
+var perception: int = 6
+var tact: int = 5
+var loyalty: int = 5
 
 ## Current hit points. Initialised by heal_full() below -- see max_hp() for why
 ## the maximum is never stored.
@@ -316,12 +325,12 @@ func _move_by(motion: Vector2) -> void:
 
 # ---------------- Carrying ---------------------------------------------------
 
-## Carry capacity = Might, the same rule every other unit follows
-## (FOUNDATION_SPEC section 6). One rule, not two: Might is already what decides
-## how much a body can haul, and giving the villain a bespoke carry stat would
-## mean two places to look when a sortie comes home light.
+## Carry capacity = **Endurance**, the same rule every other unit follows
+## (COMBAT_SPEC section 2.1). One rule, not two: giving the villain a bespoke
+## carry stat would mean two places to look when a sortie comes home light. His
+## Endurance 6 keeps the carry 6 that R1 shipped.
 func carry_capacity() -> int:
-	return maxi(1, might)
+	return maxi(1, endurance)
 
 func carried_total() -> int:
 	var total: int = 0
@@ -377,7 +386,7 @@ func escort_count() -> int:
 ## `Laborer` rather than being restated, so there is exactly one hp formula in
 ## the project.
 func max_hp() -> int:
-	return Laborer.HP_BASE + maxi(1, might) * Laborer.HP_PER_MIGHT
+	return Laborer.HP_BASE + maxi(1, endurance) * Laborer.HP_PER_ENDURANCE
 
 func heal_full() -> void:
 	hp = max_hp()
@@ -386,8 +395,33 @@ func heal_full() -> void:
 func combat_name() -> String:
 	return "The Necromancer"
 
-func combat_might() -> int:
-	return might
+## Arcane, and **not because anything here says so**: Intelligence 7 is simply
+## his highest of Strength / Dexterity / Intelligence, and COMBAT_SPEC section
+## 3.1 rule 3 does the rest. If this ever needed a hand-written profile, the
+## rule would be wrong rather than the villain special.
+func combat_profile() -> Dictionary:
+	return Combat.profile_for(strength, dexterity, intelligence)
+
+func combat_defence(key: String) -> int:
+	return attribute(key)
+
+## Any of the nine by name. Same shape and same average-rather-than-zero
+## fallback as Laborer.attribute() -- he is not a Laborer (and structurally must
+## never become one), so the nine lines are restated rather than inherited.
+func attribute(key: String) -> int:
+	match key:
+		"strength": return strength
+		"dexterity": return dexterity
+		"speed": return speed
+		"endurance": return endurance
+		"intelligence": return intelligence
+		"guile": return guile
+		"perception": return perception
+		"tact": return tact
+		"loyalty": return loyalty
+		_:
+			push_warning("Necromancer: unknown attribute '%s'" % key)
+			return RaceCatalog.REFERENCE_VALUE
 
 func is_alive() -> bool:
 	return hp > 0
@@ -464,7 +498,12 @@ func get_inspect_data() -> Dictionary:
 		"details": [
 			{"label": "Activity", "value": activity_label()},
 			_hp_row(),
-			{"label": "Stats", "value": "Might %d" % might},
+			{"label": "Profile", "value": "%s — Intelligence %d vs Intelligence" % [
+				combat_profile()["profile"], intelligence]},
+			{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
+				strength, dexterity, speed, endurance]},
+			{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d" % [
+				intelligence, guile, perception, tact]},
 			_ground_row(),
 			{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
 			{"label": "Escort", "value": "None — he walks alone" if escort.is_empty()

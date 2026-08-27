@@ -1,5 +1,12 @@
 # Race Roster — recruitable races, stats, alignment, housing
 
+> **C2 LANDED 2026-08-27 — the stat table below is now definitively dead**, not merely scheduled
+> to be. The live numbers are in `data/races.json`, derived from `stat_rework_roster.xlsx` by
+> `tools/export_roster.gd`; hand-editing either the table below or the JSON's stat blocks puts
+> them out of sync with the workbook that owns the formulas. Re-issuing this file with the
+> exported numbers, or trimming it to its non-stat content, is still outstanding — a docs task
+> rather than an engineering one. The original note follows.
+>
 > **PARTIALLY SUPERSEDED, 2026-08-06 (C2 adoption).** The **stat table below is dead**: it speaks
 > the retired Might/Guile/Influence/Loyalty model. The live statlines — nine attributes per race,
 > skill templates, overrides — are authored in **`stat_rework_roster.xlsx`** (COMBAT_SPEC §2, §12)

@@ -151,12 +151,28 @@ func refresh_recruit_offer(event: Dictionary) -> bool:
 	event["choices"] = _offer_choices(has_room)
 	return true
 
+## The handful of skills this recruit is actually worth having, effective values,
+## best first. Twelve skills would bury the offer; naming the top three is what
+## the player is deciding between.
+const OFFER_SKILLS_SHOWN: int = 3
+
+func _skill_line(f: Follower) -> String:
+	var ranked: Array = []
+	for key in RaceCatalog.all_skill_names():
+		ranked.append({"key": key, "value": f.skill_for(key)})
+	ranked.sort_custom(func(a, b): return a["value"] > b["value"])
+	var parts: Array = []
+	for i in range(mini(OFFER_SKILLS_SHOWN, ranked.size())):
+		parts.append("%s %d" % [String(ranked[i]["key"]).capitalize(), ranked[i]["value"]])
+	return "  ".join(parts)
+
 func _describe(f: Follower, has_room: bool) -> String:
 	var stars := " ★ exceptional" if f.is_exceptional else ""
-	var line := "%s %s (%s)%s\nMight %d  Guile %d  Influence %d  Loyalty %d\nWood %d  Mine %d  Forage %d" % [
+	var line := "%s %s (%s)%s\n%s\nStr %d  Dex %d  Spd %d  End %d\nInt %d  Gui %d  Per %d  Tac %d  Loy %d" % [
 		f.rarity, f.category, f.species, stars,
-		f.might, f.guile, f.influence, f.loyalty,
-		f.woodcutting, f.mining, f.foraging,
+		_skill_line(f),
+		f.strength, f.dexterity, f.speed, f.endurance,
+		f.intelligence, f.guile, f.perception, f.tact, f.loyalty,
 	]
 	if not has_room:
 		# Says what to do about it, because you can: funding a house from the
@@ -273,16 +289,25 @@ func _recruit(template_id: String) -> Follower:
 	for i in range(min(trait_count, pool_copy.size())):
 		chosen_traits.append(pool_copy[i])
 
-	var might := _roll_range(t.get("might", [1, 3]))
-	var guile := _roll_range(t.get("guile", [1, 3]))
-	var influence := _roll_range(t.get("influence", [1, 3]))
-	var loyalty := _roll_range(t.get("loyalty", [3, 7]))
+	# Event templates author whichever attributes they care about as [min, max]
+	# ranges; anything they leave out keeps the Laborer default of 5. Ranges
+	# rather than the recruit generator's race baseline because an event recruit
+	# is a written character, not a roll off the roster.
+	var attributes: Dictionary = {}
+	for key in ATTRIBUTE_KEYS:
+		if t.has(key):
+			attributes[key] = _roll_range(t.get(key, [1, 3]))
 
 	var follower := Follower.new(follower_name, t.get("species", "Unknown"), chosen_traits,
-		might, guile, influence, loyalty)
+		attributes)
 	GameState.add_follower(follower)
 	EventBus.follower_recruited.emit(follower)
 	return follower
+
+## The nine attribute names an event template may author. Kept here rather than
+## read from RaceCatalog because an event recruit may have no race row at all.
+const ATTRIBUTE_KEYS := ["strength", "dexterity", "speed", "endurance",
+	"intelligence", "guile", "perception", "tact", "loyalty"]
 
 ## Same as _recruit, but gated behind the template's "chance" (0-100), used
 ## for events where the outcome should sometimes fail (e.g. a corruption

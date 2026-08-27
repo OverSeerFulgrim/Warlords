@@ -39,7 +39,9 @@ func dispatch(mission: Dictionary, party: Array) -> void:
 	_resolve(mission, party)
 
 func _resolve(mission: Dictionary, party: Array) -> void:
-	var stat: String = mission.get("relevant_stat", "might")
+	# "strength" rather than the retired "might" -- see Follower.mission_check,
+	# which resolves any of the nine attributes or twelve skills by name.
+	var stat: String = mission.get("relevant_stat", "strength")
 	var difficulty: int = mission.get("difficulty", 5)
 
 	var best_check: int = 0

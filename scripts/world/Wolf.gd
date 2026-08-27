@@ -21,11 +21,22 @@ class_name Wolf
 ## monster would talk to. Keeping policy out of the creature is what stops the
 ## next hostile thing from being a copy of this file.
 
-## FOUNDATION_SPEC's 1-10 scale. Might 5 is a human peasant: individually a
-## match for a Skeleton Worker (Might 4) and clearly beneath any Warrior-category
-## recruit, which is what makes "keep an orc in town" the answer.
-const MIGHT: int = 5
-const MAX_HP: int = 18
+## Its row in `data/races.json`, authored in the workbook beside the races
+## (COMBAT_SPEC amendment 2026-08-06, note 4: creatures carry all nine
+## attributes). Reading them from data rather than restating them here is what
+## lets an arcane attacker hit the wolf's own Intelligence 2 instead of
+## tripping a "creatures have no Int" branch anywhere in Combat.
+const RACE_ID := "wolf"
+
+## Fallbacks if the row is missing, matching the workbook exactly. Strength 5 is
+## a human peasant: individually a match for a Skeleton Worker and clearly
+## beneath any Warrior-category recruit, which is what makes "keep an orc in
+## town" the answer. Endurance 5 is what keeps `max_hp` at the shipped 18, and
+## Intelligence 2 is COMBAT_SPEC section 7's arcane-vs-beast knob.
+const FALLBACK_ATTRIBUTES := {
+	"strength": 5, "dexterity": 3, "speed": 8, "endurance": 5,
+	"intelligence": 2, "guile": 3, "perception": 6, "tact": 2, "loyalty": 5,
+}
 
 ## Breaks off and leaves below this. Absolute rather than a fraction because
 ## the wolf is a single hand-tuned creature, not a rolled unit -- and because
@@ -51,8 +62,10 @@ const HUNT_DELAY_SECONDS: float = 25.0
 ## Close enough to start biting.
 const ENGAGE_RADIUS_PX: float = 26.0
 
-const PROWL_SPEED_PX: float = 34.0   # ambling, slower than any recruit
-const CHASE_SPEED_PX: float = 78.0   # faster than everything except a Gnoll at full tilt
+## Ambling. Stays a hand-tuned constant on purpose: COMBAT_SPEC section 7 is
+## explicit that prowling is a *behaviour state*, not a stat -- a wolf saving
+## its legs is not a slower wolf.
+const PROWL_SPEED_PX: float = 34.0
 const LEAVE_SPEED_PX: float = 96.0   # it does not linger once it's done
 
 ## Wolves will not go near the Necromancer. Anything inside this of him is
@@ -89,8 +102,19 @@ enum State {
 	LEAVING,  ## fed, beaten, or dawn came -- heading off the map to despawn
 }
 
+## The nine, read from the race row at construction. Instance vars rather than
+## consts because they come from data now, and `_init` runs long after the
+## autoloads are up (CombatSystem builds wolves at dusk).
+var attributes: Dictionary = FALLBACK_ATTRIBUTES.duplicate()
+
 var state: int = State.PROWL
-var hp: int = MAX_HP
+var hp: int = 1
+
+func _init() -> void:
+	var authored: Dictionary = RaceCatalog.attributes(RACE_ID)
+	if not authored.is_empty():
+		attributes = authored.duplicate()
+	hp = max_hp()
 
 ## Set once it has eaten. A fed wolf will not start another fight for the rest
 ## of the night -- FOUNDATION_SPEC-style economic pressure rather than an
@@ -182,7 +206,7 @@ func _tick_stalk(delta: float) -> void:
 		state = State.PROWL
 		return
 	var target_pos: Vector2 = _target.position
-	position = Roaming.step(position, target_pos, CHASE_SPEED_PX, delta, world)
+	position = Roaming.step(position, target_pos, chase_speed_px(), delta, world)
 	_face_toward(target_pos)
 
 func _tick_leaving(delta: float) -> void:
@@ -232,11 +256,32 @@ func has_left() -> bool:
 func combat_name() -> String:
 	return "wolf"
 
-func combat_might() -> int:
-	return MIGHT
+## Melee, and **not because anything here says so**: Strength 5 is simply its
+## highest of Strength / Dexterity / Intelligence. The creature needed no
+## rebalancing for the stat rework, only re-expressing.
+func combat_profile() -> Dictionary:
+	return Combat.profile_for(attribute("strength"), attribute("dexterity"),
+		attribute("intelligence"))
 
+func combat_defence(key: String) -> int:
+	return attribute(key)
+
+func attribute(key: String) -> int:
+	return int(attributes.get(key, RaceCatalog.REFERENCE_VALUE))
+
+## Endurance 5 gives exactly the 18 the wolf shipped with -- the same formula
+## every unit uses, with the constants taken from Laborer so the project has one
+## hp rule rather than a creature exception.
 func max_hp() -> int:
-	return MAX_HP
+	return Laborer.HP_BASE + maxi(1, attribute("endurance")) * Laborer.HP_PER_ENDURANCE
+
+## Chase speed derived from the Speed attribute through the workbook's own walk
+## divisor, rather than the hand-set 78 px/s it used to carry. Speed 8 lands at
+## 1.3 cells/sec (83 px/s) -- COMBAT_SPEC section 7 asks for exactly that, and
+## calls out why it matters: without it a melee-only predator can never close on
+## an archer, and two ranged recruits trivialize the whole creature layer.
+func chase_speed_px() -> float:
+	return RaceCatalog.walk_speed(RACE_ID) * float(SettlementGrid.CELL_SIZE)
 
 func take_damage(amount: int) -> int:
 	var before: int = hp
@@ -247,7 +292,7 @@ func is_alive() -> bool:
 	return hp > 0
 
 func hp_fraction() -> float:
-	return float(hp) / float(MAX_HP)
+	return float(hp) / float(maxi(1, max_hp()))
 
 ## Absolute threshold rather than Combat.FLEE_HP_FRACTION -- the wolf's flee
 ## point is a hand-tuned design number (5 hp), not a proportion.
@@ -265,15 +310,22 @@ func get_inspect_data() -> Dictionary:
 			activity = "Fighting"
 		State.LEAVING:
 			activity = "Leaving — %s" % leave_reason
-	var hp_row := {"label": "Health", "value": "%d / %d hp" % [hp, MAX_HP]}
+	var hp_row := {"label": "Health", "value": "%d / %d hp" % [hp, max_hp()]}
 	if should_flee():
 		hp_row["color"] = Color(1.0, 0.45, 0.45)
-	elif hp < MAX_HP:
+	elif hp < max_hp():
 		hp_row["color"] = Color(0.95, 0.70, 0.40)
 	var rows: Array = [
 		{"label": "Activity", "value": activity},
 		hp_row,
-		{"label": "Might", "value": str(MIGHT)},
+		{"label": "Profile", "value": "%s — Strength %d vs Endurance" % [
+			combat_profile()["profile"], attribute("strength")]},
+		{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
+			attribute("strength"), attribute("dexterity"),
+			attribute("speed"), attribute("endurance")]},
+		{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d   Loy %d" % [
+			attribute("intelligence"), attribute("guile"), attribute("perception"),
+			attribute("tact"), attribute("loyalty")]},
 		{"label": "Breaks off", "value": "Below %d hp" % FLEE_BELOW_HP},
 	]
 	if is_fed:

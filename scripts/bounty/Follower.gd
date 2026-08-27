@@ -29,12 +29,14 @@ var is_exceptional: bool = false
 
 var traits: Array[String] = []  # e.g. ["Greedy", "Loyal", "Bloodthirsty", "Cowardly", "Fanatic"]
 
-# Social stats. Might lives on Laborer (it's carry capacity as well as combat
-# muscle). Kept to four total on purpose -- this is a settlement builder, not
-# an RPG, and stat bloat is the fastest way to blow the prototype's scope.
-var guile: int = 1
-var influence: int = 1
-var loyalty: int = 5  # 0-10. Low loyalty = betrayal/defection risk.
+# **The nine attributes all live on Laborer now** (COMBAT_SPEC section 2.1) --
+# including Guile and Loyalty, which used to be declared here. Redeclaring them
+# would shadow the base class's fields, and every consumer reads them through
+# `attribute()` anyway.
+#
+# `influence` is **retired, not moved**: it was vague and barely read, and
+# Leadership (Tact) and Mercantile (Guile) cover what it gestured at, both as
+# trainable skills rather than a fixed attribute (COMBAT_SPEC section 2.1).
 
 var is_busy: bool = false
 
@@ -82,17 +84,18 @@ func adjust_morale(delta: int) -> void:
 func departure_disposition() -> int:
 	return clampi(loyalty - 8 + (morale - MORALE_MIN), -10, 10)
 
+## Attributes arrive as a Dictionary rather than as positional arguments. Nine
+## of them would be an unreadable call site, and every caller already has them
+## in a Dictionary -- RecruitGenerator rolls one, the event templates author
+## one. Anything the Dictionary omits keeps the Laborer default of 5.
 func _init(p_name: String, p_species: String, p_traits: Array[String] = [],
-		p_might: int = 1, p_guile: int = 1, p_influence: int = 1, p_loyalty: int = 5) -> void:
+		p_attributes: Dictionary = {}) -> void:
 	follower_name = p_name
 	species = p_species
 	traits = p_traits
-	might = p_might
-	guile = p_guile
-	influence = p_influence
-	loyalty = p_loyalty
-	# Last, because max_hp() reads Might. RecruitGenerator calls heal_full()
-	# again after its exceptional-stat bump for the same reason.
+	apply_attributes(p_attributes)
+	# Last, because max_hp() reads Endurance. RecruitGenerator calls heal_full()
+	# again after its exceptional-attribute bump for the same reason.
 	heal_full()
 
 func display_name() -> String:
@@ -118,9 +121,6 @@ func inspect_race_id() -> String:
 
 func inspect_category() -> String:
 	return category
-
-func inspect_social_stats() -> Dictionary:
-	return {"guile": guile, "influence": influence, "loyalty": loyalty}
 
 func inspect_subtitle() -> String:
 	var cat: String = category if category != "" else "Recruit"
@@ -207,15 +207,14 @@ func evaluate_bounty(bounty) -> bool:
 ## Stat check used by MissionSystem. Returns a score to compare against a
 ## mission's difficulty; the caller decides the SUCCESS / COMPLICATED /
 ## FAILURE band.
+##
+## `relevant_stat` is now any of the nine attributes or any of the twelve
+## skills, resolved in that order -- a mission that wants raw muscle names
+## "strength", one that wants a negotiator names "mercantile" and gets the
+## effective value with Guile already folded in. Missions authored against the
+## retired four-stat names fall through to the attribute lookup's own
+## average-rather-than-zero fallback.
 func mission_check(relevant_stat: String) -> int:
-	var base: int = 1
-	match relevant_stat:
-		"might":
-			base = might
-		"guile":
-			base = guile
-		"influence":
-			base = influence
-		_:
-			base = 1
+	var base: int = attribute(relevant_stat) if RaceCatalog.attributes(race_id).has(relevant_stat) \
+		else skill_for(relevant_stat)
 	return base + randi_range(0, 3)

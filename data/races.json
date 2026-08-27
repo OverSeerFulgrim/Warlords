@@ -1,276 +1,655 @@
 {
   "_comment": "Race roster, transcribed from RACES.md (which stays the human-readable source of truth for the design rationale). All stats and labor skills run 1-10 on the Human Peasant = 5 scale; walk_speed and food_per_meal are racial constants with no per-recruit variance (FOUNDATION_SPEC section 3). 'category' is what the race offers (Warrior/Economy/Research/Foraging/Versatile/Labor) and drives the first-run category-spread guarantee plus which stat gets the 5% exceptional roll. 'alignment' is data, not a moral system -- it drives recruit-event weighting and later good/evil friction. 'rarity' is the base recruit-offer weight (Common 60 / Uncommon 30 / Rare 10, shifting toward Uncommon/Rare as settlement Power grows); 'player-made' and 'not recruitable' never appear in recruit offers. 'housing_style' is the fund-a-house placement rule the recruit picks their own spot by. 'rivalries' lists specific race ids with a starting-relationship penalty; on top of these there is a mild blanket penalty between any Good-aligned and any Evil-aligned pair, which is derived from 'alignment' rather than listed per race. Non-'_' keys are races; human_peasant is the 1-10 measuring stick and is deliberately not recruitable.",
-
   "_comment_sprites": "'sprite' is the on-map token art, commissioned, in 'Official Sprites/' at 1254px square (Skeleton_Worker is 1024). The mapping lives here rather than in a Dictionary in Main.gd so adding a race is a data edit. Tokens scale it down to ~32-40px on screen; see FollowerToken/WorkerToken. human_peasant has no sprite on purpose -- it is the not-recruitable measuring stick and never gets a token. THREE VARIANTS EXIST BUT ARE DELIBERATELY NOT WIRED: Orc_Armed.png, Goblin_Armed.png and Gray_Dwarf_Miner.png. They are for future per-state art -- armed versions for when combat exists (Stage 4+), the miner for a working/at-node state -- and there is no state machine to select them yet. Wiring them now would mean inventing a state concept purely to justify the art.",
-
-  "human_peasant": {
-    "display_name": "Human Peasant",
-    "category": "reference",
+  "_derivation": {
+    "divisor": 2,
+    "formula": "effective_skill = clamp(skill + floor((governing_attribute - 5) / divisor), min, max)",
+    "max": 10,
+    "min": 1
+  },
+  "_generated_by": "tools/export_roster.gd from docs/design/stat_rework_roster.xlsx -- do not hand-edit the stat blocks",
+  "_governing_attribute": {
+    "crafting": "dexterity",
+    "fishing": "dexterity",
+    "foraging": "perception",
+    "hunting": "dexterity",
+    "leadership": "tact",
+    "mercantile": "guile",
+    "mining": "strength",
+    "research": "intelligence",
+    "scouting": "perception",
+    "surgeon": "intelligence",
+    "trapper": "guile",
+    "woodcutting": "strength"
+  },
+  "_skill_templates": {
+    "forager": {
+      "crafting": 3,
+      "fishing": 6,
+      "foraging": 8,
+      "hunting": 7,
+      "leadership": 3,
+      "mercantile": 3,
+      "mining": 2,
+      "research": 2,
+      "scouting": 6,
+      "surgeon": 3,
+      "trapper": 6,
+      "woodcutting": 3
+    },
+    "labor": {
+      "crafting": 1,
+      "fishing": 1,
+      "foraging": 2,
+      "hunting": 1,
+      "leadership": 1,
+      "mercantile": 1,
+      "mining": 3,
+      "research": 1,
+      "scouting": 1,
+      "surgeon": 1,
+      "trapper": 1,
+      "woodcutting": 3
+    },
+    "miner": {
+      "crafting": 5,
+      "fishing": 2,
+      "foraging": 2,
+      "hunting": 2,
+      "leadership": 4,
+      "mercantile": 5,
+      "mining": 8,
+      "research": 3,
+      "scouting": 3,
+      "surgeon": 2,
+      "trapper": 3,
+      "woodcutting": 4
+    },
+    "scholar": {
+      "crafting": 5,
+      "fishing": 3,
+      "foraging": 4,
+      "hunting": 3,
+      "leadership": 4,
+      "mercantile": 5,
+      "mining": 3,
+      "research": 8,
+      "scouting": 5,
+      "surgeon": 6,
+      "trapper": 4,
+      "woodcutting": 2
+    },
+    "versatile": {
+      "crafting": 5,
+      "fishing": 5,
+      "foraging": 5,
+      "hunting": 5,
+      "leadership": 5,
+      "mercantile": 5,
+      "mining": 5,
+      "research": 5,
+      "scouting": 5,
+      "surgeon": 5,
+      "trapper": 5,
+      "woodcutting": 5
+    },
+    "warrior": {
+      "crafting": 3,
+      "fishing": 2,
+      "foraging": 3,
+      "hunting": 4,
+      "leadership": 5,
+      "mercantile": 3,
+      "mining": 4,
+      "research": 2,
+      "scouting": 4,
+      "surgeon": 2,
+      "trapper": 3,
+      "woodcutting": 5
+    }
+  },
+  "dark_elf": {
+    "alignment": "Evil",
+    "attributes": {
+      "dexterity": 7,
+      "endurance": 4,
+      "guile": 7,
+      "intelligence": 7,
+      "loyalty": 4,
+      "perception": 7,
+      "speed": 6,
+      "strength": 4,
+      "tact": 6
+    },
+    "category": "Research",
+    "display_name": "Dark Elf",
+    "food_per_meal": 0.75,
+    "housing_note": "Secluded, rim of the settlement.",
+    "housing_style": "edge",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [
+      "high_elf"
+    ],
+    "skill_overrides": {
+      "research": 7,
+      "scouting": 7,
+      "trapper": 6
+    },
+    "skill_template": "scholar",
+    "sprite": "res://assets/official/characters/Dark_Elf.png",
+    "walk_speed": 1.1
+  },
+  "gnoll": {
+    "alignment": "Chaotic",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 5,
+      "guile": 4,
+      "intelligence": 3,
+      "loyalty": 4,
+      "perception": 7,
+      "speed": 7,
+      "strength": 5,
+      "tact": 4
+    },
+    "category": "Foraging",
+    "display_name": "Gnoll",
+    "food_per_meal": 1.5,
+    "housing_note": "With their own pack, away from all other races -- preference, not an enforced minimum distance.",
+    "housing_style": "clustered",
+    "rarity": "Common",
+    "recruitable": true,
+    "rivalries": [
+      "goblin"
+    ],
+    "skill_overrides": {
+      "foraging": 9,
+      "hunting": 8,
+      "leadership": 2
+    },
+    "skill_template": "forager",
+    "sprite": "res://assets/official/characters/Gnoll.png",
+    "walk_speed": 1.2
+  },
+  "gnome": {
     "alignment": "Neutral",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 3,
+      "guile": 5,
+      "intelligence": 8,
+      "loyalty": 5,
+      "perception": 6,
+      "speed": 4,
+      "strength": 2,
+      "tact": 2
+    },
+    "category": "Research",
+    "display_name": "Gnome",
+    "food_per_meal": 0.75,
+    "housing_note": "Beside Workshop/Laboratory.",
+    "housing_style": "near_feature",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [
+      "kobold"
+    ],
+    "skill_overrides": {
+      "crafting": 6,
+      "trapper": 5
+    },
+    "skill_template": "scholar",
+    "sprite": "res://assets/official/characters/Gnome.png",
+    "walk_speed": 0.9
+  },
+  "goblin": {
+    "alignment": "Chaotic",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 3,
+      "guile": 6,
+      "intelligence": 4,
+      "loyalty": 3,
+      "perception": 6,
+      "speed": 7,
+      "strength": 3,
+      "tact": 5
+    },
+    "category": "Foraging",
+    "display_name": "Goblin",
+    "food_per_meal": 0.75,
+    "housing_note": "Social, pile in next to each other.",
+    "housing_style": "clustered",
+    "rarity": "Common",
+    "recruitable": true,
+    "rivalries": [
+      "gnoll"
+    ],
+    "skill_overrides": {
+      "mercantile": 4
+    },
+    "skill_template": "forager",
+    "sprite": "res://assets/official/characters/Goblin.png",
+    "walk_speed": 1.2
+  },
+  "gray_dwarf": {
+    "alignment": "Evil",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 7,
+      "guile": 4,
+      "intelligence": 5,
+      "loyalty": 6,
+      "perception": 4,
+      "speed": 4,
+      "strength": 6,
+      "tact": 5
+    },
+    "category": "Economy",
+    "display_name": "Gray Dwarf",
+    "food_per_meal": 1.0,
+    "housing_note": "Digs in by the Stone Deposit.",
+    "housing_style": "near_feature",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [
+      "mountain_dwarf"
+    ],
+    "skill_overrides": {
+      "crafting": 7,
+      "mining": 9
+    },
+    "skill_template": "miner",
+    "sprite": "res://assets/official/characters/Gray_Dwarf.png",
+    "walk_speed": 0.9
+  },
+  "halfling": {
+    "alignment": "Good",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 4,
+      "guile": 4,
+      "intelligence": 5,
+      "loyalty": 6,
+      "perception": 7,
+      "speed": 5,
+      "strength": 3,
+      "tact": 3
+    },
+    "category": "Foraging",
+    "display_name": "Halfling",
+    "food_per_meal": 1.5,
+    "housing_note": "Social, plants little gardens.",
+    "housing_style": "clustered",
+    "rarity": "Rare",
+    "recruitable": true,
+    "rivalries": [],
+    "skill_overrides": {
+      "fishing": 7,
+      "mercantile": 5,
+      "surgeon": 5
+    },
+    "skill_template": "forager",
+    "sprite": "res://assets/official/characters/Halfling.png",
+    "walk_speed": 1.0
+  },
+  "high_elf": {
+    "alignment": "Good",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 4,
+      "guile": 4,
+      "intelligence": 8,
+      "loyalty": 5,
+      "perception": 8,
+      "speed": 6,
+      "strength": 4,
+      "tact": 6
+    },
+    "category": "Research",
+    "display_name": "High Elf",
+    "food_per_meal": 0.75,
+    "housing_note": "Apart, and never beside a Dark Elf.",
+    "housing_style": "spaced",
+    "rarity": "Rare",
+    "recruitable": true,
+    "rivalries": [
+      "dark_elf"
+    ],
+    "skill_overrides": {
+      "foraging": 6,
+      "surgeon": 7
+    },
+    "skill_template": "scholar",
+    "sprite": "res://assets/official/characters/High_Elf.png",
+    "walk_speed": 1.1
+  },
+  "hobgoblin": {
+    "alignment": "Evil",
+    "attributes": {
+      "dexterity": 5,
+      "endurance": 6,
+      "guile": 5,
+      "intelligence": 5,
+      "loyalty": 6,
+      "perception": 5,
+      "speed": 5,
+      "strength": 6,
+      "tact": 7
+    },
+    "category": "Warrior",
+    "display_name": "Hobgoblin",
+    "food_per_meal": 1.25,
+    "housing_note": "Orderly rows near the Barracks.",
+    "housing_style": "communal",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [],
+    "skill_overrides": {
+      "crafting": 4,
+      "leadership": 7
+    },
+    "skill_template": "warrior",
+    "sprite": "res://assets/official/characters/Hobgoblin.png",
+    "walk_speed": 1.0
+  },
+  "human_outcast": {
+    "alignment": "Neutral",
+    "attributes": {
+      "dexterity": 5,
+      "endurance": 5,
+      "guile": 5,
+      "intelligence": 5,
+      "loyalty": 5,
+      "perception": 5,
+      "speed": 5,
+      "strength": 5,
+      "tact": 5
+    },
+    "category": "Versatile",
+    "display_name": "Human Outcast",
+    "food_per_meal": 1.0,
+    "housing_note": "Anywhere near town.",
+    "housing_style": "communal",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [],
+    "skill_overrides": {},
+    "skill_template": "versatile",
+    "sprite": "res://assets/official/characters/Human_Outcast.png",
+    "walk_speed": 1.0
+  },
+  "human_peasant": {
+    "alignment": "Neutral",
+    "attributes": {
+      "dexterity": 5,
+      "endurance": 5,
+      "guile": 5,
+      "intelligence": 5,
+      "loyalty": 5,
+      "perception": 5,
+      "speed": 5,
+      "strength": 5,
+      "tact": 5
+    },
+    "category": "—",
+    "display_name": "Human Peasant",
+    "food_per_meal": 1.0,
+    "housing_note": "Reference entry only -- the measuring stick for the 1-10 scale, and later the good nations' commoner NPC.",
+    "housing_style": "none",
     "rarity": "not recruitable",
     "recruitable": false,
-    "stats": { "might": 5, "guile": 5, "influence": 5, "loyalty": 5 },
-    "labor": { "woodcutting": 5, "mining": 5, "foraging": 5 },
-    "walk_speed": 1.00,
-    "food_per_meal": 1.0,
-    "housing_style": "none",
-    "housing_note": "Reference entry only -- the measuring stick for the 1-10 scale, and later the good nations' commoner NPC.",
-    "rivalries": []
+    "rivalries": [],
+    "skill_overrides": {},
+    "skill_template": "versatile",
+    "walk_speed": 1.0
   },
-
-  "skeleton_worker": {
-    "display_name": "Skeleton Worker",
-    "sprite": "res://assets/official/characters/Skeleton_Worker.png",
-    "category": "Labor",
+  "kobold": {
+    "alignment": "Chaotic",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 3,
+      "guile": 6,
+      "intelligence": 4,
+      "loyalty": 4,
+      "perception": 5,
+      "speed": 6,
+      "strength": 2,
+      "tact": 4
+    },
+    "category": "Economy",
+    "display_name": "Kobold",
+    "food_per_meal": 0.5,
+    "housing_note": "Burrow warrens near the mine.",
+    "housing_style": "clustered",
+    "rarity": "Common",
+    "recruitable": true,
+    "rivalries": [
+      "gnome"
+    ],
+    "skill_overrides": {
+      "crafting": 4,
+      "mercantile": 3,
+      "mining": 6,
+      "trapper": 7
+    },
+    "skill_template": "miner",
+    "sprite": "res://assets/official/characters/Kobold.png",
+    "walk_speed": 1.1
+  },
+  "minotaur": {
+    "alignment": "Neutral",
+    "attributes": {
+      "dexterity": 3,
+      "endurance": 8,
+      "guile": 3,
+      "intelligence": 4,
+      "loyalty": 5,
+      "perception": 3,
+      "speed": 6,
+      "strength": 8,
+      "tact": 5
+    },
+    "category": "Economy",
+    "display_name": "Minotaur",
+    "food_per_meal": 2.5,
+    "housing_note": "Likes space, no adjacent houses.",
+    "housing_style": "spaced",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [],
+    "skill_overrides": {
+      "mercantile": 6,
+      "mining": 7,
+      "woodcutting": 7
+    },
+    "skill_template": "miner",
+    "sprite": "res://assets/official/characters/Minotaur.png",
+    "walk_speed": 1.1
+  },
+  "mountain_dwarf": {
+    "alignment": "Good",
+    "attributes": {
+      "dexterity": 6,
+      "endurance": 7,
+      "guile": 3,
+      "intelligence": 6,
+      "loyalty": 7,
+      "perception": 4,
+      "speed": 4,
+      "strength": 6,
+      "tact": 6
+    },
+    "category": "Economy",
+    "display_name": "Mountain Dwarf",
+    "food_per_meal": 1.25,
+    "housing_note": "Stone, but apart from Gray Dwarves.",
+    "housing_style": "near_feature",
+    "rarity": "Rare",
+    "recruitable": true,
+    "rivalries": [
+      "gray_dwarf"
+    ],
+    "skill_overrides": {
+      "crafting": 7,
+      "leadership": 5
+    },
+    "skill_template": "miner",
+    "sprite": "res://assets/official/characters/Mountain_Dwarf.png",
+    "walk_speed": 0.9
+  },
+  "necromancer": {
     "alignment": "Undead",
+    "attributes": {
+      "dexterity": 4,
+      "endurance": 6,
+      "guile": 6,
+      "intelligence": 7,
+      "perception": 6,
+      "speed": 5,
+      "strength": 4,
+      "tact": 5
+    },
+    "category": "Villain",
+    "display_name": "The Necromancer",
+    "rarity": "the player",
+    "walk_speed": 1.0
+  },
+  "ogre": {
+    "alignment": "Chaotic",
+    "attributes": {
+      "dexterity": 2,
+      "endurance": 8,
+      "guile": 2,
+      "intelligence": 2,
+      "loyalty": 4,
+      "perception": 2,
+      "speed": 3,
+      "strength": 9,
+      "tact": 2
+    },
+    "category": "Warrior",
+    "display_name": "Ogre",
+    "food_per_meal": 3.0,
+    "housing_note": "Wants room, builds far from neighbors.",
+    "housing_style": "spaced",
+    "rarity": "Uncommon",
+    "recruitable": true,
+    "rivalries": [
+      "orc"
+    ],
+    "skill_overrides": {
+      "leadership": 1,
+      "mining": 6,
+      "woodcutting": 6
+    },
+    "skill_template": "warrior",
+    "sprite": "res://assets/official/characters/Ogre.png",
+    "walk_speed": 0.8
+  },
+  "orc": {
+    "alignment": "Evil",
+    "attributes": {
+      "dexterity": 4,
+      "endurance": 7,
+      "guile": 4,
+      "intelligence": 3,
+      "loyalty": 5,
+      "perception": 4,
+      "speed": 5,
+      "strength": 7,
+      "tact": 5
+    },
+    "category": "Warrior",
+    "display_name": "Orc",
+    "food_per_meal": 1.5,
+    "housing_note": "Loose warband circles.",
+    "housing_style": "communal",
+    "rarity": "Common",
+    "recruitable": true,
+    "rivalries": [
+      "ogre"
+    ],
+    "skill_overrides": {
+      "foraging": 4
+    },
+    "skill_template": "warrior",
+    "sprite": "res://assets/official/characters/Orc.png",
+    "walk_speed": 1.0
+  },
+  "skeleton_worker": {
+    "alignment": "Undead",
+    "attributes": {
+      "dexterity": 2,
+      "endurance": 4,
+      "guile": 1,
+      "intelligence": 1,
+      "loyalty": 10,
+      "perception": 2,
+      "speed": 4,
+      "strength": 4,
+      "tact": 1
+    },
+    "category": "Labor",
+    "display_name": "Skeleton Worker",
+    "food_per_meal": 0.0,
+    "housing_note": "Workers don't take houses.",
+    "housing_style": "none",
     "rarity": "player-made",
     "recruitable": false,
-    "stats": { "might": 4, "guile": 2, "influence": 1, "loyalty": 10 },
-    "labor": { "woodcutting": 3, "mining": 3, "foraging": 2 },
-    "walk_speed": 0.90,
-    "food_per_meal": 0.0,
-    "housing_style": "none",
-    "housing_note": "Workers don't take houses.",
-    "rivalries": []
+    "rivalries": [],
+    "skill_overrides": {},
+    "skill_template": "labor",
+    "sprite": "res://assets/official/characters/Skeleton_Worker.png",
+    "walk_speed": 0.9
   },
-
-  "orc": {
-    "display_name": "Orc",
-    "sprite": "res://assets/official/characters/Orc.png",
-    "category": "Warrior",
-    "alignment": "Evil",
-    "rarity": "Common",
-    "recruitable": true,
-    "stats": { "might": 7, "guile": 4, "influence": 4, "loyalty": 5 },
-    "labor": { "woodcutting": 5, "mining": 4, "foraging": 4 },
-    "walk_speed": 1.00,
-    "food_per_meal": 1.5,
-    "housing_style": "communal",
-    "housing_note": "Loose warband circles.",
-    "rivalries": ["ogre"]
-  },
-
-  "hobgoblin": {
-    "display_name": "Hobgoblin",
-    "sprite": "res://assets/official/characters/Hobgoblin.png",
-    "category": "Warrior",
-    "alignment": "Evil",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 6, "guile": 5, "influence": 5, "loyalty": 6 },
-    "labor": { "woodcutting": 4, "mining": 4, "foraging": 3 },
-    "walk_speed": 1.00,
-    "food_per_meal": 1.25,
-    "housing_style": "communal",
-    "housing_note": "Orderly rows near the Barracks.",
-    "rivalries": []
-  },
-
-  "ogre": {
-    "display_name": "Ogre",
-    "sprite": "res://assets/official/characters/Ogre.png",
-    "category": "Warrior",
-    "alignment": "Chaotic",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 9, "guile": 2, "influence": 2, "loyalty": 4 },
-    "labor": { "woodcutting": 6, "mining": 6, "foraging": 3 },
-    "walk_speed": 0.80,
-    "food_per_meal": 3.0,
-    "housing_style": "spaced",
-    "housing_note": "Wants room, builds far from neighbors.",
-    "rivalries": ["orc"]
-  },
-
   "troll": {
-    "display_name": "Troll",
-    "sprite": "res://assets/official/characters/Troll.png",
+    "alignment": "Chaotic",
+    "attributes": {
+      "dexterity": 3,
+      "endurance": 9,
+      "guile": 2,
+      "intelligence": 1,
+      "loyalty": 3,
+      "perception": 4,
+      "speed": 4,
+      "strength": 9,
+      "tact": 1
+    },
     "category": "Warrior",
-    "alignment": "Chaotic",
-    "rarity": "Rare",
-    "recruitable": true,
-    "stats": { "might": 9, "guile": 3, "influence": 1, "loyalty": 3 },
-    "labor": { "woodcutting": 5, "mining": 4, "foraging": 5 },
-    "walk_speed": 0.85,
+    "display_name": "Troll",
     "food_per_meal": 3.5,
-    "housing_style": "spaced",
     "housing_note": "Near water if any.",
-    "rivalries": []
-  },
-
-  "gray_dwarf": {
-    "display_name": "Gray Dwarf",
-    "sprite": "res://assets/official/characters/Gray_Dwarf.png",
-    "category": "Economy",
-    "alignment": "Evil",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 6, "guile": 4, "influence": 4, "loyalty": 6 },
-    "labor": { "woodcutting": 4, "mining": 9, "foraging": 2 },
-    "walk_speed": 0.85,
-    "food_per_meal": 1.0,
-    "housing_style": "near_feature",
-    "housing_note": "Digs in by the Stone Deposit.",
-    "rivalries": ["mountain_dwarf"]
-  },
-
-  "kobold": {
-    "display_name": "Kobold",
-    "sprite": "res://assets/official/characters/Kobold.png",
-    "category": "Economy",
-    "alignment": "Chaotic",
-    "rarity": "Common",
-    "recruitable": true,
-    "stats": { "might": 2, "guile": 5, "influence": 2, "loyalty": 4 },
-    "labor": { "woodcutting": 3, "mining": 6, "foraging": 4 },
-    "walk_speed": 1.05,
-    "food_per_meal": 0.5,
-    "housing_style": "clustered",
-    "housing_note": "Burrow warrens near the mine.",
-    "rivalries": ["gnome"]
-  },
-
-  "minotaur": {
-    "display_name": "Minotaur",
-    "sprite": "res://assets/official/characters/Minotaur.png",
-    "category": "Economy",
-    "alignment": "Neutral",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 8, "guile": 3, "influence": 3, "loyalty": 5 },
-    "labor": { "woodcutting": 7, "mining": 7, "foraging": 3 },
-    "walk_speed": 1.10,
-    "food_per_meal": 2.5,
     "housing_style": "spaced",
-    "housing_note": "Likes space, no adjacent houses.",
-    "rivalries": []
-  },
-
-  "mountain_dwarf": {
-    "display_name": "Mountain Dwarf",
-    "sprite": "res://assets/official/characters/Mountain_Dwarf.png",
-    "category": "Economy",
-    "alignment": "Good",
     "rarity": "Rare",
     "recruitable": true,
-    "stats": { "might": 6, "guile": 3, "influence": 5, "loyalty": 7 },
-    "labor": { "woodcutting": 5, "mining": 8, "foraging": 3 },
-    "walk_speed": 0.85,
-    "food_per_meal": 1.25,
-    "housing_style": "near_feature",
-    "housing_note": "Stone, but apart from Gray Dwarves.",
-    "rivalries": ["gray_dwarf"]
+    "rivalries": [],
+    "skill_overrides": {
+      "foraging": 5,
+      "leadership": 1,
+      "surgeon": 1
+    },
+    "skill_template": "warrior",
+    "sprite": "res://assets/official/characters/Troll.png",
+    "walk_speed": 0.9
   },
-
-  "gnome": {
-    "display_name": "Gnome",
-    "sprite": "res://assets/official/characters/Gnome.png",
-    "category": "Research",
-    "alignment": "Neutral",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 2, "guile": 7, "influence": 5, "loyalty": 5 },
-    "labor": { "woodcutting": 2, "mining": 3, "foraging": 4 },
-    "walk_speed": 0.90,
-    "food_per_meal": 0.75,
-    "housing_style": "near_feature",
-    "housing_note": "Beside Workshop/Laboratory.",
-    "rivalries": ["kobold"]
-  },
-
-  "dark_elf": {
-    "display_name": "Dark Elf",
-    "sprite": "res://assets/official/characters/Dark_Elf.png",
-    "category": "Research",
-    "alignment": "Evil",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 4, "guile": 8, "influence": 6, "loyalty": 4 },
-    "labor": { "woodcutting": 3, "mining": 2, "foraging": 5 },
-    "walk_speed": 1.05,
-    "food_per_meal": 0.75,
-    "housing_style": "edge",
-    "housing_note": "Secluded, rim of the settlement.",
-    "rivalries": ["high_elf"]
-  },
-
-  "high_elf": {
-    "display_name": "High Elf",
-    "sprite": "res://assets/official/characters/High_Elf.png",
-    "category": "Research",
-    "alignment": "Good",
-    "rarity": "Rare",
-    "recruitable": true,
-    "stats": { "might": 4, "guile": 7, "influence": 7, "loyalty": 5 },
-    "labor": { "woodcutting": 3, "mining": 2, "foraging": 6 },
-    "walk_speed": 1.05,
-    "food_per_meal": 0.75,
-    "housing_style": "spaced",
-    "housing_note": "Apart, and never beside a Dark Elf.",
-    "rivalries": ["dark_elf"]
-  },
-
-  "goblin": {
-    "display_name": "Goblin",
-    "sprite": "res://assets/official/characters/Goblin.png",
-    "category": "Foraging",
-    "alignment": "Chaotic",
-    "rarity": "Common",
-    "recruitable": true,
-    "stats": { "might": 3, "guile": 6, "influence": 2, "loyalty": 3 },
-    "labor": { "woodcutting": 3, "mining": 3, "foraging": 8 },
-    "walk_speed": 1.15,
-    "food_per_meal": 0.75,
-    "housing_style": "clustered",
-    "housing_note": "Social, pile in next to each other.",
-    "rivalries": ["gnoll"]
-  },
-
-  "gnoll": {
-    "display_name": "Gnoll",
-    "sprite": "res://assets/official/characters/Gnoll.png",
-    "category": "Foraging",
-    "alignment": "Chaotic",
-    "rarity": "Common",
-    "recruitable": true,
-    "stats": { "might": 5, "guile": 5, "influence": 2, "loyalty": 4 },
-    "labor": { "woodcutting": 3, "mining": 2, "foraging": 9 },
-    "walk_speed": 1.20,
-    "food_per_meal": 1.5,
-    "housing_style": "clustered",
-    "housing_note": "With their own pack, away from all other races -- preference, not an enforced minimum distance.",
-    "rivalries": ["goblin"]
-  },
-
-  "halfling": {
-    "display_name": "Halfling",
-    "sprite": "res://assets/official/characters/Halfling.png",
-    "category": "Foraging",
-    "alignment": "Good",
-    "rarity": "Rare",
-    "recruitable": true,
-    "stats": { "might": 3, "guile": 6, "influence": 6, "loyalty": 6 },
-    "labor": { "woodcutting": 3, "mining": 2, "foraging": 8 },
-    "walk_speed": 0.95,
-    "food_per_meal": 1.5,
-    "housing_style": "clustered",
-    "housing_note": "Social, plants little gardens.",
-    "rivalries": []
-  },
-
-  "human_outcast": {
-    "display_name": "Human Outcast",
-    "sprite": "res://assets/official/characters/Human_Outcast.png",
-    "category": "Versatile",
-    "alignment": "Neutral",
-    "rarity": "Uncommon",
-    "recruitable": true,
-    "stats": { "might": 5, "guile": 5, "influence": 5, "loyalty": 5 },
-    "labor": { "woodcutting": 5, "mining": 5, "foraging": 5 },
-    "walk_speed": 1.00,
-    "food_per_meal": 1.0,
-    "housing_style": "communal",
-    "housing_note": "Anywhere near town.",
-    "rivalries": []
+  "wolf": {
+    "alignment": "Wild",
+    "attributes": {
+      "dexterity": 3,
+      "endurance": 5,
+      "guile": 3,
+      "intelligence": 2,
+      "loyalty": 5,
+      "perception": 6,
+      "speed": 8,
+      "strength": 5,
+      "tact": 2
+    },
+    "category": "Creature",
+    "display_name": "Wolf",
+    "rarity": "wildlife",
+    "walk_speed": 1.3
   }
 }

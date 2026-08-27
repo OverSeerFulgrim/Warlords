@@ -25,15 +25,17 @@ var worker_name: String
 func _init(p_name: String) -> void:
 	worker_name = p_name
 	# Fallbacks if races.json is missing the row -- degrades to a
-	# working-but-unbalanced worker rather than a crash.
-	might = 4
+	# working-but-unbalanced worker rather than a crash. Endurance 4 is the
+	# value that keeps hp at the shipped 16.
+	apply_attributes({
+		"strength": 4, "dexterity": 2, "speed": 4, "endurance": 4,
+		"intelligence": 1, "guile": 1, "perception": 2, "tact": 1, "loyalty": 10,
+	})
 	walk_speed = 0.9
-	woodcutting = 3
-	mining = 3
-	foraging = 2
+	skills = {"woodcutting": 3, "mining": 3, "foraging": 2}
 	apply_race_baseline(RACE_ID)
-	# After the baseline, not before -- max_hp() reads Might. A skeleton's
-	# Might 4 puts it at 16 hp.
+	# After the baseline, not before -- max_hp() reads Endurance. A skeleton's
+	# Endurance 4 puts it at 16 hp, exactly where its old Might 4 did.
 	heal_full()
 
 func display_name() -> String:
@@ -46,18 +48,6 @@ func inspect_race_id() -> String:
 
 func inspect_category() -> String:
 	return RaceCatalog.category(RACE_ID)
-
-## Read from the race row rather than stored as fields. A Worker has no use for
-## Guile, Influence or Loyalty -- it can't take a bounty, can't defect, and
-## can't be talked to -- but the panel shows all four stats for every character,
-## and a skeleton's are racial constants with no variance anyway. Making them
-## fields would be three pieces of state that nothing but this panel reads.
-func inspect_social_stats() -> Dictionary:
-	return {
-		"guile": RaceCatalog.stat(RACE_ID, "guile"),
-		"influence": RaceCatalog.stat(RACE_ID, "influence"),
-		"loyalty": RaceCatalog.stat(RACE_ID, "loyalty"),
-	}
 
 func inspect_subtitle() -> String:
 	return "Skeleton Worker — %s" % inspect_category()

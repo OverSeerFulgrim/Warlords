@@ -105,28 +105,30 @@ func _weighted_pick(race_ids: Array) -> String:
 func _build_follower(race_id: String) -> Follower:
 	var cat: String = RaceCatalog.category(race_id)
 
-	var might := _roll(RaceCatalog.stat(race_id, "might"))
-	var guile := _roll(RaceCatalog.stat(race_id, "guile"))
-	var influence := _roll(RaceCatalog.stat(race_id, "influence"))
-	var loyalty := _roll(RaceCatalog.stat(race_id, "loyalty"))
-	var woodcutting := _roll(RaceCatalog.labor(race_id, "woodcutting"))
-	var mining := _roll(RaceCatalog.labor(race_id, "mining"))
-	var foraging := _roll(RaceCatalog.labor(race_id, "foraging"))
+	# Nine attributes and twelve skills, each rolled independently off the race
+	# baseline. Same d3-d3 spread as before -- what widened is the number of
+	# things it rolls, not how any one of them rolls.
+	var attributes: Dictionary = {}
+	for key in RaceCatalog.attributes(race_id).keys():
+		attributes[key] = _roll(RaceCatalog.attribute(race_id, key))
 
 	var f := Follower.new(_pick_name(race_id), RaceCatalog.get_race(race_id).get("display_name", race_id),
-		_pick_traits(), might, guile, influence, loyalty)
+		_pick_traits(), attributes)
 	f.race_id = race_id
 	f.category = cat
 	f.rarity = RaceCatalog.rarity(race_id)
-	# Labor skills and walk speed live on Laborer. Walk speed is a racial
-	# constant with no per-recruit variance (FOUNDATION_SPEC section 3).
-	f.woodcutting = woodcutting
-	f.mining = mining
-	f.foraging = foraging
+	# Skill baselines and walk speed live on Laborer. Walk speed is a racial
+	# constant with no per-recruit variance (FOUNDATION_SPEC section 3) -- and
+	# since the C2 rework it is derived from the Speed attribute, so rolling it
+	# here would put a recruit's legs at odds with their own statline.
+	var skills: Dictionary = {}
+	for key in RaceCatalog.all_skill_names():
+		skills[key] = _roll(RaceCatalog.skill_baseline(race_id, key))
+	f.skills = skills
 	f.walk_speed = RaceCatalog.walk_speed(race_id)
 
 	_maybe_make_exceptional(f, cat)
-	# Re-top-up after the exceptional roll: a Warrior's bonus is +1 Might, which
+	# Re-top-up after the exceptional roll: it can land on Endurance, which
 	# raises max_hp by 2, and a recruit should not arrive already two points
 	# short of full.
 	f.heal_full()
@@ -140,35 +142,43 @@ func _roll(baseline: int) -> int:
 	var hi: int = int(cfg.get("max_value", 10))
 	return clampi(baseline + randi_range(1, sides) - randi_range(1, sides), lo, hi)
 
-## 5% chance of +1 to the race's category-defining stat, applied after the
-## roll. "best_labor" resolves per individual to whichever labor skill they
-## actually rolled highest -- an Economy race's defining trait is being good at
-## *its* speciality, and that differs by race (a Gray Dwarf mines, a Minotaur
-## chops and mines about equally).
+## 5% chance of +1 to the race's category-defining **attribute**, applied after
+## the roll.
+##
+## The rework moved the target from a stat to the attribute that defines the
+## category (COMBAT_SPEC section 2.1's consumer table): Warrior to Strength,
+## Research to Intelligence, Foraging to Perception. `best_labor_attribute`
+## resolves per individual -- an Economy race's defining trait is being good at
+## *its* speciality, which differs by race (a Gray Dwarf mines, a Minotaur chops
+## and mines about equally), so it finds that recruit's best labor skill and
+## bumps whichever attribute governs it.
+##
+## Bumping the attribute rather than the skill is what makes the star mean
+## something beyond one job: +1 Strength is a better miner *and* a harder hit,
+## which is the whole reason attributes and skills are separate layers.
 func _maybe_make_exceptional(f: Follower, cat: String) -> void:
 	if randf() * 100.0 > RaceCatalog.exceptional_chance_percent():
 		return
-	var stat: String = RaceCatalog.defining_stat_for_category(cat)
-	match stat:
-		"might":
-			f.might = mini(10, f.might + 1)
-		"guile":
-			f.guile = mini(10, f.guile + 1)
-		"foraging":
-			f.foraging = mini(10, f.foraging + 1)
-		"best_labor":
-			_bump_best_labor(f)
-		_:
-			return  # "none" -- Versatile/Labor have no defining stat, no star
+	var target: String = RaceCatalog.defining_stat_for_category(cat)
+	if target == "best_labor_attribute":
+		target = RaceCatalog.governing_attribute(_best_labor_skill(f))
+	if target == "" or target == "none":
+		return  # Versatile/Labor have no defining attribute, and no star
+	f.apply_attributes({target: mini(10, f.attribute(target) + 1)})
 	f.is_exceptional = true
 
-func _bump_best_labor(f: Follower) -> void:
-	if f.mining >= f.woodcutting and f.mining >= f.foraging:
-		f.mining = mini(10, f.mining + 1)
-	elif f.woodcutting >= f.foraging:
-		f.woodcutting = mini(10, f.woodcutting + 1)
-	else:
-		f.foraging = mini(10, f.foraging + 1)
+## Whichever of the labor-ish skills this individual actually rolled highest.
+## Effective rather than baseline, because that is the one they are visibly best
+## at once they start work.
+func _best_labor_skill(f: Follower) -> String:
+	var best: String = "foraging"
+	var best_value: int = -1
+	for key in RaceCatalog.all_skill_names():
+		var v: int = f.skill_for(key)
+		if v > best_value:
+			best_value = v
+			best = key
+	return best
 
 func _pick_name(race_id: String) -> String:
 	var pool: Array = NAME_POOLS.get(race_id, [])
