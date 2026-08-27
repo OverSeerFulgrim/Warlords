@@ -46,16 +46,18 @@ points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2
 - **The prompt order** (`R2_PROMPTS.md`, gate intact):
 
   ```
-  playtest R1 → P0 (travel harness + doc fixes) → F1 (damage numbers) → C2 (stat rework)
+  playtest R1 → P0 (travel harness + doc fixes) → U1 (minimap click, right-click move, friendly fog/dots) → F1 (damage numbers) → C2 (stat rework)
               → P1 (tilesheets) → P2 (generated world + forests)
               → R2a (sites + dens) → R2b (villain combat) → R2c (deposit)
               → R2d (escort) → R2e (raven)
   ```
 
   F1 was briefly named C1 and was renamed to avoid colliding with COMBAT_SPEC's slice names.
-- **Debts owed before anything runs:** the R1 *feel* playtest (a human at the keyboard — the gate
-  everything sits behind), the six unticked foundation-checklist boxes, and the CRLF
-  normalization commit (still outstanding from the last snapshot; `git status` still lies).
+- **Debts owed before anything runs:** all paid as of 2026-08-27 — R1 feel playtest done, six
+  foundation-checklist boxes ticked (`docs/history/2026-08-foundation-exit-criteria.md`), CRLF
+  normalization committed (19fc078). Gate is open. Feel answer was *no* (no reason to leave yet) — that is R2's job; playtest notes and
+  the new U1 prompt (minimap click, right-click-to-move, friendly fog/minimap) in
+  `docs/history/2026-08-27-r1-playtest-notes.md`.
 
 ---
 
@@ -103,10 +105,10 @@ points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2
 
 ## 5. What happens next, in order
 
-1. **Play R1** — twenty minutes, human at keyboard: does leaving the lair feel like a decision?
+1. ~~**Play R1**~~ (done 2026-08-27) — twenty minutes, human at keyboard: does leaving the lair feel like a decision?
    Tick the six foundation-checklist boxes in the same session. Everything is gated on this.
 2. Review the seven R2 specs (they wait on the designer, not on code).
-3. Run P0, then F1, then C2 — safe, map-untouched, and every later prompt builds on them.
+3. Run P0, then U1, then F1, then C2 — safe, map-untouched, and every later prompt builds on them.
 4. Run P1 → P2, re-running `measure_travel` until every row is back in band.
 5. Run R2a → R2e in order, playtesting between prompts.
 6. Check R2's exit ("one more grave, or turn back?" is a real question), then write R3 prompts —

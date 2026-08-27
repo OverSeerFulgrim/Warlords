@@ -138,6 +138,82 @@ row split. Commit.
 
 ---
 
+## Prompt U1 — Pointing at the map
+
+*Added 2026-08-27 from the R1 playtest notes (`docs/history/2026-08-27-r1-playtest-notes.md`).
+Map-untouched; runs after P0 and before F1 because every later playtest is nicer with it.*
+
+```
+Read CLAUDE.md, the header comments of scripts/ui/Minimap.gd,
+scripts/world/FogOfWar.gd, scripts/GameCamera.gd, and the click-to-target
+section of scripts/Main.gd (build / demolish / Command Undead modes) first.
+Also docs/history/2026-08-27-r1-playtest-notes.md for why. P0 must be done.
+
+Four small input/visibility fixes from the R1 playtest. No new systems, no
+map changes, no economy changes.
+
+1. MINIMAP CLICK. Left-clicking the minimap calls GameCamera.center_on()
+   with the world position under the cursor (invert Minimap._to_map). Do
+   not disturb "F to follow" unless it is already following, in which case
+   a minimap click breaks follow exactly as a manual pan does
+   (_note_manual_pan). The minimap must consume the click so it never
+   reaches _unhandled_input as a world click.
+
+2. RIGHT-CLICK TO MOVE THE NECROMANCER. Necromancer.gd is driven by a
+   movement vector from held keys. Add a click destination: a right-click
+   TAP on the world (press and release with < ~6px of drag and < ~250ms)
+   sets `move_target` and he walks a straight line toward it at his
+   normal speed, cancelled by any key input or arrival (reuse the arrive
+   epsilon the idle pacing already uses). A right-click DRAG remains camera
+   pan -- GameCamera._unhandled_input already handles MOUSE_BUTTON_RIGHT;
+   put the tap/drag decision in ONE place so the two never both fire.
+   Right-clicking the minimap does the same with the minimap-to-world
+   inverse from step 1. No pathfinding in this prompt: straight-line, and
+   terrain speed_multiplier applies as it does for keyed movement. If a
+   right-click lands while a click-to-target mode (build/demolish/Command
+   Undead) is armed, it cancels that mode and does nothing else -- same as
+   those modes already treat a stray click. Read the movement-vector
+   contract comment in Necromancer.gd (~line 156) and keep that function
+   the single source of "where is he going": the click target should feed
+   the same vector, not bypass it, so facing, idle-resume and pacing all
+   keep working.
+
+3. FRIENDLY UNITS LIGHT THE FOG. FogOfWar._relight() lights one disc of
+   REVEAL_RADIUS_CELLS (7) around the villain and drops the previous disc
+   back to REMEMBERED. Generalise it: update_for() takes a list of
+   (position, radius) pairs, rebuilds the full lit set from all of them,
+   and still early-outs when no source has crossed a cell boundary. The
+   villain keeps 7. Add const UNIT_REVEAL_RADIUS_CELLS := 3 for every
+   friendly unit -- WorkerToken, FollowerToken, and bound undead -- and
+   have Main feed those positions each frame. Nothing becomes permanent:
+   when a unit leaves, the cell goes back to REMEMBERED exactly as it does
+   for the villain today. Keep the per-source cell-boundary early-out or
+   this will not stay off the frame budget with 30+ undead; measure it
+   with the bound-33 case from the playtest and say the frame cost in your
+   summary. Do NOT change the villain's radius and do NOT touch
+   reveal_permanently(). Update the RAVEN_SPEC "revealing the map remains
+   the Necromancer's job" line to say "the Necromancer's and his people's
+   job -- the Raven still reveals nothing".
+
+4. FRIENDLY DOTS ON THE MINIMAP. Minimap.gd's rule is "no live contents".
+   Amend it, in the header comment, to: no live HOSTILE or NEUTRAL
+   contents -- wolves, deer, patrols stay hidden because seeing them
+   through fog would undo it; YOUR OWN units are not intelligence about
+   the world. Draw workers, followers and bound undead as 2px dots in a
+   dim friendly colour (new const, keep it distinct from LAIR_COLOR and
+   VILLAIN_COLOR at 3-4px on dark terrain). Draw them under the villain
+   marker. Only draw a dot if its cell is currently VISIBLE or REMEMBERED
+   -- it always will be after step 3, but assert it rather than assume it.
+
+Smoke test: headless boot clean; the existing fog and minimap tests still
+pass; add one test that a worker 20 cells from the villain lights a 3-cell
+disc and that the disc returns to REMEMBERED when the worker is removed.
+Play 2 minutes: minimap click jumps, right-tap walks, right-drag pans,
+workers carry a small lit disc, dots appear. Commit.
+```
+
+---
+
 ## Prompt F1 — Red numbers
 
 ```
