@@ -75,8 +75,14 @@ var nodes: Array = []  # Array[ResourceNode]
 ## They live here rather than at the call sites so the whole scale of the map is
 ## one block you can read and retune. `ResourceNode.hit_radius()` derives from
 ## the drawn content, so click targets grow with the art.
-const NODE_SIZE_TREE: float = 96.0
-const NODE_SIZE_STUMP: float = 32.0
+## **Raised 96 -> 128 (1.5 -> 2.0 tiles) when the world grew forests**
+## (TERRAIN_SPEC section 6b / section 10). The lair's gatherable pines and the
+## world's canopy are the same commissioned asset, and they have to read as one
+## species: the canopy draws at 1.9-2.6 tiles, so a 1.5-tile pine in the yard
+## looked like a different, smaller tree. The stump follows proportionally so a
+## pine is still three times its own stump.
+const NODE_SIZE_TREE: float = 128.0
+const NODE_SIZE_STUMP: float = 42.0
 const NODE_SIZE_GROVE: float = 58.0
 const NODE_SIZE_STONE: float = 45.0
 const NODE_SIZE_GRAVE: float = 48.0

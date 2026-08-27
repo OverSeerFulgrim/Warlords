@@ -59,8 +59,10 @@ func _check_helper() -> void:
 
 ## Every row of the table in ResourceField, in world px of content height.
 const EXPECTED_NODES := [
-	["tree", 96.0, 1.50],
-	["stump", 32.0, 0.50],
+	# Raised with the world's forests: the lair's pines and the world canopy are
+	# one commissioned asset and have to read as one species (TERRAIN_SPEC 6b).
+	["tree", 128.0, 2.00],
+	["stump", 42.0, 0.66],
 	["berry_grove", 58.0, 0.90],
 	["grave", 48.0, 0.75],
 	["stone_deposit", 45.0, 0.70],
@@ -180,10 +182,15 @@ func _check_buildings() -> void:
 
 func _check_orderings() -> void:
 	print("\n-- Orderings the playtest has to show --")
+	# The margin widened with the trees: at 128 a pine is nearly twice his
+	# height, which is what makes the world's forests read as the same species
+	# as the yard's (TERRAIN_SPEC section 6b).
 	_ok("a pine towers over the Necromancer",
-		ResourceField.NODE_SIZE_TREE > NecromancerToken.TOKEN_SIZE + 20.0)
+		ResourceField.NODE_SIZE_TREE > NecromancerToken.TOKEN_SIZE + 50.0)
+	_ok("and the lair's pines are the same size band as the world canopy",
+		ResourceField.NODE_SIZE_TREE >= 2.0 * float(SettlementGrid.CELL_SIZE) - 1.0)
 	_ok("a stump does not",
-		ResourceField.NODE_SIZE_STUMP < NecromancerToken.TOKEN_SIZE * 0.6)
+		ResourceField.NODE_SIZE_STUMP < NecromancerToken.TOKEN_SIZE * 0.7)
 	_ok("a pine is three times its own stump",
 		ResourceField.NODE_SIZE_TREE / ResourceField.NODE_SIZE_STUMP >= 2.5)
 	_ok("the Necromancer is the tallest humanoid",

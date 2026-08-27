@@ -77,12 +77,15 @@ scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), L
                            MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/           Necromancer (data), VillainController (WASD+camera follow)
 scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), UndeadCommand, RallyPoint
-scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles),
+scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles + ONE
+                           MultiMeshInstance2D canopy),
                            FogOfWar (one 144×144 image), DayNightCycle,
                            WorldSite(s), Patrol, Wolf, Roaming, TravelLog
 scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
 data/                      the JSON content (races/buildings/events/missions/recruitment/world_*)
 tools/                     generators + verification harnesses (KEEP: they re-derive every number),
+                           make_world_map.gd (GENERATES the layout by rule -- 9-step pipeline,
+                           TERRAIN_SPEC §8; re-run and commit the JSON after editing),
                            export_roster.gd (stat_rework_roster.xlsx → data/races.json),
                            dump_atlas.gd (READ ITS OUTPUT before wiring a terrain sheet)
 docs/design|art|prompts|history/         specs, art rules, prompt libraries, dated dev narrative
@@ -94,10 +97,14 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `godot --headless --path . --import` — required after adding any `class_name`
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
 - `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
-- `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3 (after speed/layout changes)
-- `tools/verify_terrain.tscn` — 229 assertions: per-file sheet slicing, 112 distinct atlas tiles
+- `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3. **The gate on any map change**
+  (TERRAIN_SPEC §9): every row must be back in band, and walk speed is not a knob
+- `tools/verify_terrain.tscn` — 254 assertions: per-file sheet slicing, 112 distinct atlas tiles
   with none all-black, every legend char and all 80 mask entries resolving, the flipped
-  alternatives, and one TileMapLayer with zero children (run windowed for the draw-call gate)
+  alternatives, **and the generated layout** — road network connected to every landmark, no path
+  within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
+  region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
+  windowed for that gate)
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

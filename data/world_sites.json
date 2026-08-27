@@ -86,7 +86,7 @@
 		},
 
 		{
-			"id": "broken_shrine",
+			"id": "broken_shrine", "signposted": true,
 			"name": "The Broken Shrine",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [44, 48],
@@ -100,7 +100,7 @@
 			]
 		},
 		{
-			"id": "abandoned_camp",
+			"id": "abandoned_camp", "signposted": true,
 			"name": "An Abandoned Camp",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [30, 83],
@@ -114,7 +114,7 @@
 			]
 		},
 		{
-			"id": "standing_stones",
+			"id": "standing_stones", "signposted": true,
 			"name": "The Standing Stones",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [50, 70],

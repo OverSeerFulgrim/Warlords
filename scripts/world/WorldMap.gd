@@ -197,6 +197,7 @@ func build() -> bool:
 	position = origin_px
 	_build_layer()
 	_resolve_connections()
+	_build_canopy()
 	return true
 
 func _load_data() -> Dictionary:
@@ -283,6 +284,132 @@ func _build_layer() -> void:
 		for x in range(width):
 			var t: Dictionary = _types[_cells[y * width + x]]
 			terrain_layer.set_cell(Vector2i(x, y), 0, t["atlas"])
+
+# ---------------- The canopy (TERRAIN_SPEC section 6b) ----------------------
+
+## The commissioned pine. **The same asset the lair's gatherable trees use** --
+## one species for every pine in the game, which is what makes a forest read as
+## *more of the thing you already chop* rather than as new scenery.
+const CANOPY_SPRITE := "res://assets/official/nodes/Pine_Tree.png"
+
+## Trees per cell, by terrain. Dense forest is a canopy you cannot see through;
+## open woodland is a scatter you can.
+const CANOPY_PER_DENSE: float = 2.0
+const CANOPY_PER_WOODLAND: float = 0.3
+
+## Content height in tiles, jittered per tree. **Bigger than anything on the map
+## today** -- the lair's gatherable pines draw at 2.0 tiles after this pass, and
+## the world's trees run larger so the canopy has depth.
+const CANOPY_SCALE_MIN: float = 1.9
+const CANOPY_SCALE_MAX: float = 2.6
+
+## Drawn above the terrain and below the units. The y-sort question is settled
+## by fiat rather than by sorting: **the canopy only ever covers `T` cells,
+## which no unit can enter**, so nothing is ever behind a tree it could be
+## occluded by. `u` cells are walkable but carry a tenth the density and no
+## trunk large enough to hide anyone.
+## **Relative to WorldMap, not absolute.** Godot's `z_as_relative` defaults on,
+## so a child's z_index adds to its parent's -- and WorldMap sits at -10 so the
+## terrain is under everything. Setting -9 here put the canopy at -19, below its
+## own ground, which is exactly what the first run drew: forest floor and no
+## trees. +1 puts it one above the tile layer and still well below the units.
+const CANOPY_Z: int = 1
+
+## Builds every world tree as ONE MultiMeshInstance2D -- **zero per-tree nodes**.
+##
+## 1,687 dense cells at 2 trees each is ~3,400 trees. As Sprite2D nodes that is
+## the exact trap R1 documented and removed (`Main._build_ground_background`
+## was a Sprite2D per cell); as a MultiMesh it is one draw call and one buffer.
+##
+## Placement and scale are **hashed from the cell**, never `randf()`: a forest
+## that reshuffles every boot is not a place. Same reasoning as `_patch_pick`.
+##
+## The trees are pure paint: no `ResourceNode`, no charges, not choppable, not
+## inspectable. Chopping the world's forests is an R3+ mechanic with real
+## economy questions, and it is not this pass.
+func _build_canopy() -> void:
+	var texture: Texture2D = load(CANOPY_SPRITE) if ResourceLoader.exists(CANOPY_SPRITE) else null
+	if texture == null:
+		push_warning("WorldMap: canopy sprite missing at %s" % CANOPY_SPRITE)
+		return
+	var placements: Array = _canopy_placements()
+	if placements.is_empty():
+		return
+
+	var mesh := QuadMesh.new()
+	mesh.size = Vector2.ONE
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	multimesh.mesh = mesh
+	multimesh.instance_count = placements.size()
+	for i in range(placements.size()):
+		var p: Dictionary = placements[i]
+		var size: Vector2 = p["size"]
+		# The quad is a unit square, so the instance transform carries the size.
+		# Anchored at the foot, like every other sprite in the project: a tree's
+		# position is where it stands, not where its middle is.
+		multimesh.set_instance_transform_2d(i, Transform2D(
+			0.0, Vector2(size.x, size.y), 0.0,
+			p["at"] - Vector2(0.0, size.y * 0.5)))
+
+	canopy = MultiMeshInstance2D.new()
+	canopy.name = "Canopy"
+	canopy.multimesh = multimesh
+	canopy.texture = texture
+	canopy.z_index = CANOPY_Z
+	canopy.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	add_child(canopy)
+
+## Where every world tree stands and how big it is, derived from the forest
+## cells. Split out so the harness can count them without a scene.
+func _canopy_placements() -> Array:
+	var out: Array = []
+	var texture: Texture2D = load(CANOPY_SPRITE) if ResourceLoader.exists(CANOPY_SPRITE) else null
+	if texture == null:
+		return out
+	var content: Vector2 = Anchoring.content_rect(texture).size
+	if content.y <= 0.0:
+		return out
+	for y in range(height):
+		for x in range(width):
+			var name: String = String(_types[_cells[y * width + x]].get("char", ""))
+			var density: float = 0.0
+			if name == "T":
+				density = CANOPY_PER_DENSE
+			elif name == "u":
+				density = CANOPY_PER_WOODLAND
+			if density <= 0.0:
+				continue
+			var whole: int = int(density)
+			# The fractional part is a per-cell chance, so 0.3 trees per cell
+			# means three cells in ten carry one -- deterministically.
+			if _hash01(x, y, 91) < density - float(whole):
+				whole += 1
+			for i in range(whole):
+				var jx: float = _hash01(x, y, 100 + i * 7)
+				var jy: float = _hash01(x, y, 200 + i * 7)
+				var tiles: float = lerpf(CANOPY_SCALE_MIN, CANOPY_SCALE_MAX,
+					_hash01(x, y, 300 + i * 7))
+				var target: float = tiles * float(CELL_SIZE)
+				var scale: float = Anchoring.scale_for_content_height(texture, target)
+				# **Local to WorldMap, not engine space.** The canopy is a child
+				# of this node and this node sits at `origin_px`, so using
+				# `cell_origin_px()` here double-counts the offset and puts every
+				# tree thousands of pixels off the map -- which is what the first
+				# run did, drawing forest floor and no trees. The tile layer uses
+				# local cell coordinates for exactly the same reason.
+				out.append({
+					"at": Vector2(x, y) * float(CELL_SIZE)
+						+ Vector2(jx, jy) * float(CELL_SIZE),
+					"size": Vector2(texture.get_width(), texture.get_height()) * scale,
+				})
+	return out
+
+## Deterministic 0..1 from a cell. **Never `randf()` at load** -- the same rule
+## the generator's `_patch_pick` follows, for the same reason.
+func _hash01(x: int, y: int, salt: int) -> float:
+	var h: int = absi(int(x * 73856093) ^ int(y * 19349663) ^ int(salt * 83492791))
+	return float(h % 100000) / 100000.0
 
 # ---------------- Connection tiles (TERRAIN_SPEC sections 3-4) ---------------
 

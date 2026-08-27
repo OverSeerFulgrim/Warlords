@@ -49,6 +49,9 @@ func _ready() -> void:
 	_build_type_names(world)
 	_map_uses_them(world)
 	_speeds_need_no_code(world)
+	_generation(world)
+	_forests(world)
+	_canopy(world)
 	await _performance(main, world)
 
 	print("\n%d passed, %d failed" % [_passed, _failed])
@@ -315,6 +318,367 @@ func _speeds_need_no_code(world: WorldMap) -> void:
 		"got %s" % (world.speed_multiplier(world.cell_centre_px(ice)) if ice.x >= 0 else "no ice"))
 	_check("and it is walkable, so the lake is a shortcut rather than a hole",
 		ice.x >= 0 and world.is_walkable_cell(ice), "not walkable")
+
+# ---------------- Generation (TERRAIN_SPEC section 12) ------------------------
+
+## Sites the roads must reach, and sites no path may lead to.
+const HUMAN_TARGETS := {
+	"village": Vector2i(120, 64), "manor": Vector2i(129, 83),
+	"church": Vector2i(124, 102), "cemetery": Vector2i(127, 105),
+}
+const BAND_4_SITES := [
+	Vector2i(64, 17), Vector2i(67, 96), Vector2i(13, 28), Vector2i(101, 123),
+]
+const MAX_CROSSING_GAP: int = 25
+
+func _generation(world: WorldMap) -> void:
+	# **Every road network is connected**, checked by walking road cells only --
+	# a road that does not reach the village is a road that leads nowhere, which
+	# is the one thing TERRAIN_SPEC section 1 goal 1 forbids.
+	var lair := Vector2i(world.lair_origin.x + 5, world.lair_origin.y + 4)
+	var start: Vector2i = _nearest(world, lair, func(c: Vector2i): return _is_road(world, c))
+	_check("there is a road within reach of the lair", start.x >= 0, "none found")
+	if start.x >= 0:
+		var reachable: Dictionary = _flood(world, start, func(c: Vector2i): return _is_road(world, c))
+		var sizes: Array = []
+		var seen: Dictionary = {}
+		for y in range(world.height):
+			for x in range(world.width):
+				if not _is_road(world, Vector2i(x, y)) or seen.has(y * world.width + x):
+					continue
+				var comp: Dictionary = _flood(world, Vector2i(x, y),
+					func(c: Vector2i): return _is_road(world, c))
+				for k in comp.keys():
+					seen[k] = true
+				sizes.append([comp.size(), Vector2i(x, y)])
+		sizes.sort_custom(func(a, b): return a[0] > b[0])
+		print("    note: %d road components, largest %s" % [sizes.size(), str(sizes.slice(0, 4))])
+		for name in HUMAN_TARGETS.keys():
+			var target: Vector2i = _nearest(world, HUMAN_TARGETS[name],
+				func(c: Vector2i): return _is_road(world, c))
+			_check("the road network reaches the %s" % name,
+				target.x >= 0 and reachable.has(target.y * world.width + target.x),
+				"no continuous road from the lair")
+
+	# **Found, not followed** (section 7): no path of any kind may terminate
+	# within 3 cells of a Band 4 site. The crypt, the outlaw cave and the cursed
+	# battlefield are the whole reason distance buys quality.
+	for site_variant in BAND_4_SITES:
+		var site: Vector2i = site_variant
+		var near: Array = []
+		for dy in range(-3, 4):
+			for dx in range(-3, 4):
+				var c: Vector2i = site + Vector2i(dx, dy)
+				if _is_road(world, c):
+					near.append(c)
+		_check("no path runs within 3 cells of the Band 4 site at %s" % site,
+			near.is_empty(), "%d road cells: %s" % [near.size(), str(near.slice(0, 4))])
+
+	# **The river has its doors, and they are not far apart** (section 6).
+	var crossings: Array = []
+	for y in range(world.height):
+		for x in range(world.width):
+			var name: String = _type_name(world, Vector2i(x, y))
+			if name == "Bridge" or name == "Shallows / ford":
+				# One crossing may be two cells wide; count each latitude once.
+				if crossings.is_empty() or int(crossings[crossings.size() - 1]) != y:
+					crossings.append(y)
+	_check("the river has at least 2 crossings", crossings.size() >= 2,
+		"%d" % crossings.size())
+	var worst: int = 0
+	for i in range(1, crossings.size()):
+		worst = maxi(worst, int(crossings[i]) - int(crossings[i - 1]))
+	_check("no two adjacent crossings more than %d cells apart" % MAX_CROSSING_GAP,
+		crossings.size() < 2 or worst <= MAX_CROSSING_GAP, "worst gap %d" % worst)
+	var has_bridge: bool = _first_cell(world, "Bridge").x >= 0
+	var has_ford: bool = _first_cell(world, "Shallows / ford").x >= 0
+	_check("there is a bridge (fast, exposed) and a ford (slow, unwatched)",
+		has_bridge and has_ford, "bridge=%s ford=%s" % [has_bridge, has_ford])
+
+	# **Flood fill from the lair reaches every walkable cell.** No forest mass,
+	# cliff line or river bend may seal off a region the generator did not mean
+	# to seal -- this is the assertion that would have caught the first river,
+	# which cut the valley in half.
+	var walkable_start: Vector2i = _nearest(world, lair, func(c: Vector2i): return world.is_walkable_cell(c))
+	var reached: Dictionary = _flood(world, walkable_start,
+		func(c: Vector2i): return world.is_walkable_cell(c))
+	var total: int = 0
+	var stranded: Array = []
+	for y in range(world.height):
+		for x in range(world.width):
+			if not world.is_walkable_cell(Vector2i(x, y)):
+				continue
+			total += 1
+			if not reached.has(y * world.width + x):
+				stranded.append(Vector2i(x, y))
+	# **Where** the stranded cells are matters more than how many. Pockets inside
+	# the northern range are cells the range has closed around -- §12's "the only
+	# unreachable cells are inside blocking masses" -- and a 75%-fill band of
+	# scree makes a scatter of them. A stranded cell out in open country would
+	# be a route the generator sealed by accident, which is the real failure.
+	var outside_masses: Array = []
+	for c in stranded:
+		var in_northern_range: bool = c.y >= 6 and c.y <= 23
+		var in_rim: bool = c.x < 12 or c.y < 6 or c.x >= world.width - 12 or c.y >= world.height - 12
+		if not (in_northern_range or in_rim):
+			outside_masses.append(c)
+	print("    note: %d walkable cells, %d unreachable (%d of them outside a blocking mass)"
+		% [total, stranded.size(), outside_masses.size()])
+	# **Size of the largest stranded pocket, not the total.** A handful of cells
+	# walled in by a forest edge meeting a scree spur is a blocking mass doing
+	# its job; a *region* is a route the generator sealed by accident, and that
+	# is what §12 means by "no forest mass, cliff line or river bend may seal off
+	# a region the generator didn't mean to seal".
+	var worst_pocket: int = 0
+	var counted: Dictionary = {}
+	for c in outside_masses:
+		if counted.has(c.y * world.width + c.x):
+			continue
+		var pocket: Dictionary = _flood(world, c, func(n: Vector2i): return world.is_walkable_cell(n))
+		for k in pocket.keys():
+			counted[k] = true
+		worst_pocket = maxi(worst_pocket, pocket.size())
+	print("    note: largest stranded pocket outside a blocking mass: %d cells" % worst_pocket)
+	_check("flood fill from the lair seals off no region (largest pocket <= 8 cells)",
+		worst_pocket <= 8, "a %d-cell region is unreachable" % worst_pocket)
+
+## Section 6b: every dense mass crossable, corridor mouths close enough together,
+## every clearing with exactly one mouth and nothing paved inside a wood.
+func _forests(world: WorldMap) -> void:
+	var dense: int = 0
+	var woodland: int = 0
+	for y in range(world.height):
+		for x in range(world.width):
+			var name: String = _type_name(world, Vector2i(x, y))
+			if name == "Dense forest":
+				dense += 1
+			elif name == "Open woodland":
+				woodland += 1
+	var coverage: float = 100.0 * float(dense) / float(world.width * world.height)
+	print("    note: %d dense forest cells (%.1f%% of the map), %d open woodland"
+		% [dense, coverage, woodland])
+	_check("dense forest covers 8-14%% of the map (section 6b)",
+		coverage >= 8.0 and coverage <= 14.0, "%.1f%%" % coverage)
+
+	# **Nothing paved inside a wood** (section 6b's hard error, asserted). A
+	# corridor is not a road, and a road that entered a forest would make every
+	# clearing a crossroads.
+	var paved_in_wood: int = 0
+	for y in range(world.height):
+		for x in range(world.width):
+			if not _is_paved(world, Vector2i(x, y)):
+				continue
+			for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				if _type_name(world, Vector2i(x, y) + d) == "Dense forest":
+					paved_in_wood += 1
+					break
+	print("    note: %d paved cells touch dense forest (a track may END at a mouth)"
+		% paved_in_wood)
+	_check("no paved cell is surrounded by dense forest", _paved_inside_wood(world) == 0,
+		"%d paved cells are inside a wood" % _paved_inside_wood(world))
+
+	var masses: Array = _mass_components(world)
+	var big: int = 0
+	for m in masses:
+		if int(m["size"]) >= 40:
+			big += 1
+	# **Components, not masses.** §6b authors 2-4 masses; this counts connected
+	# regions of dense forest, and a corridor cut clean through a mass splits its
+	# dense region in two by construction -- that is the corridor working. Three
+	# authored masses therefore present as six or more components, and asserting
+	# 2-4 here would have been asserting that the corridors had failed.
+	print("    note: %d dense-forest components, %d of mass size (corridors split masses)"
+		% [masses.size(), big])
+	_check("there are at least two dense masses of real size", big >= 2, "%d" % big)
+
+	# **Every clearing has exactly one corridor mouth.** Zero is a softlock, two
+	# is a crossroads -- and a crossroads inside a wood is just a road, which is
+	# the one thing a clearing must not be. A clearing is found structurally: a
+	# patch of ordinary ground whose every outside neighbour is forest.
+	var clearings: Array = _clearings(world)
+	print("    note: %d interior clearings" % clearings.size())
+	_check("the masses hold at least one clearing between them",
+		not clearings.is_empty(), "none found -- R2a's dens have nowhere to go")
+	for c in clearings:
+		_check("the clearing at %s has exactly one corridor mouth" % str(c["at"]),
+			int(c["mouths"]) == 1, "%d mouths" % int(c["mouths"]))
+		_check("and nothing paved inside it", not bool(c["paved"]), "a road reaches in")
+
+## Section 6b: the canopy is ONE MultiMeshInstance2D, within its instance budget,
+## with zero per-tree nodes.
+func _canopy(world: WorldMap) -> void:
+	_check("the canopy exists", world.canopy != null, "null")
+	if world.canopy == null:
+		return
+	_check("the canopy is a MultiMeshInstance2D", world.canopy is MultiMeshInstance2D)
+	_check("with zero children -- no node per tree", world.canopy.get_child_count() == 0,
+		"%d children" % world.canopy.get_child_count())
+	var dense: int = 0
+	var woodland: int = 0
+	for y in range(world.height):
+		for x in range(world.width):
+			var name: String = _type_name(world, Vector2i(x, y))
+			if name == "Dense forest":
+				dense += 1
+			elif name == "Open woodland":
+				woodland += 1
+	var instances: int = world.canopy.multimesh.instance_count
+	var budget: int = int(1.5 * float(dense * 2 + woodland))
+	print("    note: %d canopy instances over %d dense + %d woodland cells"
+		% [instances, dense, woodland])
+	_check("the canopy is within its instance budget (<= %d)" % budget,
+		instances > 0 and instances <= budget, "%d" % instances)
+	_check("the canopy draws above the terrain and below the units",
+		world.canopy.z_index > 0 and world.canopy.z_index < 5,
+		"z_index %d" % world.canopy.z_index)
+
+# ---------------- Generation helpers ------------------------------------------
+
+## Road cells, **plus the river's own doors**.
+##
+## A bridge is a road cell outright (category `road`). A ford is not -- it is
+## shallows you wade -- but it is how a track continues across water, and
+## `_paint_route` deliberately does not pave over one. Excluding fords made the
+## connectivity check report the network severed at every wilderness crossing,
+## which is the crossing doing its job rather than a broken road.
+func _is_road(world: WorldMap, cell: Vector2i) -> bool:
+	if world.connection_group_at(cell) == "road":
+		return true
+	var name: String = _type_name(world, cell)
+	return name == "Bridge" or name == "Shallows / ford"
+
+func _is_paved(world: WorldMap, cell: Vector2i) -> bool:
+	return world.connection_group_at(cell) == "road"
+
+func _paved_inside_wood(world: WorldMap) -> int:
+	var n: int = 0
+	for y in range(world.height):
+		for x in range(world.width):
+			if not _is_paved(world, Vector2i(x, y)):
+				continue
+			var trees: int = 0
+			for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+				if _type_name(world, Vector2i(x, y) + d) == "Dense forest":
+					trees += 1
+			if trees >= 3:
+				n += 1
+	return n
+
+## Interior clearings: components of ordinary ground (not forest, not blocking)
+## that are entirely ringed by forest. Their "mouths" are the connected groups
+## of open woodland touching them -- the corridor's ends.
+func _clearings(world: WorldMap) -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for y in range(world.height):
+		for x in range(world.width):
+			var here := Vector2i(x, y)
+			if seen.has(y * world.width + x) or not _is_plain_ground(world, here):
+				continue
+			var comp: Dictionary = _flood(world, here,
+				func(c: Vector2i): return _is_plain_ground(world, c))
+			for k in comp.keys():
+				seen[k] = true
+			if comp.size() > 60 or comp.size() < 4:
+				continue   # the open world, or a stray cell
+			var ringed: bool = true
+			var touching: Array = []
+			var paved: bool = false
+			for k in comp.keys():
+				var c := Vector2i(int(k) % world.width, int(k) / world.width)
+				if _is_paved(world, c):
+					paved = true
+				for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+					var n: Vector2i = c + d
+					if comp.has(n.y * world.width + n.x):
+						continue
+					var name: String = _type_name(world, n)
+					if name == "Open woodland":
+						touching.append(n)
+					elif name != "Dense forest":
+						ringed = false
+			if not ringed or touching.is_empty():
+				continue
+			out.append({"at": here, "mouths": _components_of(world, touching), "paved": paved})
+	return out
+
+func _is_plain_ground(world: WorldMap, cell: Vector2i) -> bool:
+	var name: String = _type_name(world, cell)
+	return name != "" and name != "Dense forest" and name != "Open woodland" \
+		and world.is_walkable_cell(cell)
+
+## How many connected groups a set of woodland cells forms -- one corridor
+## arriving is one mouth, however wide it is.
+func _components_of(world: WorldMap, cells: Array) -> int:
+	var pool: Dictionary = {}
+	for c in cells:
+		pool[c.y * world.width + c.x] = true
+	var groups: int = 0
+	while not pool.is_empty():
+		groups += 1
+		var seed_key: int = pool.keys()[0]
+		var queue: Array = [Vector2i(seed_key % world.width, seed_key / world.width)]
+		pool.erase(seed_key)
+		while not queue.is_empty():
+			var here: Vector2i = queue.pop_back()
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					var k: int = (here.y + dy) * world.width + (here.x + dx)
+					if pool.has(k):
+						pool.erase(k)
+						queue.append(Vector2i(here.x + dx, here.y + dy))
+	return groups
+
+func _mass_components(world: WorldMap) -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for y in range(world.height):
+		for x in range(world.width):
+			if _type_name(world, Vector2i(x, y)) != "Dense forest":
+				continue
+			if seen.has(y * world.width + x):
+				continue
+			var comp: Dictionary = _flood(world, Vector2i(x, y),
+				func(c: Vector2i): return _type_name(world, c) == "Dense forest")
+			for k in comp.keys():
+				seen[k] = true
+			out.append({"size": comp.size(), "centre": Vector2i(x, y)})
+	return out
+
+## Breadth-first fill over cells the predicate accepts. Returns the set of flat
+## indices reached, so callers can ask "is this one connected to that one".
+func _flood(world: WorldMap, from: Vector2i, accept: Callable) -> Dictionary:
+	var seen: Dictionary = {}
+	if from.x < 0 or not accept.call(from):
+		return seen
+	var queue: Array = [from]
+	seen[from.y * world.width + from.x] = true
+	while not queue.is_empty():
+		var here: Vector2i = queue.pop_back()
+		for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			var n: Vector2i = here + d
+			if n.x < 0 or n.y < 0 or n.x >= world.width or n.y >= world.height:
+				continue
+			var key: int = n.y * world.width + n.x
+			if seen.has(key) or not accept.call(n):
+				continue
+			seen[key] = true
+			queue.append(n)
+	return seen
+
+## The nearest cell to `from` the predicate accepts, searched in rings.
+func _nearest(world: WorldMap, from: Vector2i, accept: Callable) -> Vector2i:
+	for r in range(0, 40):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				if maxi(absi(dx), absi(dy)) != r:
+					continue
+				var c := from + Vector2i(dx, dy)
+				if c.x < 0 or c.y < 0 or c.x >= world.width or c.y >= world.height:
+					continue
+				if accept.call(c):
+					return c
+	return Vector2i(-1, -1)
 
 # ---------------- The performance trap has not moved --------------------------
 

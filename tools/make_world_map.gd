@@ -41,8 +41,17 @@ const BAND := Rect2i(12, 50, 26, 26)
 
 ## West edge of the central ridge -- the frontier of the villain's valley, and
 ## the thing "lair -> edge of local territory" is measured to. See
-## _paint_mountains() for why it is this far out.
-const RIDGE_X := 74
+## `_step_relief()` for why it is this far out.
+##
+## **Moved 74 -> 77 by this pass, and only after the cheaper knobs.** Routing the
+## lair's track with A* instead of drawing it by hand made it straighter, so the
+## measured line to the frontier now rides more 1.2-speed track and came in at
+## 43s against §3's 45-75s floor. TERRAIN_SPEC §9's knob order puts river
+## crossings and forest placement first -- both were already spent moving the
+## river out of the valley and the treeline off the measured latitude -- and
+## cliff outlines next. Three cells is the smallest change that clears the floor,
+## and it buys the village trip headroom it also wanted.
+const RIDGE_X := 77
 
 ## The northern pass through the ridge. **Deliberately not on the lair's
 ## latitude (y 60).** It used to sit at y 56-66, which put the door directly in
@@ -280,245 +289,673 @@ const BANDS := [
 	{"band": 4, "name": "The Old Crypt", "rect": [96, 118, 11, 10]},
 ]
 
-var grid: Array = []   # Array[PackedStringArray-ish] -- Array of Array[String]
+
+# ---------------- Generation parameters (TERRAIN_SPEC §8) --------------------
+
+## The human landmarks the cobble network connects, in the order it chains them.
+## **This list is the signposting rule's first half** (§7 rule 1): cobble reaches
+## these and nothing else, so a Band 4 site cannot be paved to simply because it
+## is not here and cannot be added without someone noticing.
+const HUMAN_LANDMARKS := [
+	{"name": "crossroads", "cell": Vector2i(87, 64)},
+	{"name": "village", "cell": Vector2i(VILLAGE_X, VILLAGE_Y + 9)},
+	{"name": "manor", "cell": Vector2i(129, 83)},
+	{"name": "church", "cell": Vector2i(124, 102)},
+	{"name": "cemetery", "cell": Vector2i(127, 105)},
+]
+
+## Where the Old Road enters and leaves the map. The cobble trunk runs between
+## them and everything else branches off it, which is what makes the network a
+## network rather than spokes.
+const OLD_ROAD_NORTH := Vector2i(87, 6)
+const OLD_ROAD_SOUTH := Vector2i(87, 137)
+
+## The lair's own approach: it starts at the settlement's east gate and joins
+## the cobble network. §7 rule 3 keeps it -- it is the player's own track, not a
+## signpost to loot.
+const LAIR_GATE := Vector2i(LAIR_ORIGIN.x + SETTLEMENT_W + 1, LAIR_ORIGIN.y + 4)
+
+# --- Hydrology (§6) ---
+## The river crosses the contested wilderness **east of the ridge**, between it
+## and the lordship -- which is what §6 asks for and what the first attempt got
+## wrong. Sourced at (58, 20) it ran down the Necromancer's own valley, and
+## since open water is blocking it became the nearest impassable thing east of
+## the lair: "edge of local territory" measured the river at 33 cells instead of
+## the ridge at ~50, and the row fell from 45-75s to 29s. A river in the valley
+## is also just wrong -- the valley is the one region the map doc gives him.
+## **East of the Old Road, west of the village.** At (98, 16)-(88, 140) the
+## river crossed the Old Road's own longitude, so the trunk's A* found it
+## cheaper to detour around the whole thing -- down the west side of the ridge,
+## through the Necromancer's valley, and back. The "Old Road" ended up inside
+## the one region the map doc gives him, and the eastern network was cut off
+## from it by the ridge entirely (4 road components instead of 1).
+##
+## Here the river sits between the road and the lordship, which is where §4's
+## structure wants it: the trunk runs clean north-south, and the run out to the
+## village crosses at the bridge. The wall is on the route it is supposed to be
+## a decision about.
+const RIVER_SOURCE := Vector2i(108, 16)
+const RIVER_MOUTH := Vector2i(98, 140)
+const RIVER_WIDTH := 2
+## No two crossings further apart than this, or the river stops being a route
+## decision and becomes a detour tax (§6).
+const MAX_CROSSING_GAP := 25
+
+# --- Forests (§6b) ---
+## Dense masses, as centre + radii. Three, deliberately: §6b asks for 2-4 and
+## aims at 8-14% of the map dense, and three of this size lands at ~11%.
+##
+## **Placement is constrained, not decorative.** §9's stacking warning is
+## explicit -- a mass against the ridge's flank quietly closes a route the
+## ridge's gaps were tuned to leave open -- so every one of these is kept clear
+## of both pass approaches and of the lair track's line, and the verification
+## re-checks that by flood fill rather than by trusting the numbers.
+const FOREST_MASSES := [
+	# The treeline south-east of the lair valley: the place CombatSystem's
+	# wolf-spawn comment has always claimed exists.
+	#
+	# **Its northern edge is held below y=80 on purpose.** At (50, 88) this mass
+	# reached y=72, which put dense forest inside the latitude band
+	# `measure_travel` scans for "the edge of local territory" -- so the valley's
+	# frontier stopped being the ridge at ~50 cells and became a tree at 8, and
+	# the row fell from 45-75s to 15s. That is TERRAIN_SPEC §9's stacking
+	# warning exactly: a mass placed against a tuned route quietly redefines it.
+	{"centre": Vector2i(52, 100), "rx": 20, "ry": 16, "clearings": 2},
+	# The northern belt, between the northern range and the crossroads.
+	{"centre": Vector2i(104, 28), "rx": 18, "ry": 14, "clearings": 1},
+	# South-east, below the church and east of the river's mouth.
+	#
+	# **Moved off the Old Road's corridor.** At (96, 100) this mass spanned
+	# x80-112, which closed the only gap between the ridge and the river that the
+	# trunk could run down -- so the Old Road's A* went west of the ridge instead
+	# and ran the human trunk road through the Necromancer's own valley. §9's
+	# stacking warning again, and the second time a mass has quietly redefined a
+	# route this pass.
+	{"centre": Vector2i(118, 122), "rx": 17, "ry": 12, "clearings": 1},
+]
+const FOREST_FRINGE := 2
+const CORRIDOR_WIDTH := 1
+const CLEARING_RADIUS := 3
+
+# --- The A* cost grid (§8) ---
+const COST_ROAD := 0.5          # roads merge into a network instead of fanning out
+const COST_OPEN := 1.0
+const COST_WOODLAND := 1.5      # a road may clip a treeline, reluctantly
+const COST_BAD_GROUND := 4.0    # marsh, boulder field: real roads bend around bad ground
+const COST_IMPASSABLE := -1.0   # cliff, dense forest, unbridged river
+
+var grid: Array = []   # Array[Array[String]]
 var rng := RandomNumberGenerator.new()
+
+## Cells reserved as river crossings before any road is laid (§8 step 3). A road
+## may cross the river only here, which is what forces every road over a bridge
+## hydrology already placed.
+var crossings: Array = []       # Array[{cell, kind}] -- kind "bridge" | "ford"
+
+## Set when a step refuses to continue. `quit()` in a SceneTree is deferred,
+## so a hard error alone does not stop the pipeline -- the first run of the
+## signposting check errored correctly and then wrote the map anyway, which is
+## worse than not checking.
+var aborted: bool = false
 
 func _initialize() -> void:
 	rng.seed = 20260803   # fixed: the layout must be identical every run and every build
-	_fill_base()
-	_paint_north()
-	_paint_lordship()
-	_paint_demonologist()
-	_paint_mountains()
-	_paint_water()
-	_paint_roads()          # last, so a road can cut through a ridge
-	_clear_lair_band()      # last of all, so nothing blocks the starting area
-	_write()
+	# **The order is load-bearing** (TERRAIN_SPEC §8). Crossings are reserved
+	# before roads are laid; forests go down before anything human exists, so
+	# roads route around the woods rather than the woods around the roads; and
+	# dirt branches off cobble rather than radiating from the lair, so the world
+	# reads as a human landscape the Necromancer is hiding inside.
+	_step_base_terrain()
+	_step_relief()
+	_step_hydrology()
+	_step_forests()
+	_step_landmarks()
+	_step_cobble_network()
+	_step_dirt_network()
+	_step_dressing()
+	_step_bake()
 	quit()
 
-# ---------------- Painting ---------------------------------------------------
+# ---------------- Grid helpers ------------------------------------------------
+
+func _in(x: int, y: int) -> bool:
+	return x >= 0 and y >= 0 and x < W and y < H
 
 func _put(x: int, y: int, ch: String) -> void:
-	if x < 0 or y < 0 or x >= W or y >= H:
-		return
-	grid[y][x] = ch
+	if _in(x, y):
+		grid[y][x] = ch
+
+func _at(x: int, y: int) -> String:
+	return grid[y][x] if _in(x, y) else ""
 
 func _pick(options: Array) -> String:
-	return options[rng.randi_range(0, options.size() - 1)]
+	return options[rng.randi() % options.size()]
 
-## Ground cover in **patches**, not per-cell static.
-##
-## Picking a variant independently per cell looked like television snow once it
-## was rendered: four quite different tiles alternating every 64px, with the
-## eye reading the noise instead of the terrain. Hashing a coarse patch
-## coordinate makes neighbours agree, so snow gathers in drifts and stony
-## ground in outcrops. The 25% break-out is what keeps the patch edges ragged
-## rather than a visible 4x4 quilt.
+## Ground cover is picked in **patches, not per cell**. Independent per-cell
+## picks render as television snow -- four quite different tiles alternating
+## every 64px, the eye reading noise instead of terrain. A hashed patch
+## coordinate makes neighbours agree, with a break-out chance so patch edges
+## stay ragged rather than a visible quilt.
 const PATCH_CELLS := 4
 const PATCH_BREAK_CHANCE := 0.25
 
 func _patch_pick(x: int, y: int, options: Array) -> String:
-	if rng.randf() < PATCH_BREAK_CHANCE:
-		return _pick(options)
-	var px: int = floori(float(x) / PATCH_CELLS)
-	var py: int = floori(float(y) / PATCH_CELLS)
-	# An explicit integer mix rather than `hash(Vector2i)`: the built-in came out
-	# correlated along one axis on this data, and the map rendered as vertical
-	# corduroy -- one-cell-wide bars of bare dirt running down the farmland. The
-	# two large primes are the standard spatial-hash pair.
-	var h: int = absi((px * 73856093) ^ (py * 19349663))
+	var px: int = x / PATCH_CELLS
+	var py: int = y / PATCH_CELLS
+	var h: int = abs(int(px * 73856093) ^ int(py * 19349663))
+	if float((h >> 8) % 1000) / 1000.0 < PATCH_BREAK_CHANCE:
+		h = abs(int(x * 83492791) ^ int(y * 29840611))
 	return options[h % options.size()]
 
-## Snow thickens northward. Purely cosmetic variation -- it is FLAVOR for a cold
-## hideout, not a climate system (CLAUDE.md's climate scope call still stands;
-## nothing reads these tiles for temperature, and nothing should).
-func _fill_base() -> void:
+## Deterministic 0..1 from a cell. Used wherever a per-cell decision must be the
+## same on every boot -- **never `randf()` at load**, or the world reshuffles.
+func _hash01(x: int, y: int, salt: int) -> float:
+	var h: int = abs(int(x * 73856093) ^ int(y * 19349663) ^ int(salt * 83492791))
+	return float(h % 100000) / 100000.0
+
+func _ellipse_cells(centre: Vector2i, rx: int, ry: int, wobble: float = 0.0,
+		salt: int = 0) -> Array:
+	var out: Array = []
+	for y in range(centre.y - ry - 2, centre.y + ry + 3):
+		for x in range(centre.x - rx - 2, centre.x + rx + 3):
+			if not _in(x, y):
+				continue
+			var dx: float = float(x - centre.x) / float(rx)
+			var dy: float = float(y - centre.y) / float(ry)
+			var limit: float = 1.0
+			if wobble > 0.0:
+				limit += (_hash01(x / 3, y / 3, salt) - 0.5) * wobble
+			if dx * dx + dy * dy <= limit:
+				out.append(Vector2i(x, y))
+	return out
+
+# ---------------- 1. Base terrain --------------------------------------------
+
+## Regions per WORLD_MAP_PLAN §4-§5, patch-hashed ground cover. Unchanged from
+## R1 in intent: this is the part that was always right.
+func _step_base_terrain() -> void:
 	grid.clear()
 	for y in range(H):
 		var row: Array = []
 		for x in range(W):
-			var northness: float = 1.0 - float(y) / float(H)
-			var options: Array = ["g", "s", "S", "e"]
-			if rng.randf() < northness * 0.55:
-				options = ["w", "s", "S", "w"]
-			row.append(_patch_pick(x, y, options))
+			row.append(_patch_pick(x, y, ["g", "s", "S", "g"]))
 		grid.append(row)
 
-## Northern Wilderness (WORLD_MAP_PLAN §4): ruins, graves, beasts. Deep snow
-## with bone-strewn patches where the old graves are.
-func _paint_north() -> void:
-	for y in range(2, 38):
-		for x in range(2, W - 2):
-			if rng.randf() < 0.72:
-				grid[y][x] = _patch_pick(x, y, ["w", "w", "s", "S"])
-	for i in range(9):
-		var cx: int = rng.randi_range(20, W - 20)
-		var cy: int = rng.randi_range(8, 34)
-		_blob(cx, cy, rng.randi_range(2, 4), ["B", "b", "d"])
+	# The Northern Wilderness: deeper snow, more stone.
+	for y in range(6, 26):
+		for x in range(4, W - 4):
+			_put(x, y, _patch_pick(x, y, ["w", "S", "s", "w"]))
+	# The Necromancer's own valley: bare, bone-strewn, cold.
+	for y in range(BAND.position.y - 8, BAND.position.y + BAND.size.y + 10):
+		for x in range(6, RIDGE_X - 4):
+			_put(x, y, _patch_pick(x, y, ["s", "S", "e", "s"]))
+	# The lord's lands: worked ground, kinder cover.
+	for y in range(42, 96):
+		for x in range(96, W - 4):
+			_put(x, y, _patch_pick(x, y, ["g", "g", "e", "d"]))
 
-## The human lordship, east: farms around a village core, per §5's 35x45.
-func _paint_lordship() -> void:
-	for y in range(45, 91):
-		for x in range(100, 141):
-			grid[y][x] = _patch_pick(x, y, ["d", "d", "e", "b"])
-	# Village core, ~18x22 (§5). Dirt with a couple of cobbled streets rather
-	# than a cobbled field -- the streets are the fast bit, not the whole town.
-	for y in range(VILLAGE_Y, VILLAGE_Y + 23):
-		for x in range(VILLAGE_X, VILLAGE_X + 19):
-			grid[y][x] = _patch_pick(x, y, ["d", "b", "d", "e"])
-	for x in range(VILLAGE_X, VILLAGE_X + 19):
-		_put(x, VILLAGE_Y + 11, "c")
-	for y in range(VILLAGE_Y, VILLAGE_Y + 23):
-		_put(VILLAGE_X + 9, y, "c")
-	# The manor's forecourt, south of the village.
-	for y in range(80, 87):
-		for x in range(VILLAGE_X + 4, VILLAGE_X + 15):
-			grid[y][x] = "c"
-	# Church and cemetery, further south again (§4's sketch).
-	_blob(VILLAGE_X + 4, 104, 4, ["B", "B", "b"])
-	for y in range(100, 108):
-		for x in range(VILLAGE_X, VILLAGE_X + 9):
-			if rng.randf() < 0.4:
-				grid[y][x] = "d"
+# ---------------- 2. Relief ---------------------------------------------------
 
-## The Demonologist's 20x20, south-west. **Sealed for v1** (rework §4 amendment
-## 1): the ritual ground is here as terrain so the layout never needs rework,
-## but there is no rival and nothing reads this region yet.
-func _paint_demonologist() -> void:
-	for y in range(100, 123):
-		for x in range(12, 35):
-			grid[y][x] = _patch_pick(x, y, ["d", "d", "b", "B"])
-	for y in range(109, 112):
-		for x in range(21, 24):
-			grid[y][x] = "r"
-
-## Rocky scree stands in for mountains -- the sheet has no mountainside tile, and
-## a dark broken-rock ground reads as impassable at a glance. Flagged in
-## CLAUDE.md as the one terrain placeholder.
-func _paint_mountains() -> void:
+## Cliff ranges with **convex outlines** (§4's 16-tile caveat: faces and outer
+## corners only, so a concave notch would request art that does not exist), and
+## the central ridge keeps its two gaps.
+func _step_relief() -> void:
 	# A rim, so the edge of the world is a wall rather than an invisible fence.
+	# Scree rather than cliff: it is the frame, not a feature, and `m` stays
+	# blocking precisely because this is what it is holding up.
 	for y in range(H):
 		for x in range(W):
 			if x < 2 or y < 2 or x >= W - 2 or y >= H - 2:
-				grid[y][x] = "m"
+				_put(x, y, "m")
 	# Western range: the back wall of the Necromancer's valley.
 	for y in range(18, 132):
 		for x in range(2, 9 + (1 if rng.randf() < 0.5 else 0)):
-			grid[y][x] = "m"
-	# The central ridge, dividing villain country from the lord's roads. Two
-	# gaps: the eastern track at y 56-66, and a southern pass at y 96-102. The
-	# gaps are the whole point -- a wall with a door is a route decision, a wall
-	# without one is a smaller map.
-	#
-	# **Moved east from x40 to x68 by the R1c travel-time tuning pass.** This
-	# ridge is the frontier of the Necromancer's valley, and WORLD_MAP_PLAN §3
-	# wants "lair -> edge of local territory" to take 45-75 seconds. At x40 the
-	# frontier sat 22 cells from the Throne, which is ~22s at any walk speed
-	# this project can use -- a third of the target. At x68 it is ~50 cells,
-	# which lands in band. The 20x20 *starting region* (§5) is unchanged; what
-	# grew is the contested wilderness between it and the ridge.
-	# **Cliff, not scree.** R1 flagged rocky scree as the one terrain
-	# placeholder -- "a real cliff/mountain tile belongs in the art brief" --
-	# and the rock sheet closes it. The two gaps are untouched: a wall with a
-	# door is a route decision, a wall without one is a smaller map.
-	#
-	# Only THIS range converts. The map rim, the western range, the northern
-	# range and the spur stay `m`, and `m` stays **blocking** -- TERRAIN_SPEC
-	# section 5 retires scree to walkable decoration once cliffs are the real
-	# wall, but the rim is made of scree, and a walkable rim is a hole in the
-	# world. Converting the rest is a generation pass, which this is not.
+			_put(x, y, "m")
+	# **The central ridge**, dividing villain country from the lord's roads, at
+	# x74 with two gaps. Both numbers were won by R1's travel-time tuning and
+	# neither is free to move: the ridge is what "edge of local territory" is
+	# measured to, and the gaps are what make the village trip 2-4 minutes
+	# rather than a straight line.
 	for y in range(20, 132):
 		if (y >= GAP_N_Y and y <= GAP_N_Y + 10) or (y >= 96 and y <= 102):
 			continue
 		for x in range(RIDGE_X, RIDGE_X + 7):
-			grid[y][x] = "^"
-	# Northern range.
+			_put(x, y, "^")
+	# Northern range and the spur guarding the lordship's northern approach.
+	#
+	# **With a door at the Old Road's longitude.** At 75% fill a 13-row band is
+	# well past the percolation threshold, so it is a solid wall in practice --
+	# R1 could ignore that because it painted the road straight over the rock,
+	# but an A*-routed road cannot, and the first run of this failed with "no
+	# route from (87, 6) to (87, 137)". The gap is the same rule the ridge
+	# taught: a wall with a door is a route decision.
 	for y in range(8, 21):
 		for x in range(50, 131):
+			if x >= OLD_ROAD_NORTH.x - 3 and x <= OLD_ROAD_NORTH.x + 3:
+				continue
 			if rng.randf() < 0.75:
-				grid[y][x] = "m"
-	# A spur guarding the lordship's northern approach.
+				_put(x, y, "m")
 	for y in range(30, 45):
 		for x in range(95, 101):
 			if rng.randf() < 0.8:
-				grid[y][x] = "m"
+				_put(x, y, "m")
 
-## Frozen lakes. **Walkable ice at 0.85, not blocking** (TERRAIN_SPEC section 6):
-## a frozen lake you can cross is a shortcut with a flavour of risk; one you
-## cannot is a hole in the map. If ice-breaking is ever wanted it is an R3+
-## hazard, not terrain.
+# ---------------- 3. Hydrology ------------------------------------------------
+
+## A river across the contested wilderness, **and its doors**.
 ##
-## Ellipses, which matters more than it looks: the ice connection set has shore
-## pieces for the four sides and the four outer corners and nothing else, so a
-## convex blob is exactly what the art can draw. A concave lake would ask for an
-## inner corner that does not exist -- the same constraint the cliff outlines
-## are held to.
-func _paint_water() -> void:
-	_ellipse(66, 96, 9, 6, "I")
-	_ellipse(112, 28, 6, 4, "I")
+## This is the ridge's lesson applied to water: a wall with a door is a route
+## decision, a wall without one is a smaller map. Every crossing is reserved
+## *here*, before any road exists, so step 6's A* is forced over them rather
+## than inventing its own ford wherever it happens to want one.
+##
+## A **bridge** sits on the human road network -- fast, exposed, and what
+## patrols will walk in R3. A **ford** sits in the wilderness -- slow (0.7),
+## unwatched. That is WORLD_MAP_PLAN §9's roads-vs-wilderness tradeoff expressed
+## as terrain instead of as a speed number.
+func _step_hydrology() -> void:
+	_paint_frozen_lakes()
+	var path: Array = _river_path()
+	for cell in path:
+		for w in range(RIVER_WIDTH):
+			# Blocking water. The crossings below cut back through it.
+			_put(cell.x + w, cell.y, "~")
 
-## Roads paint last so they cut through ridges. §4's structure: the Old Road runs
-## north-south, the village hangs off it at a crossroads, the Southern Road runs
-## past the church, and a worn track connects the lair to the network.
-func _paint_roads() -> void:
-	for y in range(4, H - 4):        # Old Road
-		_put(86, y, "C")
-		_put(87, y, "C")
-	for x in range(44, W - 4):       # Southern Road
-		_put(x, 118, "c")
-		_put(x, 119, "c")
-	for x in range(87, VILLAGE_X + 19):   # Crossroads -> village
-		_put(x, 64, "k")
-		_put(x, 65, "k")
-	# The lair's own track: east across the valley, north along the ridge, then
-	# through the pass to the Old Road. It bends because the ridge makes it
-	# bend -- a track that ignored the terrain would be a track through a
-	# mountain.
-	for x in range(38, 63):
-		_put(x, 60, "t")
-		_put(x, 61, "t")
-	for y in range(GAP_N_Y + 4, 62):
-		_put(62, y, "t")
-		_put(63, y, "t")
-	for x in range(62, 88):
-		_put(x, GAP_N_Y + 4, "t")
-		_put(x, GAP_N_Y + 5, "t")
-	for y in range(76, 119):         # south from the lair toward the ritual ground
-		_put(24, y, "t")
-		_put(25, y, "t")
-	for y in range(86, 119):         # manor spur down to the Southern Road
-		_put(VILLAGE_X + 9, y, "C")
+	# Crossings, at explicit latitudes rather than fractions of the course.
+	#
+	# **Spacing is a rule, not a preference** (§6): no two adjacent crossings
+	# more than ~25 cells apart, or the river stops being a route decision and
+	# starts being a detour tax. The first version placed them at 30/55/80% of
+	# the course, which on a 124-row river is 31 cells apart -- over the line.
+	#
+	# The **bridge sits at y=64 because that is where the human road crosses**:
+	# the crossroads-to-village run. Fast and exposed, and what patrols will
+	# walk in R3. The two fords are wilderness crossings -- slow at 0.7,
+	# unwatched. That is WORLD_MAP_PLAN §9's tradeoff as terrain rather than as
+	# a speed number.
+	crossings.clear()
+	var wanted: Array = [
+		{"y": 42, "kind": "ford"},
+		{"y": 64, "kind": "bridge"},
+		{"y": 88, "kind": "ford"},
+	]
+	for entry in wanted:
+		var cell: Vector2i = path[clampi(int(entry["y"]) - RIVER_SOURCE.y, 0, path.size() - 1)]
+		crossings.append({"cell": cell, "kind": entry["kind"]})
+		for w in range(RIVER_WIDTH):
+			# A ford is shallows you wade; a bridge is a road over water. Both
+			# are walkable, which is the entire point of reserving them.
+			_put(cell.x + w, cell.y, "≈" if entry["kind"] == "ford" else "=")
+
+## Two frozen lakes, **walkable ice at 0.85** (§6): a frozen lake you can cross
+## is a shortcut with a flavour of risk; one you cannot is a hole in the map.
+##
+## Ellipses, and that matters more than it looks: the ice connection set has
+## shore pieces for the four sides and the four outer corners and nothing else,
+## so a convex blob is exactly what the art can draw. A concave lake would ask
+## for an inner corner that does not exist -- the same constraint the cliff
+## outlines are held to.
+func _paint_frozen_lakes() -> void:
+	for spec in [{"c": Vector2i(66, 96), "rx": 9, "ry": 6},
+			{"c": Vector2i(112, 28), "rx": 6, "ry": 4}]:
+		for cell in _ellipse_cells(spec["c"], spec["rx"], spec["ry"]):
+			if _at(cell.x, cell.y) in ["^", "m"]:
+				continue   # a lake does not climb the ridge
+			_put(cell.x, cell.y, "I")
+
+## The river's course: a wandering north-south line, deterministic per cell so
+## the same river appears on every boot.
+## **A meander around its line, not a random walk.** The first version did
+## `x += step + noise`, which accumulates: over 124 rows the course wandered
+## more than ten cells off its intended line, crossed the Old Road's longitude
+## and sealed the trunk route entirely ("no route from (87, 6) to (87, 137)").
+## Two sine terms plus a small per-row jitter give a river that bends without
+## ever leaving the corridor it was placed in.
+func _river_path() -> Array:
+	var out: Array = []
+	var span: float = float(RIVER_MOUTH.y - RIVER_SOURCE.y)
+	for y in range(RIVER_SOURCE.y, RIVER_MOUTH.y + 1):
+		var t: float = float(y - RIVER_SOURCE.y) / span
+		var line: float = lerpf(float(RIVER_SOURCE.x), float(RIVER_MOUTH.x), t)
+		var meander: float = sin(float(y) * 0.11) * 3.0 + sin(float(y) * 0.047) * 2.0
+		var x: float = line + meander + (_hash01(0, y, 7) - 0.5) * 1.2
+		var cell := Vector2i(clampi(int(round(x)), 3, W - 5), y)
+		# The river never runs through the ridge -- rivers go around rock, and
+		# a river inside a cliff would be a hole in the wall the ridge exists
+		# to be.
+		if cell.x >= RIDGE_X - 2 and cell.x <= RIDGE_X + 8:
+			cell.x = RIDGE_X - 3
+			x = float(cell.x)
+		out.append(cell)
+	return out
+
+# ---------------- 4. Forests --------------------------------------------------
+
+## Dense masses, their soft fringes, the corridors carved through them and the
+## clearings sealed inside (§6b).
+##
+## **Before landmarks and roads, deliberately.** Forests are terrain the human
+## world routes *around*; laying them after the roads would mean painting trees
+## over a road and then pretending the road went around them.
+func _step_forests() -> void:
+	for i in range(FOREST_MASSES.size()):
+		_build_mass(FOREST_MASSES[i], i)
+
+func _build_mass(spec: Dictionary, salt: int) -> void:
+	var centre: Vector2i = spec["centre"]
+	var dense: Array = []
+	for cell in _ellipse_cells(centre, spec["rx"], spec["ry"], 0.35, salt * 13 + 3):
+		# Trees do not grow on rock, in water, or on anything human. Checking
+		# rather than overwriting is what keeps a mass from quietly swallowing
+		# the ridge's gap or a reserved crossing.
+		if _at(cell.x, cell.y) in ["^", "m", "~", "≈", "=", "I"]:
+			continue
+		_put(cell.x, cell.y, "T")
+		dense.append(cell)
+
+	# The ragged edge every mass wears: 1-3 cells of open woodland, so a forest
+	# has a silhouette instead of a hedge-maze border, and walking a treeline
+	# reads differently from walking open snow.
+	for cell in dense:
+		for dy in range(-FOREST_FRINGE, FOREST_FRINGE + 1):
+			for dx in range(-FOREST_FRINGE, FOREST_FRINGE + 1):
+				var n := Vector2i(cell.x + dx, cell.y + dy)
+				if _at(n.x, n.y) == "" or _at(n.x, n.y) in ["T", "^", "m", "~", "≈", "=", "I"]:
+					continue
+				if _hash01(n.x, n.y, salt * 7 + 5) < 0.55:
+					_put(n.x, n.y, "u")
+
+	_carve_corridor(spec, dense, salt)
+	for c in range(int(spec.get("clearings", 1))):
+		_carve_clearing(spec, salt * 31 + c)
+
+## A 1-2 cell lane of open woodland cut through the mass, west to east.
+##
+## **A corridor is not a road**: no speed bonus beyond `u` being better than
+## impassable, no signposting, no patrol exposure. It is simply the way
+## through, and finding it is navigation the open snow cannot offer. The
+## wall-with-a-door rule applies verbatim -- every dense mass must be crossable.
+func _carve_corridor(spec: Dictionary, dense: Array, salt: int) -> void:
+	if dense.is_empty():
+		return
+	var centre: Vector2i = spec["centre"]
+	var rx: int = spec["rx"]
+	# A gentle S rather than a straight line, so the way through has to be
+	# found rather than seen from outside.
+	for i in range(-rx - FOREST_FRINGE - 1, rx + FOREST_FRINGE + 2):
+		var x: int = centre.x + i
+		var drift: int = int(round(sin(float(i) * 0.22) * 3.0))
+		var y: int = centre.y + drift
+		for w in range(CORRIDOR_WIDTH + 1):
+			if _at(x, y + w) in ["T", "u"]:
+				_put(x, y + w, "u")
+
+## An interior clearing: ordinary ground inside the trees, reachable **only**
+## through one corridor.
+##
+## This is the map's first genuinely isolated location type and what the loot
+## layer has been waiting for -- R2a's wolf den lives in one. It satisfies
+## "found, not followed" *structurally*: there is no line on the ground because
+## there is no ground until you are through the trees.
+func _carve_clearing(spec: Dictionary, salt: int) -> void:
+	var centre: Vector2i = spec["centre"]
+	var angle: float = _hash01(centre.x, centre.y, salt) * TAU
+	var reach: float = float(mini(spec["rx"], spec["ry"])) * 0.55
+	var at := Vector2i(
+		centre.x + int(round(cos(angle) * reach)),
+		centre.y + int(round(sin(angle) * reach)))
+	var cells: Array = []
+	for cell in _ellipse_cells(at, CLEARING_RADIUS, CLEARING_RADIUS - 1, 0.2, salt):
+		if _at(cell.x, cell.y) != "T":
+			continue   # only carve out of dense forest, never out of the world
+		_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, ["g", "s", "S"]))
+		cells.append(cell)
+	if cells.is_empty():
+		return
+	# **Exactly one mouth**: a single lane from the clearing to the corridor.
+	# Zero is a softlock, two is a crossroads -- and a crossroads inside a wood
+	# is just a road, which is the one thing a clearing must not be.
+	var target := Vector2i(centre.x, centre.y)
+	var step := Vector2i(signi(target.x - at.x), signi(target.y - at.y))
+	var walk := at
+	var guard: int = 0
+	while walk != target and guard < 64:
+		guard += 1
+		if walk.x != target.x:
+			walk.x += step.x
+		elif walk.y != target.y:
+			walk.y += step.y
+		if _at(walk.x, walk.y) == "T":
+			_put(walk.x, walk.y, "u")
+		elif _at(walk.x, walk.y) == "u":
+			break   # reached the corridor; stop, or the clearing gains a second mouth
+
+# ---------------- 5. Landmarks ------------------------------------------------
+
+## Positions only -- the human buildings themselves are `world_sites.json`'s
+## business. What this step does is make sure the ground each landmark stands on
+## is something a road can reach.
+func _step_landmarks() -> void:
+	for entry in HUMAN_LANDMARKS:
+		var cell: Vector2i = entry["cell"]
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				if _at(cell.x + dx, cell.y + dy) in ["T", "^", "~"]:
+					_put(cell.x + dx, cell.y + dy, "e")
+
+# ---------------- 6-7. The road networks --------------------------------------
+
+## Cobble first, dirt second, and the order is the fiction: **dirt tracks branch
+## off the cobble network rather than radiating from the lair**, so the world
+## reads as a human landscape the Necromancer is hiding inside rather than as a
+## wheel with him at the hub.
+func _step_cobble_network() -> void:
+	# The Old Road trunk, north to south. Everything else joins it, and the
+	# existing-road cost of 0.5 is what makes them join rather than run parallel.
+	var trunk: Array = _route(OLD_ROAD_NORTH, OLD_ROAD_SOUTH)
+	_paint_route(trunk, "C", 2)
+	for entry in HUMAN_LANDMARKS:
+		_paint_route(_route(_nearest_road(entry["cell"]), entry["cell"]), "C", 2)
+
+## §7 rule 2: dirt connects **only** sites tagged `signposted: true`, and the
+## generator refuses to signpost anything in Band 3 or 4 -- a hard error at
+## generation time, not a convention someone has to remember.
+func _step_dirt_network() -> void:
+	# The lair's own approach stays (§7 rule 3): it is the player's track, not a
+	# signpost to loot.
+	_paint_route(_route(LAIR_GATE, _nearest_road(LAIR_GATE)), "t", 2)
+
+	for site in _signposted_sites():
+		var cell: Vector2i = site["cell"]
+		var band: int = _band_of(cell)
+		if band >= 3:
+			push_error(("make_world_map: site '%s' at %s is Band %d and sets "
+				+ "signposted:true. TERRAIN_SPEC §7 forbids it -- the crypt, the "
+				+ "outlaw cave and the cursed battlefield are found, not followed.")
+				% [site.get("id", "?"), cell, band])
+			aborted = true
+			return
+		_paint_route(_route(_nearest_road(cell), cell), "t", 1)
+
+func _signposted_sites() -> Array:
+	var out: Array = []
+	if not FileAccess.file_exists("res://data/world_sites.json"):
+		return out
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/world_sites.json"))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return out
+	for entry in parsed.get("sites", []):
+		if not bool(entry.get("signposted", false)):
+			continue
+		var c: Array = entry.get("cell", [0, 0])
+		out.append({"id": entry.get("id", "?"), "cell": Vector2i(int(c[0]), int(c[1]))})
+	return out
+
+## Which of WORLD_MAP_PLAN §6's bands a cell falls in. Later entries win, same
+## rule the runtime uses.
+func _band_of(cell: Vector2i) -> int:
+	var band: int = 2
+	for entry in BANDS:
+		var r: Array = entry["rect"]
+		if cell.x >= int(r[0]) and cell.y >= int(r[1]) \
+				and cell.x < int(r[0]) + int(r[2]) and cell.y < int(r[1]) + int(r[3]):
+			band = int(entry["band"])
+	return band
+
+func _paint_route(path: Array, ch: String, width: int) -> void:
+	for cell in path:
+		for w in range(width):
+			# A route never paves over water, a crossing, or a clearing: the
+			# crossing is already the door, and §6b forbids anything paved
+			# inside a wood.
+			var here: String = _at(cell.x + w, cell.y)
+			if here in ["~", "≈", "=", "T"]:
+				continue
+			_put(cell.x + w, cell.y, ch)
+
+## The nearest **paved** cell -- deliberately not counting crossings.
+##
+## A bridge is part of the road network but it is a *door*, not somewhere a new
+## branch may start. Including "=" here made `_nearest_road(village)` return the
+## bridge itself, so the village spur began on the far bank and never joined the
+## trunk: four disconnected road components, and a village you could not drive
+## to from the lair.
+func _nearest_road(from: Vector2i) -> Vector2i:
+	var best := OLD_ROAD_NORTH
+	var best_d: float = INF
+	for y in range(H):
+		for x in range(W):
+			if not (_at(x, y) in ["C", "c", "k", "t"]):
+				continue
+			var d: float = Vector2(x - from.x, y - from.y).length()
+			if d < best_d:
+				best_d = d
+				best = Vector2i(x, y)
+	return best
+
+## Dijkstra over §8's cost grid. `AStarGrid2D` cannot carry per-cell weights the
+## way this needs (a reserved crossing is passable while the river around it is
+## not), so the queue is written out -- 20,736 cells is small enough that the
+## simplicity is worth more than the heuristic.
+func _route(from: Vector2i, to: Vector2i) -> Array:
+	var cost: PackedFloat32Array = PackedFloat32Array()
+	cost.resize(W * H)
+	for i in range(W * H):
+		cost[i] = INF
+	var prev: PackedInt32Array = PackedInt32Array()
+	prev.resize(W * H)
+	for i in range(W * H):
+		prev[i] = -1
+	var start: int = from.y * W + from.x
+	cost[start] = 0.0
+	var frontier: Array = [[0.0, start]]
+	var goal: int = to.y * W + to.x
+
+	while not frontier.is_empty():
+		frontier.sort_custom(func(a, b): return a[0] < b[0])
+		var top: Array = frontier.pop_front()
+		var here: int = top[1]
+		if here == goal:
+			break
+		if top[0] > cost[here]:
+			continue
+		var hx: int = here % W
+		var hy: int = here / W
+		for d in [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]:
+			var nx: int = hx + d.x
+			var ny: int = hy + d.y
+			if not _in(nx, ny):
+				continue
+			var step: float = _cell_cost(nx, ny)
+			if step < 0.0:
+				continue
+			var next: int = ny * W + nx
+			var total: float = cost[here] + step
+			if total < cost[next]:
+				cost[next] = total
+				prev[next] = here
+				frontier.append([total, next])
+
+	if cost[goal] == INF:
+		push_error("make_world_map: no route from %s to %s -- the cost grid has sealed something off"
+			% [from, to])
+		return []
+	var path: Array = []
+	var walk: int = goal
+	while walk != -1:
+		path.append(Vector2i(walk % W, walk / W))
+		walk = prev[walk]
+	path.reverse()
+	return path
+
+## TERRAIN_SPEC §8's cost table. Negative means impassable.
+func _cell_cost(x: int, y: int) -> float:
+	match _at(x, y):
+		"C", "c", "k", "t":
+			return COST_ROAD        # roads merge and share trunk sections
+		"=", "≈":
+			return COST_ROAD        # a reserved crossing is the door through the river
+		"u":
+			return COST_WOODLAND    # a road may clip a treeline, reluctantly
+		",", "o":
+			return COST_BAD_GROUND  # real roads bend around bad ground
+		"^", "m", "T", "~", "O":
+			return COST_IMPASSABLE  # never climbs, never enters the woods, never fords
+		_:
+			return COST_OPEN
+
+# ---------------- 8. Dressing -------------------------------------------------
+
+## The four things WORLD_MAP_PLAN asked for and R1 shipped without.
+func _step_dressing() -> void:
+	# Human farms around the village (§4's sketch). Plowed and stubble in
+	# patches, so the fields read as worked rather than as a texture.
+	for cell in _ellipse_cells(Vector2i(VILLAGE_X, VILLAGE_Y + 8), 16, 13, 0.3, 91):
+		if _at(cell.x, cell.y) in ["g", "s", "S", "e", "d", "w"]:
+			_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, ["f", "f", "F"]))
+	# Corrupted ground and the real ritual circle in the sealed region (§5).
+	for cell in _ellipse_cells(Vector2i(23, 111), 11, 11, 0.4, 17):
+		if _at(cell.x, cell.y) in ["g", "s", "S", "e", "w", "d"]:
+			_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, ["x", "x", "X"]))
+	for y in range(109, 112):
+		for x in range(21, 24):
+			_put(x, y, "r")
+	# Marsh in the Necromancer's lowlands -- the doc's own example, finally
+	# real, and the project's first sub-1.0 speed. Kept off the lair track.
+	for cell in _ellipse_cells(Vector2i(34, 96), 9, 7, 0.4, 55):
+		if _at(cell.x, cell.y) in ["g", "s", "S", "e"]:
+			_put(cell.x, cell.y, ",")
+	# Ruins under the ruin sites: how a lootable site telegraphs itself without
+	# a line leading to it (§7 rule 4).
+	for centre in [Vector2i(64, 96), Vector2i(101, 122)]:
+		for cell in _ellipse_cells(centre, 4, 3, 0.5, 23):
+			if _at(cell.x, cell.y) in ["g", "s", "S", "e", "w"]:
+				_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, ["R", "R", "o"]))
+
+# ---------------- 9. Bake -----------------------------------------------------
+
+func _step_bake() -> void:
+	if aborted:
+		push_error("make_world_map: aborted -- data/world_map.json left untouched.")
+		quit(1)
+		return
+	_clear_lair_band()
+	_write()
 
 ## The lair band is guaranteed walkable and guaranteed connected: no scree, no
-## ice, nothing that could strand the settlement inside its own valley. The
-## settlement's own footprint is bone-strewn ground, which is what a necromancer
-## does to a yard he has held for a season.
+## cliff, **no forest**, nothing that could strand the settlement inside its own
+## valley. The settlement's own footprint is bone-strewn ground, which is what a
+## necromancer does to a yard he has held for a season.
 func _clear_lair_band() -> void:
 	for y in range(BAND.position.y, BAND.position.y + BAND.size.y):
 		for x in range(BAND.position.x, BAND.position.x + BAND.size.x):
-			if grid[y][x] == "m" or grid[y][x] == "i":
-				grid[y][x] = _patch_pick(x, y, ["g", "s", "S"])
+			if _at(x, y) in ["m", "i", "^", "T", "u", "~"]:
+				_put(x, y, _patch_pick(x, y, ["g", "s", "S"]))
 	for y in range(LAIR_ORIGIN.y, LAIR_ORIGIN.y + SETTLEMENT_H):
 		for x in range(LAIR_ORIGIN.x, LAIR_ORIGIN.x + SETTLEMENT_W):
-			grid[y][x] = _patch_pick(x, y, ["B", "B", "b"])
+			_put(x, y, _patch_pick(x, y, ["B", "B", "b"]))
 
-# ---------------- Shapes -----------------------------------------------------
-
-func _blob(cx: int, cy: int, r: int, options: Array) -> void:
-	for y in range(cy - r, cy + r + 1):
-		for x in range(cx - r, cx + r + 1):
-			if Vector2(x - cx, y - cy).length() <= float(r) + rng.randf() * 0.8:
-				_put(x, y, _pick(options))
-
-func _ellipse(cx: int, cy: int, rx: int, ry: int, ch: String) -> void:
-	for y in range(cy - ry, cy + ry + 1):
-		for x in range(cx - rx, cx + rx + 1):
-			var dx: float = float(x - cx) / float(rx)
-			var dy: float = float(y - cy) / float(ry)
-			if dx * dx + dy * dy <= 1.0:
-				_put(x, y, ch)
-
-# ---------------- Output -----------------------------------------------------
+# ---------------- Output ------------------------------------------------------
 
 func _write() -> void:
 	var rows: Array = []
@@ -541,15 +978,21 @@ func _write() -> void:
 		return
 	f.store_string(JSON.stringify(data, "\t"))
 	f.close()
-	var blocked := 0
-	var road := 0
+
+	var counts: Dictionary = {}
 	for y in range(H):
 		for x in range(W):
-			var cat: String = LEGEND[grid[y][x]].get("category", "ground")
-			if cat == "blocking":
-				blocked += 1
-			elif cat == "road":
-				road += 1
-	print("Wrote %s: %dx%d, %d blocking cells (%.1f%%), %d road cells." % [
-		OUT_PATH, W, H, blocked, 100.0 * blocked / float(W * H), road])
-
+			counts[grid[y][x]] = int(counts.get(grid[y][x], 0)) + 1
+	var blocked: int = 0
+	var road: int = 0
+	for ch in counts.keys():
+		var cat: String = LEGEND[ch].get("category", "ground")
+		if cat == "blocking":
+			blocked += int(counts[ch])
+		elif cat == "road":
+			road += int(counts[ch])
+	var dense: int = int(counts.get("T", 0))
+	print("Wrote %s: %dx%d, %d blocking (%.1f%%), %d road, %d dense forest (%.1f%%), %d woodland, %d marsh, %d water, %d crossings"
+		% [OUT_PATH, W, H, blocked, 100.0 * blocked / float(W * H), road,
+			dense, 100.0 * dense / float(W * H), int(counts.get("u", 0)),
+			int(counts.get(",", 0)), int(counts.get("~", 0)), crossings.size()])
