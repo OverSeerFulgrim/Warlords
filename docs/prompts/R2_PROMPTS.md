@@ -652,6 +652,16 @@ him an attack button.
    respawn at Throne, loud log) -- if R2c hasn't run yet there is no haul
    to clear, and the handler still lands here so R2c only wires into it.
 
+4b. REGEN, per the spec's 2026-08-29 amendment (BINDING): out-of-combat
+   healing at two rates -- a slow field trickle, greatly increased inside
+   the lair band -- driven by the SAME position test as the aura (one
+   test, two consequences). Suppressed entirely while engaged. Rates are
+   tunables; the field trickle must be slow enough that a den fight
+   cannot be reset by circling the clearing. Add to the harness: regen
+   halts during engagement, the band multiplier applies on crossing, and
+   the 1,000-fight bands are unaffected (they are per-fight). The
+   amendment's hot-slot row is R5 material -- do NOT build it here.
+
 5. EventBus: villain_engaged(villain, foe_name), villain_disengaged(
    villain, foe_name, reason). HUD hp readout red below 30%; the panel's
    Activity row says who he is fighting.
@@ -762,6 +772,16 @@ Give him an escort WITHOUT giving the player unit orders.
    hostile and do not break off. Undead don't rout -- the living-recruit
    flee rule does not apply. Announce it in the log; it's the one thing
    they do that the player didn't ask for.
+
+4b. STANCES, per the spec's 2026-08-29 amendment (BINDING): one
+   whole-escort enum {AGGRESSIVE, DEFENSIVE}, default DEFENSIVE. Never
+   per-skeleton, no selection UI. Aggressive engages hostiles in radius
+   (the body's behaviour); Defensive engages only after the party -- him
+   or any escort -- is struck first. Cover-the-retreat overrides stance
+   in both. Stance visible on the HUD/panel; toggling writes a log line.
+   Harness additions: a Defensive escort ignores a guardian inside the
+   radius until the party is hit, then engages; Aggressive engages on
+   entry; the interpose fires in both stances.
 
 5. Escort hauling uses Laborer.carrying_kind/carrying_amount, one kind per
    member. Relics ride the villain only (SORTIE_SPEC §2).

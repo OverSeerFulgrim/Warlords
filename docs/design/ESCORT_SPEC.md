@@ -18,6 +18,26 @@ indirect-control pillar, which this spec exists to not break), and the header co
 
 ---
 
+> **Amendment, 2026-08-29 — spec review (designer). One ruling: stances.** Where this block
+> disagrees with the body below, this block governs; prompt R2d builds it.
+>
+> **The escort has a stance — a policy on the spell, never an order to a unit.** Two values,
+> whole-escort always, no per-skeleton setting and no selection UI (§1.1–§1.2 survive intact):
+> **Aggressive** — escorts engage hostiles inside the radius, the behaviour the body below
+> describes; **Defensive** — escorts engage only after the party (him or any escort) is struck
+> first. Without this, a party can never walk PAST a den or a guardian without starting the
+> fight — fatal once R3's patrols and adventurers exist. **Default: Defensive** — it makes the
+> party consistent with the villain's own engage model: nothing the player owns starts a fight
+> unless they chose it; Aggressive is what you switch on for the den clear. (Tunable: flip the
+> default if playtests want blood.) **Cover-the-retreat overrides stance in both directions**
+> — below the flee threshold the interpose fires regardless; instinct is not policy.
+> Legibility (§7): the current stance is visible on the HUD/panel and toggling it writes a log
+> line. Toggling is an input on the spell surface, not a unit order — and it may later live on
+> the hot-slot row (`NECROMANCER_SPEC.md` 2026-08-29 amendment, ruling 2) with the rest of the
+> spells-as-tools.
+
+---
+
 ## 1. Design goals
 
 1. **No unit orders, ever.** GAME_OUTLINE pillar 2 survives intact. The player's lever stays a
