@@ -43,3 +43,8 @@ Food 2, Threat 1 (tier 0), Throne 40/40; both offered recruits turned away; 33 u
 - Landed c185690. Two travel rows moved, both in band; the crossing now shortcuts across a frozen lake (3m20s -> 3m14s).
 - Draw calls: 71 total vs the 52 R1 baseline; +1 is terrain, the other +18 accumulated from combat-feedback labels, minimap dots and HUD. Decision: the TERRAIN_SPEC §12 budget is re-based to terrain-only draw calls in P2 (assert the terrain layer + canopy, not the whole viewport).
 - Cliff mask 15 re-mapped to plain snow (plateau top) in TERRAIN_MASKS.md; one-line fix folded into P2.
+
+## P2 human check (2026-08-27, late)
+1. Roads read as leading somewhere — YES. Designer principle stated: **a road always has something at its end, even minor loot.** Already true by construction (TERRAIN_SPEC §7: cobble only to human_landmarks, dirt only to signposted sites); R2a must honour it — every dirt-track terminus is a site with at least a minor loot action.
+2. Throne→village by ground alone — could not be tested strictly: there is no minimap toggle. Partial test done with the command bar minimised. Follow-up: add a minimap toggle (e.g. M key) so this check and the R2 exit check can be run properly. Small; fold into R2a as item 0.
+3. Treeline finds a corridor mouth before frustration — YES.
