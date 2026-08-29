@@ -71,6 +71,9 @@ var pulls_taken: int = 0
 ## Set by `WorldSites`, which owns guardian lifecycle. A Callable rather than a
 ## back-reference so the site still cannot reach into its container.
 var guardian_spawner: Callable = Callable()
+## Set by `WorldSites` too, and for the same reason: raising a corpse puts a
+## body on the map, and the site does not own world-map nodes.
+var dead_riser: Callable = Callable()
 ## `{"threat": int, "escalates": bool}`. The escalation half of the 2026-08-06
 ## reputation-ownership decision: notice is world state and goes to
 ## `GameState.add_threat()`. The reputation half is the villain's deed ledger.
@@ -246,10 +249,20 @@ func actions_for(villain) -> Array:
 	if is_guarded():
 		return out
 	if has_remainder():
+		# **Enabled only if it can actually do something.** A remainder exists
+		# because his hands were full when the site paid out -- so the single
+		# most likely moment to press this is the moment it cannot work, and
+		# offering it lit was a silent no-op on click (playtest, 2026-08-30).
+		# The reason travels with the row; the panel renders it.
+		var space: int = villain.carry_space() if villain else 0
 		out.append({
 			"id": "collect", "label": "Collect what you left",
 			"blurb": "Still here: %s." % _remainder_label(),
-			"seconds": 0.0, "enabled": true, "reason": "",
+			"seconds": 0.0,
+			"enabled": space > 0,
+			"reason": "" if space > 0 else "His hands are full — %d / %d. Empty them at the lair and come back; it stays here." % [
+				villain.carried_total() if villain else 0,
+				villain.carry_capacity() if villain else 0],
 		})
 	if charges_left <= 0:
 		return out
@@ -323,8 +336,9 @@ func begin_action(villain, action_id: String, choice: Dictionary = {}) -> bool:
 		return false
 
 	if action_id == "collect":
-		_collect_remainder(villain)
-		return true
+		# Returns what it actually managed, so a refusal reaches the caller as
+		# `false` and gets said out loud rather than looking like a dead button.
+		return _collect_remainder(villain)
 
 	var seconds: float = 0.0
 	var label: String = ""
@@ -464,7 +478,13 @@ func _resolve_choice(villain, choice: Dictionary) -> void:
 	if effects.has("raise_corpse"):
 		_grave["raised"] = true
 		graves_disturbed += 1
-		villain.raise_corpse_at(position, int(effects["raise_corpse"]))
+		var risen: Array = villain.raise_corpse_at(position, int(effects["raise_corpse"]))
+		# **The player has to see it.** The ledger entry is the data; this is
+		# what puts a body at the graveside, and without it the whole act was
+		# invisible (playtest, 2026-08-30).
+		if dead_riser.is_valid():
+			dead_riser.call(self, villain, risen)
+		EventBus.travel_noted.emit("%s — it climbs out and stands there, waiting." % display_name, 0.0)
 	if bool(effects.get("consume_valuables", false)):
 		# Mercy forecloses profit, permanently: the valuables are gone, and the
 		# grave is finished on the spot.
@@ -558,7 +578,16 @@ func mark_cleared(villain) -> void:
 
 ## Everything he left behind, handed back in one go. No channel: picking your
 ## own haul back up is not a second robbery.
-func _collect_remainder(villain) -> void:
+##
+## Returns false when nothing moved, which is the whole point of this having a
+## return value: `add_carried()` refuses silently when his hands are full, and
+## the collect used to swallow that and report success (playtest, 2026-08-30).
+##
+## It emits **its own log line, not `site_looted`**. Routing a collect through
+## the loot signal made Main describe it as a fresh robbery -- "the site gives
+## up nothing he can carry", followed by "he leaves 3 Bones behind" -- about
+## bones he had left there himself a minute earlier.
+func _collect_remainder(villain) -> bool:
 	var taken := {}
 	for kind in remainder.keys().duplicate():
 		var got: int = villain.add_carried(kind, int(remainder[kind]))
@@ -567,22 +596,40 @@ func _collect_remainder(villain) -> void:
 			remainder[kind] = int(remainder[kind]) - got
 			if int(remainder[kind]) <= 0:
 				remainder.erase(kind)
+	var relics: Array = []
 	for id in relic_remainder.duplicate():
 		if villain.add_relic(id):
 			relic_remainder.erase(id)
+			relics.append(id)
 			EventBus.relic_found.emit(villain, id)
+	if taken.is_empty() and relics.is_empty():
+		return false
 	_refresh_sprite()
-	EventBus.site_looted.emit(villain, self, taken)
+	var what: String = LootCatalog.describe(taken) if not taken.is_empty() else ""
+	for id in relics:
+		what += ("" if what == "" else ", ") + String(LootCatalog.relic(id).get("name", id))
+	EventBus.travel_noted.emit("Collected: %s — carrying %d/%d.%s" % [
+		what, villain.carried_total(), villain.carry_capacity(),
+		"" if not has_remainder() else "  Still at %s: %s." % [display_name, _remainder_label()]], 0.0)
+	return true
 
 # ---------------- Appearance --------------------------------------------------
 
-## The spent-site swap. Destroy-the-evidence **replaces it with the undisturbed
-## art** (section 4), which is the whole point of paying a second channel for it
-## -- so a site every disturbed grave of which was concealed never swaps.
+## The looted-state swap. Destroy-the-evidence **replaces it with the
+## undisturbed art** (section 4), which is the whole point of paying a second
+## channel for it -- so a site every disturbed grave of which was concealed
+## never swaps.
+##
+## **Disturbed, not merely spent.** Section 3 describes the swap on a spent
+## site, but a grave with the body dug out of it and the valuables still in it
+## is not spent and very obviously *looks* dug out. Waiting for the last charge
+## meant raising a corpse changed nothing on screen (playtest, 2026-08-30).
+## Conceal still reverts it, which is the rule that actually matters here.
 func _refresh_sprite() -> void:
 	if _sprite == null or looted_sprite_path == "":
 		return
-	var want_looted: bool = is_spent() and not _fully_concealed()
+	var want_looted: bool = (is_spent() or graves_disturbed > 0 or pulls_taken > 0) \
+		and not _fully_concealed()
 	var want: String = looted_sprite_path if want_looted else sprite_path
 	if want == "" or not ResourceLoader.exists(want):
 		return

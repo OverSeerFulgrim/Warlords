@@ -97,6 +97,13 @@ func site_actions(box: VBoxContainer, site: WorldSite) -> void:
 		else:
 			b.pressed.connect(func(): site_action_requested.emit(site, id))
 		box.add_child(b)
+		# **A greyed button must say why it is greyed** (GAME_IMPROVEMENT_REVIEW
+		# §9: "clearer explanation of why an action is unavailable"). A tooltip
+		# is not enough -- nobody hovers a control that looks dead -- so the
+		# reason goes on the panel, under the row it belongs to.
+		var reason: String = String(action.get("reason", ""))
+		if b.disabled and reason != "":
+			_note(box, reason)
 
 func _note(box: VBoxContainer, text: String) -> void:
 	var label := Label.new()

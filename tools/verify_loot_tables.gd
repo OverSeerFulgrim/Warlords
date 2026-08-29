@@ -96,6 +96,9 @@ func _ready() -> void:
 	_sites_are_authored_to_budget()
 	_the_choice_sheet_is_a_dilemma()
 	_remainder_charges_stay_at_the_site()
+	_a_refused_collect_says_why()
+	_raising_a_corpse_is_visible()
+	_a_spent_grave_with_a_remainder_offers_only_collect()
 	_notice_and_deeds_split()
 	_relic_effects_wake_on_deposit()
 	_dark_essence_is_field_only()
@@ -466,6 +469,161 @@ func _remainder_charges_stay_at_the_site() -> void:
 		not site.has_remainder() or v.carried_total() > 0, str(site.remainder))
 	_check("...and he is holding what he left", v.carried_total() > 0,
 		"collected %s of %s" % [str(v.carried), str(left)])
+	# Nothing is created or destroyed by a collect, kind by kind: what he is
+	# holding plus what is still lying there equals what was left. Stated this
+	# way rather than as "he collected all of it" because a remainder can be
+	# larger than his hands -- this battlefield leaves ten units against a
+	# capacity of six, and a partial collect is the correct outcome.
+	var conserved: bool = true
+	for kind in left.keys():
+		if int(v.carried.get(kind, 0)) + int(site.remainder.get(kind, 0)) != int(left[kind]):
+			conserved = false
+	_check("...and a collect neither creates nor destroys anything", conserved,
+		"left %s, holding %s, still there %s" % [str(left), str(v.carried), str(site.remainder)])
+	_check("...he took as much as would fit",
+		v.carry_space() == 0 or not site.has_remainder(),
+		"%d free, remainder %s" % [v.carry_space(), str(site.remainder)])
+
+	# Empty him out and finish the job: the action must disappear with the
+	# remainder rather than lingering as a row that does nothing.
+	v.carried.clear()
+	while site.has_remainder() and site.begin_action(v, "collect"):
+		v.carried.clear()
+	_check("...and repeated trips empty it entirely", not site.has_remainder(),
+		str(site.remainder))
+	_check("...after which the action is gone",
+		not _ids_of(_actions_at(site, v)).has("collect"),
+		str(_ids_of(_actions_at(site, v))))
+
+## Playtest 2026-08-30, symptom 1: the collect was offered lit while his hands
+## were full, `add_carried()` refused, and the click did nothing at all -- no
+## panel change, no log line, no reason. The top bar shows banked GameState
+## resources only, so a successful collect and a silent refusal looked identical.
+## Both halves are asserted here: a refusal says so, a success is visible.
+func _a_refused_collect_says_why() -> void:
+	print("-- A refused collect is never a silent no-op (playtest 2026-08-30) --")
+	var site: WorldSite = _site("marked_grave_treeline")
+	if site == null:
+		_check("a grave is placed to leave a remainder at", false)
+		return
+	var v := Necromancer.new()
+	v.position = site.position
+	# Fill him, then rob it: the overflow is the remainder, and this is exactly
+	# the state the screenshot showed.
+	v.add_carried("bones", v.carry_capacity())
+	site._resolve_choice(v, _choice(site, "steal"))
+	_check("a full villain robbing a grave leaves a remainder", site.has_remainder(),
+		str(site.remainder))
+
+	var row: Dictionary = _action(site, v, "collect")
+	_check("the collect is still offered", not row.is_empty())
+	_check("...but DISABLED, because it cannot possibly work",
+		not bool(row.get("enabled", true)))
+	_check("...and it carries the reason the panel prints",
+		String(row.get("reason", "")).findn("full") >= 0, String(row.get("reason", "")))
+
+	var before: Dictionary = v.carried.duplicate()
+	var remainder_before: Dictionary = site.remainder.duplicate()
+	_check("pressing it refuses rather than reporting success",
+		not site.begin_action(v, "collect"))
+	_check("...and changes nothing", v.carried == before and site.remainder == remainder_before)
+
+	# Empty his hands: the same row must come back live, with no reason on it.
+	v.carried.clear()
+	row = _action(site, v, "collect")
+	_check("with room, the collect is enabled again", bool(row.get("enabled", false)))
+	_check("...and says nothing about why not", String(row.get("reason", "")) == "")
+
+	var logged: Array = []
+	var conn := func(text: String, _s: float): logged.append(text)
+	EventBus.travel_noted.connect(conn)
+	_check("...and now it works", site.begin_action(v, "collect"))
+	EventBus.travel_noted.disconnect(conn)
+	# Lambdas capture by value; the Array is the documented way round it
+	# (docs/history/2026-08-hud-layering-and-playtest-bugs.md).
+	var line: String = "" if logged.is_empty() else String(logged[logged.size() - 1])
+	_check("a successful collect writes a log line", line.findn("Collected") >= 0, line)
+	_check("...naming the load he is now carrying", line.findn("carrying") >= 0, line)
+
+## Playtest 2026-08-30, symptom 2: raising a corpse was a pure ledger entry --
+## per LOOT_SITES_SPEC §4, and completely invisible. The dormancy is about what
+## it can be ordered to do; it still has to be standing there.
+func _raising_a_corpse_is_visible() -> void:
+	print("-- Raising a corpse puts a body on the map (playtest 2026-08-30) --")
+	var site: WorldSite = _site("village_graveyard")
+	var sites: WorldSites = _main.world_sites
+	if site == null:
+		_check("a graveyard is placed to raise from", false)
+		return
+	var v: Necromancer = _main.villain
+	var bodies_before: int = sites.raised.size()
+	var ledger_before: int = v.raised_dead.size()
+	var deeds_before: int = v.deeds.size()
+	var threat_before: int = GameState.threat
+	var sprite_before: String = site.get_inspect_data()["sprite"]
+
+	var logged: Array = []
+	var conn := func(text: String, _s: float): logged.append(text)
+	EventBus.travel_noted.connect(conn)
+	site._resolve_choice(v, _choice(site, "raise"))
+	EventBus.travel_noted.disconnect(conn)
+
+	_check("the ledger entry is still written", v.raised_dead.size() == ledger_before + 1)
+	_check("...and there is now a body on the map", sites.raised.size() == bodies_before + 1,
+		"%d -> %d" % [bodies_before, sites.raised.size()])
+	var body = sites.raised[sites.raised.size() - 1]
+	_check("...a live node, at the graveside", is_instance_valid(body)
+		and body.position.distance_to(site.position) < float(SettlementGrid.CELL_SIZE) * 1.5,
+		"%.0f px away" % body.position.distance_to(site.position))
+	_check("...that draws over the villain's own ledger entry, not a copy of it",
+		body.entry == v.raised_dead[v.raised_dead.size() - 1])
+	_check("...is dormant, because there is no escort to bind it to yet",
+		body.is_dormant())
+	_check("...and is clickable", sites.pick_at(body.position) == body)
+
+	_check("the corpse charge is taken -- it cannot be raised twice",
+		not _ids(site.sheet_choices(v)).has("raise"), str(_ids(site.sheet_choices(v))))
+	_check("...but the valuables are still there (§4: separate takings)",
+		_ids(site.sheet_choices(v)).has("steal"))
+	_check("the grave now LOOKS disturbed", site.get_inspect_data()["sprite"] != sprite_before)
+	_check("it is a Forbidden Knowledge deed", _last_deed_axis(v, "forbidden_knowledge") == 1
+		and v.deeds.size() == deeds_before + 1)
+	_check("...and somebody noticed", GameState.threat > threat_before,
+		"%d -> %d" % [threat_before, GameState.threat])
+	var line: String = "" if logged.is_empty() else String(logged[logged.size() - 1])
+	_check("...and it is written down", line.findn("climbs out") >= 0, line)
+
+## A grave holding only a remainder offers Collect and nothing else -- no sheet,
+## because there is no grave left to open. Confirmed from the screenshot; here
+## so it stays true.
+func _a_spent_grave_with_a_remainder_offers_only_collect() -> void:
+	print("-- Remainder-only: Collect, and no choice sheet --")
+	var site: WorldSite = _site("fresh_grave_hollow")
+	var v := Necromancer.new()
+	v.position = site.position
+	v.add_carried("bones", v.carry_capacity())
+	# Raise AND steal, which finishes the one grave this site has.
+	site._resolve_choice(v, _choice(site, "raise"))
+	site._resolve_choice(v, _choice(site, "steal"))
+	_check("the grave is finished", site.charges_left == 0)
+	_check("...and left a remainder, his hands being full", site.has_remainder())
+	var ids: Array = _ids_of(site.actions_for(v))
+	_check("it offers the collect", ids.has("collect"), str(ids))
+	_check("...and NOT the four-way sheet -- there is no grave left to open",
+		not ids.has("open_sheet"), str(ids))
+	_check("...and nothing else at all", ids.size() == 1, str(ids))
+
+func _ids_of(actions: Array) -> Array:
+	var out: Array = []
+	for a in actions:
+		out.append(String(a.get("id", "")))
+	return out
+
+func _action(site: WorldSite, villain, id: String) -> Dictionary:
+	for a in site.actions_for(villain):
+		if String(a.get("id", "")) == id:
+			return a
+	return {}
 
 func _details_mention(site: WorldSite, label: String) -> bool:
 	for row in site.get_inspect_data().get("details", []):

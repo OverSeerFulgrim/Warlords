@@ -1064,7 +1064,7 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	# thing you meant to click, and it is the thing about to bite you.
 	if world_sites:
 		var hit_character = world_sites.pick_at(world_pos)
-		if hit_character is Patrol or hit_character is SiteGuardian:
+		if hit_character is Patrol or hit_character is SiteGuardian or hit_character is RaisedDead:
 			_inspect(hit_character)
 			return true
 
@@ -1162,10 +1162,18 @@ func _enter_rally_placement_mode() -> void:
 func _begin_site_action(site: WorldSite, action_id: String) -> void:
 	if site == null or villain == null:
 		return
-	if not site.begin_action(villain, action_id):
-		_alert("He cannot do that from here.", "warn")
-		return
+	var ok: bool = site.begin_action(villain, action_id)
+	# **Refresh either way.** A refused action still has something to say -- the
+	# collect row comes back greyed with its reason under it -- and a press that
+	# changes nothing on screen is the bug this whole pass is about.
 	inspector.refresh()
+	if ok:
+		return
+	if action_id == "collect" and villain.carry_space() <= 0:
+		_alert("His hands are full — %d/%d. Nothing more will fit."
+			% [villain.carried_total(), villain.carry_capacity()], "warn")
+	else:
+		_alert("He cannot do that from here.", "warn")
 
 ## Opens a site's four-way sheet through the **event panel**, which is the one
 ## choice renderer this project has (LOOT_SITES_SPEC section 3: one renderer,

@@ -519,13 +519,21 @@ func record_deed(deed_id: String, axes: Dictionary, day: int) -> void:
 	deeds.append({"id": deed_id, "axes": axes.duplicate(), "day": day, "seq": deeds.size()})
 	EventBus.deed_committed.emit(self, deed_id, axes)
 
-## The four-way sheet's "raise the corpse", before there is an escort to hand it
-## to (section 4: dormant until the escort lands, then retroactively live).
-## Recorded rather than spawned -- a skeleton with no order model to stand under
-## is a unit R2d would have to unpick.
-func raise_corpse_at(at: Vector2, count: int = 1) -> void:
+## The four-way sheet's "raise the corpse". Appends the ledger entries and
+## **returns them**, so the caller can put a body on the map over each one.
+##
+## Section 4's "dormant until the escort lands, then retroactively live" is
+## about what it can be *ordered* to do, not about whether it exists. R2a read
+## it as ledger-only and the playtest raised a corpse to no visible effect at
+## all; `RaisedDead` is the view over these entries, and R2d binds them into the
+## escort by walking this same Array.
+func raise_corpse_at(at: Vector2, count: int = 1) -> Array:
+	var made: Array = []
 	for i in range(maxi(1, count)):
-		raised_dead.append({"at": at, "dormant": true})
+		var entry := {"at": at, "dormant": true}
+		raised_dead.append(entry)
+		made.append(entry)
+	return made
 
 ## The channel flag's one writer. A method rather than a bare assignment so the
 ## site can set it duck-typed, the same way everything else about him is reached.

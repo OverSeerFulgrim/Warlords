@@ -112,10 +112,13 @@ assets/official|placeholder|vendor/      see Graphics rules
   within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
   region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
   windowed for that gate)
-- `tools/verify_loot_tables.tscn` — 468 assertions: every table rolled 10k times against
+- `tools/verify_loot_tables.tscn` — 500 assertions: every table rolled 10k times against
   LOOT_SITES_SPEC §5's bands (four per-column authored exceptions), relics unique, the grave
   sheet's gating, remainder charges, the notice-vs-deeds split, relic effects waking only on
   deposit, Dark Essence unprintable at home, and the dusk gate (1,000 dusks each way)
+- `tools/smoke_site_actions.tscn` — 26 assertions: presses the site action buttons **as buttons**,
+  through `Main._inspect_at` and the real panel, checking no later sibling Control covers them.
+  The only cover on the click→`begin_action` chain; a human mouse is still the last word
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

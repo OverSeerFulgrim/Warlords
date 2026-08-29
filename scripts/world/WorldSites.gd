@@ -27,6 +27,10 @@ var world: WorldMap = null
 var sites: Array = []      # Array[WorldSite]
 var patrols: Array = []    # Array[Patrol]
 var guardians: Array = []  # Array[SiteGuardian]
+## Bodies pulled out of graves and left standing there (`RaisedDead`). Views
+## over `Necromancer.raised_dead` entries -- the ledger is the data, these are
+## how the player can tell it happened. R2d takes them into the escort.
+var raised: Array = []     # Array[RaisedDead]
 
 ## The `kind -> statline` table `guardian.kind` selects from (section 8).
 var guardian_kinds: Dictionary = {}
@@ -67,6 +71,7 @@ func _add_site(entry: Dictionary) -> void:
 	add_child(site)
 	site.day_provider = func(): return int(day_provider.call()) if day_provider.is_valid() else 1
 	site.guardian_spawner = _post_guardians
+	site.dead_riser = _raise_dead
 	site.setup(entry, at, float(entry.get("size", 56.0)))
 	sites.append(site)
 	if bool(entry.get("landmark", false)):
@@ -131,6 +136,30 @@ func _post_guardians(site: WorldSite, kind: String, count: int) -> void:
 		guardians.append(g)
 		site.guardians.append(g)
 	site.cleared = false
+
+# ---------------- Raised dead -------------------------------------------------
+
+## Puts a body on the map for each ledger entry the villain just made.
+##
+## One node per entry, offset slightly around the grave so two raised from the
+## same plot do not stack into one silhouette. They are inert: not in the labour
+## pool, not in `CombatSystem`'s target lists, not commandable yet. **Visible**,
+## which is the entire point -- LOOT_SITES_SPEC §4's dormancy is about orders,
+## not about existence, and reading it as ledger-only made the act invisible.
+func _raise_dead(site: WorldSite, villain, entries: Array) -> void:
+	for i in range(entries.size()):
+		var angle: float = TAU * float(raised.size() + i) / 5.0
+		var at: Vector2 = site.position + Vector2(cos(angle), sin(angle)) \
+			* float(SettlementGrid.CELL_SIZE) * 0.7
+		if world:
+			at = world.nearest_walkable(at)
+		var body := RaisedDead.new()
+		body.name = "Raised_%s_%d" % [site.site_id, raised.size()]
+		# setup() before add_child(), same reason the guardians do it: _ready()
+		# builds the sprite out of what setup() writes.
+		body.setup(villain, entries[i], at, site.display_name)
+		add_child(body)
+		raised.append(body)
 
 ## Removes a guardian that died or left, and clears its site when it was the
 ## last one standing. `villain` is the one who did it -- passed in, never looked
@@ -211,6 +240,9 @@ func pick_at(world_pos: Vector2) -> Node2D:
 	for g in guardians:
 		if is_instance_valid(g) and world_pos.distance_to(g.position) <= g.hit_radius():
 			return g
+	for r in raised:
+		if is_instance_valid(r) and world_pos.distance_to(r.position) <= r.hit_radius():
+			return r
 	var best: WorldSite = null
 	var best_dist: float = INF
 	for s in sites:

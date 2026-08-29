@@ -87,6 +87,11 @@ A raised corpse is **recorded, not spawned** (`Necromancer.raised_dead`): §4 sa
 escort lands, then retroactively live, and spawning a skeleton with no order model to stand under
 is a unit R2d would have had to unpick.
 
+> **Superseded 2026-08-30** by the playtest fixes at the foot of this file. Ledger-only was per
+> spec and completely invisible: the player raised a corpse and the world showed nothing. The entry
+> is still the data; a `RaisedDead` node now stands over it. The dormancy is about orders, not
+> about existence.
+
 ### Loot, gold, arms, relics
 
 `data/loot_tables.json` holds thirteen tables in §5's shape, and **`LootCatalog` owns the roll** —
@@ -367,3 +372,127 @@ risky, pack size is the tunable (§10 lists it), not the wolf.
 Wire-level UI paths — the action buttons and the choice sheet — are `InspectorActions` and
 `EventPanelUI` and cannot be exercised headless (`godot-mcp` simulated input never reaches the
 game). They need a mouse.
+
+---
+
+# Playtest fixes — two invisible actions (2026-08-30)
+
+First playtest of R2a (`2845d75`), at "A Fresh Grave" in the lair surroundings. Two symptoms, both
+reported as *"clicking it appears to do nothing"*, and they turned out to be one of each kind: one
+genuinely refused, one genuinely worked. Neither was click wiring.
+
+Diagnosed with a throwaway probe scene that reproduced the exact screenshot state — full hands, a
+remainder at the grave — before anything was changed. That is the only reason the second one was
+not "fixed" by chasing the input path.
+
+## Symptom 1 — Collect: a silent refusal, offered lit
+
+The chain was fine end to end. `InspectorActions` built the button, the signal reached
+`Main._begin_site_action`, `begin_action` ran and returned **true**, `_collect_remainder` ran, and
+`Necromancer.add_carried()` **refused every kind** because he was 6/6 full.
+
+Which is the trap: a remainder exists *precisely because* his hands were full when the site paid
+out, so the single most likely moment to press Collect is the moment it cannot work. The row was
+authored `"enabled": true` unconditionally.
+
+Two things made it invisible rather than merely disallowed. The top bar shows **banked `GameState`
+resources only** — carried loot has no HUD until R2c — so a successful collect and a failed one
+look identical. And the probe caught the log actively lying: `_collect_remainder` emitted
+`site_looted` with an empty haul, so Main printed *"A Fresh Grave gives up nothing he can carry"*
+followed by *"He leaves 3 Bones behind"* — describing a fresh robbery, about bones the player had
+left there himself a minute earlier.
+
+Fixed, and the legibility is not waiting for R2c:
+
+- `actions_for()` computes `enabled` and `reason` for the collect row from the villain's actual
+  carry space. Full hands ⇒ disabled, with *"His hands are full — 6 / 6. Empty them at the lair and
+  come back; it stays here."*
+- **A greyed button now says why it is greyed**, on the panel, under the row it belongs to.
+  `GAME_IMPROVEMENT_REVIEW.md` §9 asks for "clearer explanation of why an action is unavailable",
+  and a tooltip does not satisfy it — nobody hovers a control that looks dead.
+- `_collect_remainder()` returns a bool. A refusal reaches `Main` as `false` and raises a specific
+  alert instead of reporting success.
+- A successful collect writes its own TravelLog line — *"Collected: 2 Gold, 1 Dark Essence —
+  carrying 3/6."*, naming what is still at the site if anything is — and no longer borrows
+  `site_looted`, which is a signal about a site paying out and was making Main narrate nonsense.
+- `Main._begin_site_action` refreshes the inspector **either way**. A press that changes nothing on
+  screen is the entire bug.
+
+## Symptom 2 — Raise: per spec, and invisible
+
+`LOOT_SITES_SPEC.md` §4 says a raised corpse is dormant until the escort lands, and R2a implemented
+that literally: an entry appended to `Necromancer.raised_dead` and nothing else. The probe confirmed
+it — ledger entry written, Forbidden Knowledge deed emitted, notice applied, **zero nodes at the
+graveside, sprite unchanged**. The only evidence anywhere was one line in the history log.
+
+The dormancy is about what it can be *ordered to do*, not about whether it is there. So:
+
+- **`RaisedDead`** — a Node2D standing where the corpse came up, wearing the Skeleton Worker's own
+  art at `WorkerToken.SPRITE_TARGET_SIZE`, clickable and inspectable. It is a **pure view over the
+  villain's ledger entry** (the Dictionary itself, not a copy), which is CLAUDE.md's data/view rule
+  and also what lets R2d bind these into the escort by walking `raised_dead` with nothing to
+  reconcile.
+- It is deliberately **not** a `Worker` — handing it to `WorkerSystem` would put it on the
+  gathering rota and it would walk off to chop wood — and **not** a `SiteGuardian`, so it can never
+  enter `CombatSystem`'s target lists. It stands there.
+- `WorldSites` owns them and spawns them through a `dead_riser` Callable, the same pattern the
+  guardian spawner already uses so the site still cannot reach into its container.
+- **The grave now looks disturbed as soon as it is disturbed.** `_refresh_sprite()` swapped only on
+  `is_spent()`, so a grave with the body dug out and the valuables still in it showed undisturbed
+  art. It now swaps on disturbance; destroy-the-evidence still reverts it, which is the rule that
+  actually matters.
+- Plus the TravelLog line: *"A Derelict Graveyard — it climbs out and stands there, waiting."*
+
+The corpse charge behaviour was already right and is now asserted: raising consumes the *corpse*,
+not the grave, so "steal" is still offered afterwards (§4's separate takings) and "raise" is not.
+
+## Verification
+
+`verify_loot_tables` gained three sections and is now **500 assertions**: a refused collect is
+disabled with a reason and changes nothing while a permitted one writes its log line; raising
+produces a live node over the villain's own entry, dormant, clickable, with the charge taken, the
+sprite swapped, the deed emitted and the threat raised; and a grave holding only a remainder offers
+Collect *and nothing else* (confirmed from the screenshot, asserted so it stays true).
+
+One of the new assertions was wrong on first run and worth recording: it demanded the collect take
+the **exact** remainder, which fails legitimately when the remainder is larger than his hands — the
+battlefield leaves ten units against a capacity of six. Restated as the real invariant: a collect
+neither creates nor destroys anything (`carried + still-there == was-left`, kind by kind), he takes
+as much as fits, and repeated trips empty it.
+
+**New: `tools/smoke_site_actions.tscn`** — 26 assertions, and the thing that was missing. The loot
+harness calls `begin_action()` directly, which is right for rules and useless for the bug that
+produced this report: everything between the click and `begin_action` was untested. This drives
+`Main._inspect_at()` — the real click handler — finds the real `Button` by its text, checks no later
+sibling `Control` overlaps it (the layering that has eaten HUD clicks twice), and emits its
+`pressed` signal. Then the same for the choice sheet: open it, press *Raise the corpse*, run the
+channel out, and assert a body is standing there.
+
+It taught us two things about the game while being written, both correct behaviour that a test has
+to respect:
+
+- **Standing on a site inspects the villain, not the site** — characters outrank scenery in the
+  pick order. The test stands *beside* the site, at an offset derived from the two radii rather
+  than hardcoded, which doubles as an assertion: if a site's reach were ever smaller than the
+  villain's own click radius there would be no point from which it is both in reach and clickable.
+- **`_inspect_at` refuses anything under fog.** A placed villain has not been seen by the fog yet,
+  so the test waits for the reveal to catch up.
+
+Suite: `verify_loot_tables` 500, `smoke_site_actions` 26, `verify_terrain` 261,
+`check_sprite_scales` 122, `verify_stats` 505, `verify_combat_feedback` 31,
+`check_fog_and_minimap` 41 — all 0 failed. Headless boot clean, `measure_travel` every row in band.
+
+`project.godot`'s `[rendering]` comment block was stripped again by the playtest run — the block
+predicts this in its own last paragraph — and is restored.
+
+## Still needs a human
+
+Both fixes are the kind only a mouse can finally confirm: godot-mcp's simulated input never reaches
+the game, so the smoke test covers everything except the OS event itself. Worth checking in the
+next session:
+
+1. Press Collect with full hands — the row should be visibly greyed with the reason *underneath*
+   it, not hidden in a tooltip.
+2. Empty his hands at a site with a remainder and press it — one log line, the row disappears.
+3. Raise a corpse — a skeleton should be standing at the graveside before the channel bar clears,
+   and the grave should look dug up.
