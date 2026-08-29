@@ -544,7 +544,7 @@ after it is the loop closing around it.
    relics in data/relics.json, and the site_choices.json grammar. The
    2026-08-29 amendment block at the top of the spec is BINDING and
    supersedes the body where they differ: three graveyard tiers replace
-   the single cemetery (twelve types), the `arms` loot kind exists
+   the single cemetery (thirteen types), the `arms` loot kind exists
    (human sites only), and the cache tables are gold-first with mundane
    demoted to garnish. Witnesses and haulage in that block are R3+/gear
    material -- do NOT build them here.

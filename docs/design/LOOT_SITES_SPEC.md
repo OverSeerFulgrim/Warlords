@@ -72,8 +72,9 @@ tuning, the deposit-at-lair step, the escort, and Raven pings — this document 
 > loot in the run). Placement follows the telegraph rule (§3): derelict in the wilds off a dead
 > dirt track, village graveyard at the village outskirt, church cemetery inside the grounds.
 > The derelict graveyard is the school — where a player learns grave-robbing before anyone is
-> watching. Twelve types now; the 10–15 active budget holds (pool maxima already deliberately
-> sum past it). §2's Band-3 note (notice vs deeds split) applies to the church cemetery.
+> watching. Thirteen types now (eleven printed rows, minus the cemetery, plus these three —
+> corrected 2026-08-30 after R2a's build counted honestly); the 10–15 active budget holds
+> (pool maxima already deliberately sum past it). §2's Band-3 note (notice vs deeds split) applies to the church cemetery.
 >
 > **4. Witnesses — designed now, built in R3.** The principle behind the tier above, recorded
 > so R3 inherits it: **threat from a witnessed crime lands only when the witness reaches a
