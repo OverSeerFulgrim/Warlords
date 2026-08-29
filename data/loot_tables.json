@@ -1,0 +1,173 @@
+{
+	"_comment": "Loot tables for the lootable-site layer (LOOT_SITES_SPEC.md §5). A table is rolled `rolls` times; each roll picks one entry by weight, and an entry marked `unique` is removed from the table once it has been picked so a single resolution cannot pay out the same relic twice. Resource entries roll min..max inclusive. Relic entries name a rarity TIER, not a relic -- LootCatalog picks an undrawn relic of that tier, so the first set can grow by editing relics.json alone. TUNE THESE HERE, NOT IN CODE: tools/verify_loot_tables.tscn re-derives every ratio below from this file against the §5 band table in a 10k-roll simulation, so a weight edited here is a number the harness will argue with.",
+
+	"fresh_grave": {
+		"band": 1,
+		"rolls": 2,
+		"entries": [
+			{"kind": "bones", "min": 1, "max": 3, "weight": 40},
+			{"kind": "food", "min": 1, "max": 1, "weight": 8},
+			{"kind": "gold", "min": 1, "max": 2, "weight": 20},
+			{"kind": "dark_essence", "min": 1, "max": 1, "weight": 8},
+			{"relic_tier": "trinket", "weight": 4, "unique": true}
+		]
+	},
+
+	"small_cache": {
+		"band": 1,
+		"exception": "Amendment 2026-08-29 ruling 1: the gold and the trinket ARE the cache. Wood, stone and food are garnish at low weight and small amounts -- a cache whose best outcome is wood is a bug by §1.1's first law, so this table deliberately breaks Band 1's gold band upward and the harness asserts gold-dominance instead of the band.",
+		"rolls": 2,
+		"entries": [
+			{"kind": "gold", "min": 2, "max": 4, "weight": 50},
+			{"relic_tier": "trinket", "weight": 10, "unique": true},
+			{"kind": "wood", "min": 1, "max": 1, "weight": 10},
+			{"kind": "stone", "min": 1, "max": 1, "weight": 10},
+			{"kind": "food", "min": 1, "max": 2, "weight": 10}
+		]
+	},
+
+	"wayside_shrine": {
+		"band": 2,
+		"rolls": 3,
+		"entries": [
+			{"kind": "gold", "min": 1, "max": 3, "weight": 32},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 24},
+			{"kind": "bones", "min": 2, "max": 5, "weight": 20},
+			{"kind": "stone", "min": 1, "max": 3, "weight": 16},
+			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+		]
+	},
+
+	"abandoned_camp": {
+		"band": 2,
+		"comment": "Amendment ruling 2: the camp is one of the three human sites that can turn up arms, at a small chance -- somebody left in a hurry and did not take everything.",
+		"rolls": 4,
+		"entries": [
+			{"kind": "wood", "min": 1, "max": 3, "weight": 24},
+			{"kind": "food", "min": 1, "max": 3, "weight": 24},
+			{"kind": "gold", "min": 1, "max": 3, "weight": 28},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 18},
+			{"kind": "arms", "min": 1, "max": 1, "weight": 8},
+			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+		]
+	},
+
+	"valuable_grave": {
+		"band": 2,
+		"rolls": 3,
+		"entries": [
+			{"kind": "bones", "min": 2, "max": 4, "weight": 30},
+			{"kind": "gold", "min": 2, "max": 4, "weight": 30},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 24},
+			{"kind": "food", "min": 1, "max": 2, "weight": 12},
+			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+		]
+	},
+
+	"ruin_pocket": {
+		"band": 2,
+		"rolls": 3,
+		"entries": [
+			{"kind": "stone", "min": 2, "max": 4, "weight": 30},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 26},
+			{"kind": "gold", "min": 2, "max": 4, "weight": 26},
+			{"kind": "bones", "min": 1, "max": 2, "weight": 12},
+			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+		]
+	},
+
+	"wolf_den": {
+		"band": 2,
+		"exception": "RELIC COLUMN ONLY. §5 authorises exactly one thing here -- the best wolfhide_cloak odds in the game (~24% against the band's ~15%) -- so the resource columns are held to Band 2 like any other site and the harness checks them. The gold is what the pack dragged in with whatever it last ate; the wolves have no use for it. No arms: amendment ruling 2 is explicit that arms are human sites only.",
+		"rolls": 3,
+		"entries": [
+			{"kind": "bones", "min": 2, "max": 4, "weight": 30},
+			{"kind": "food", "min": 1, "max": 3, "weight": 22},
+			{"relic": "wolfhide_cloak", "weight": 10, "unique": true},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 28},
+			{"kind": "gold", "min": 2, "max": 4, "weight": 26}
+		]
+	},
+
+	"derelict_graveyard": {
+		"band": 2,
+		"comment": "Per grave. The school: Band-2 ratios, no watcher, no notice ever.",
+		"rolls": 3,
+		"entries": [
+			{"kind": "bones", "min": 2, "max": 4, "weight": 34},
+			{"kind": "gold", "min": 2, "max": 4, "weight": 26},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 24},
+			{"kind": "wood", "min": 1, "max": 2, "weight": 12},
+			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+		]
+	},
+
+	"village_graveyard": {
+		"band": 2,
+		"comment": "Per grave. Sits between the derelict and the church: better than Band 2, short of Band 3, and someone is sometimes watching.",
+		"rolls": 3,
+		"entries": [
+			{"kind": "bones", "min": 3, "max": 5, "weight": 32},
+			{"kind": "gold", "min": 2, "max": 4, "weight": 30},
+			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 25},
+			{"kind": "food", "min": 1, "max": 2, "weight": 10},
+			{"relic_tier": "uncommon", "weight": 7, "unique": true}
+		]
+	},
+
+	"church_cemetery": {
+		"band": 3,
+		"comment": "Per grave, and the best grave loot in the run -- §5's Band-3 row, kept for the church exactly as the amendment asks.",
+		"rolls": 3,
+		"entries": [
+			{"kind": "bones", "min": 3, "max": 6, "weight": 30},
+			{"kind": "gold", "min": 3, "max": 5, "weight": 30},
+			{"kind": "dark_essence", "min": 1, "max": 3, "weight": 24},
+			{"kind": "food", "min": 1, "max": 2, "weight": 8},
+			{"relic_tier": "uncommon", "weight": 9, "unique": true},
+			{"relic_tier": "rare", "weight": 2, "unique": true}
+		]
+	},
+
+	"crypt": {
+		"band": 4,
+		"exception": "RELIC COLUMN ONLY. `guaranteed` is honoured by the roller before the weighted rolls, so the crypt pays a rare-or-better every single time -- which no percentage describes, and which is why the harness asserts 100% here instead of a band. The three resource columns are held to Band 4 like anything else.",
+		"comment": "The rare entry is guaranteed rather than weighted, so the four weighted rolls are all the heavy Dark Essence the crypt is really made of.",
+		"rolls": 4,
+		"guaranteed": [{"relic_tier": "rare"}],
+		"entries": [
+			{"kind": "dark_essence", "min": 2, "max": 4, "weight": 34},
+			{"kind": "gold", "min": 4, "max": 7, "weight": 32},
+			{"kind": "bones", "min": 4, "max": 7, "weight": 28},
+			{"kind": "stone", "min": 2, "max": 4, "weight": 14}
+		]
+	},
+
+	"outlaw_cave": {
+		"band": 4,
+		"exception": "RELIC COLUMN ONLY, and only because the guaranteed arms sit in the mundane column rather than the relic one -- the cave's ~28% rare is deliberately under the Band-4 ~40%, because what it really pays is the hoard and the weapons. The three resource columns are held to Band 4.",
+		"comment": "Amendment ruling 2: the hoard gains GUARANTEED arms. This is where you get weapons without paying the Workshop for them.",
+		"rolls": 4,
+		"guaranteed": [{"kind": "arms", "min": 2, "max": 3}],
+		"entries": [
+			{"kind": "gold", "min": 4, "max": 7, "weight": 36},
+			{"kind": "arms", "min": 1, "max": 3, "weight": 20},
+			{"kind": "food", "min": 2, "max": 5, "weight": 18},
+			{"kind": "dark_essence", "min": 3, "max": 5, "weight": 26},
+			{"relic_tier": "rare", "weight": 8, "unique": true}
+		]
+	},
+
+	"cursed_battlefield": {
+		"band": 4,
+		"comment": "Mass bones, and amendment ruling 2's arms lying where they fell. No exception: it is held to Band 4 on all four columns, and the gold is what was in the purses of everyone who did not walk away.",
+		"rolls": 4,
+		"entries": [
+			{"kind": "bones", "min": 4, "max": 7, "weight": 30},
+			{"kind": "dark_essence", "min": 2, "max": 4, "weight": 30},
+			{"kind": "arms", "min": 1, "max": 3, "weight": 16},
+			{"kind": "gold", "min": 4, "max": 8, "weight": 30},
+			{"relic_tier": "rare", "weight": 12, "unique": true}
+		]
+	}
+}

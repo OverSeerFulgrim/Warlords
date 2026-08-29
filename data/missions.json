@@ -5,7 +5,7 @@
     "description": "Move contraband through a border checkpoint without being noticed.",
     "relevant_stat": "guile",
     "difficulty": 6,
-    "reward": { "dark_essence": 10 },
+    "reward": { "wood": 6, "food": 4 },
     "complication_effects": { "threat": 2 },
     "failure_effects": { "threat": 4, "follower_captured": true }
   },
@@ -15,7 +15,7 @@
     "description": "Hit a merchant caravan for whatever it's carrying.",
     "relevant_stat": "strength",
     "difficulty": 5,
-    "reward": { "dark_essence": 8, "bones": 2 },
+    "reward": { "food": 6, "wood": 2, "bones": 2 },
     "complication_effects": { "threat": 3 },
     "failure_effects": { "threat": 5 }
   },
@@ -35,7 +35,7 @@
     "description": "Plant influence inside a nearby noble's court.",
     "relevant_stat": "mercantile",
     "difficulty": 7,
-    "reward": { "reputation": 2, "dark_essence": 5 },
+    "reward": { "reputation": 2, "food": 5 },
     "complication_effects": { "threat": 2 },
     "failure_effects": { "threat": 6, "reputation": -2 }
   }

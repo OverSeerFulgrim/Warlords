@@ -115,6 +115,39 @@ var carried: Dictionary = {}
 ## system reading "the villain" already sees the field it will eventually need.
 var escort: Array = []
 
+## Relics in his hands, by id. A **separate list from `carried`** because
+## identity matters for a relic and does not for a unit of bones -- the
+## Dictionary is for fungibles (LOOT_SITES_SPEC section 7). Each one occupies a
+## carry slot like any resource unit.
+var relics_carried: Array = []
+
+## Relics that made it home. **This is the list the effects read.** A relic in
+## hand grants nothing; effects activate on deposit at the lair -- the banking
+## rule (ROGUELITE_REWORK section 1) applied to power, and what keeps "drop it
+## and run" a live choice on the return leg rather than a pure loss. The deposit
+## step itself is `SORTIE_SPEC.md`'s (R2c); this list and every reader below are
+## here so that pass has nothing to invent.
+var relics_banked: Array = []
+
+## **The ledger R3 will read** (LOOT_SITES_SPEC section 6). Ordered and stamped
+## in game-days, per-villain, and never in an autoload -- R3 reads notoriety
+## from here, never out of `GameState`. R2 consumes none of it beyond a log
+## line. It costs a signal and an array now and saves R3 from archaeology later.
+var deeds: Array = []
+
+## Corpses raised out of graves, before the escort exists to receive them
+## (section 4: "dormant until escort lands, then retroactively live"). Recording
+## them is the honest R2a shape -- the alternative was spawning a skeleton with
+## nothing to do and no order model to put it under, which R2d would then have
+## had to unpick.
+var raised_dead: Array = []
+
+## True while he is channelling a site action. **Read by `step()` below**, which
+## is the whole reason it lives on him rather than on the site: his idle pacing
+## would otherwise wander him out of range of the grave he is digging, eight
+## seconds into a twelve-second pull.
+var is_channelling: bool = false
+
 ## Optional soft fence, set by whoever owns the map. Zero-size means unbounded.
 ## Belt to `world`'s braces: the world map's blocking rim already stops him at
 ## the edge, and this catches the case where there is no map at all (tests).
@@ -179,8 +212,27 @@ func place_at(p: Vector2) -> void:
 
 ## Pixels per second under player control. Same cells-per-second convention as
 ## `Laborer.walk_speed_px()`.
+##
+## Banked relics multiply it. The Wolf-Hide Cloak is `off_road: true`, so it
+## reads the ground he is standing on through the same `speed_multiplier()` the
+## movement itself uses -- a road bonus is a road bonus, and the cloak is for
+## everywhere else.
 func move_speed_px() -> float:
-	return MOVE_SPEED_CELLS * float(SettlementGrid.CELL_SIZE)
+	return MOVE_SPEED_CELLS * float(SettlementGrid.CELL_SIZE) * _relic_speed_multiplier()
+
+func _relic_speed_multiplier() -> float:
+	if relics_banked.is_empty():
+		return 1.0
+	var on_road: bool = terrain_speed() > 1.0
+	var mult: float = 1.0
+	for id in relics_banked:
+		for effect in LootCatalog.relic(id).get("effects", []):
+			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "move_speed_mult":
+				continue
+			if bool(effect.get("off_road", false)) and on_road:
+				continue
+			mult *= float(effect.get("value", 1.0))
+	return mult
 
 ## One frame of movement. `move_dir` is the raw (unnormalised) direction vector
 ## from whoever is reading input -- `Vector2.ZERO` when he is not being driven.
@@ -205,6 +257,12 @@ func step(move_dir: Vector2, delta: float) -> void:
 		var motion: Vector2 = move_dir.normalized() * move_speed_px() * terrain_speed() * delta
 		_move_by(motion)
 		is_moving = true
+		return
+
+	# Standing still on purpose is not standing still by accident. A channel is
+	# the one state where "he has not moved for a while" must NOT resume the
+	# pacing -- see `is_channelling`.
+	if is_channelling:
 		return
 
 	idle_seconds += delta
@@ -329,14 +387,20 @@ func _move_by(motion: Vector2) -> void:
 ## (COMBAT_SPEC section 2.1). One rule, not two: giving the villain a bespoke
 ## carry stat would mean two places to look when a sortie comes home light. His
 ## Endurance 6 keeps the carry 6 that R1 shipped.
+## Endurance plus whatever the Pallbearer's Gloves are worth, once they are
+## home. Capacity is a **rule** (`SORTIE_SPEC.md` section 10: tune the yield,
+## not the capacity), and a banked relic is the one sanctioned way to move it.
 func carry_capacity() -> int:
-	return maxi(1, endurance)
+	return maxi(1, attribute("endurance") + _relic_sum("carry_delta"))
 
+## Resource units plus relics: **a relic occupies one carry slot** like any
+## other unit (LOOT_SITES_SPEC section 7), which is what makes arriving at a
+## crypt with full hands a real problem and `Drop` (R2c) a real answer.
 func carried_total() -> int:
 	var total: int = 0
 	for amount in carried.values():
 		total += int(amount)
-	return total
+	return total + relics_carried.size()
 
 func carry_space() -> int:
 	return maxi(0, carry_capacity() - carried_total())
@@ -360,12 +424,118 @@ func take_carried() -> Dictionary:
 
 ## Human-readable load, for logs and the panel. "nothing" when empty.
 func carried_label() -> String:
-	if carried.is_empty():
-		return "nothing"
 	var parts: Array = []
 	for kind in carried.keys():
-		parts.append("%d %s" % [int(carried[kind]), String(kind).capitalize()])
+		parts.append("%d %s" % [int(carried[kind]), String(kind).capitalize().replace("_", " ")])
+	for id in relics_carried:
+		parts.append(String(LootCatalog.relic(id).get("name", id)))
+	if parts.is_empty():
+		return "nothing"
 	return ", ".join(parts)
+
+# ---------------- Relics (LOOT_SITES_SPEC section 7) -------------------------
+
+## Everything this run has already turned up, in hand or banked. Handed to
+## `LootCatalog.roll()` so relics stay unique per run **without the catalog
+## holding run state** -- it is an autoload, and a second villain would draw
+## from the same tables with his own set.
+func drawn_relic_ids() -> Array:
+	var out: Array = relics_carried.duplicate()
+	out.append_array(relics_banked)
+	return out
+
+## Takes a relic if there is a slot for it. Returns false when there is not, and
+## the caller leaves it at the site as a remainder charge -- the same rule
+## `add_carried()` follows, for the same reason (`SORTIE_SPEC.md` section 4).
+func add_relic(id: String) -> bool:
+	if id == "" or drawn_relic_ids().has(id):
+		return false
+	if carry_space() <= 0:
+		return false
+	relics_carried.append(id)
+	return true
+
+## The deposit half, for R2c to call. Banking is what turns a relic from cargo
+## into an effect.
+func bank_relics() -> Array:
+	var banked: Array = relics_carried.duplicate()
+	relics_banked.append_array(banked)
+	relics_carried.clear()
+	return banked
+
+## Sum of one numeric effect kind across banked relics. Effects are additive and
+## unstacked in R2 -- relics are unique per run, so a second copy of anything
+## cannot drop and there is nothing to stack.
+func _relic_sum(kind: String) -> int:
+	var total: int = 0
+	for id in relics_banked:
+		for effect in LootCatalog.relic(id).get("effects", []):
+			if bool(effect.get("dormant", false)):
+				continue
+			if String(effect.get("kind", "")) == kind:
+				total += int(effect.get("value", 0))
+	return total
+
+## Multiplier applied to a channel carrying any of `tags`. The Sexton's Ring is
+## `{"kind": "channel_mult", "tags": ["grave"], "value": 0.75}` and nothing in
+## code knows what a sexton is, which is the test a relic effect has to pass.
+func channel_multiplier(tags: Array) -> float:
+	var mult: float = 1.0
+	for id in relics_banked:
+		for effect in LootCatalog.relic(id).get("effects", []):
+			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "channel_mult":
+				continue
+			var wanted: Array = effect.get("tags", [])
+			if wanted.is_empty():
+				mult *= float(effect.get("value", 1.0))
+				continue
+			for tag in tags:
+				if wanted.has(tag):
+					mult *= float(effect.get("value", 1.0))
+					break
+	return mult
+
+## Extra cells of fog the Barrow Lantern reveals. Read by `Main._fog_sources()`.
+func fog_reveal_bonus() -> int:
+	return _relic_sum("fog_reveal_delta")
+
+## Hit points the Chipped Censer restores at dawn. Read by `Main` on
+## `dawn_started`, where the other dawn work already is.
+func dawn_heal() -> int:
+	return _relic_sum("heal_at_dawn")
+
+# ---------------- Deeds (LOOT_SITES_SPEC section 6) --------------------------
+
+## Records one deed and announces it. **Both halves in one call**, so there is
+## no path by which the ledger and the signal disagree about what happened.
+##
+## `axes` is R3's five (`{"wealth": 1}`), written now and consumed later; R2
+## reads none of it beyond the log line. The entry is stamped with the game day
+## because R3 may replay the ledger rather than subscribe, and an unordered
+## ledger is archaeology.
+func record_deed(deed_id: String, axes: Dictionary, day: int) -> void:
+	if deed_id == "":
+		return
+	deeds.append({"id": deed_id, "axes": axes.duplicate(), "day": day, "seq": deeds.size()})
+	EventBus.deed_committed.emit(self, deed_id, axes)
+
+## The four-way sheet's "raise the corpse", before there is an escort to hand it
+## to (section 4: dormant until the escort lands, then retroactively live).
+## Recorded rather than spawned -- a skeleton with no order model to stand under
+## is a unit R2d would have to unpick.
+func raise_corpse_at(at: Vector2, count: int = 1) -> void:
+	for i in range(maxi(1, count)):
+		raised_dead.append({"at": at, "dormant": true})
+
+## The channel flag's one writer. A method rather than a bare assignment so the
+## site can set it duck-typed, the same way everything else about him is reached.
+func set_channelling(active: bool) -> void:
+	is_channelling = active
+	if active:
+		# Cancels pacing outright rather than pausing it: he is working, and he
+		# should not resume a half-finished wander when he stands up.
+		_reset_idle(position)
+		clear_move_target()
 
 # ---------------- Escort -----------------------------------------------------
 
@@ -386,7 +556,7 @@ func escort_count() -> int:
 ## `Laborer` rather than being restated, so there is exactly one hp formula in
 ## the project.
 func max_hp() -> int:
-	return Laborer.HP_BASE + maxi(1, endurance) * Laborer.HP_PER_ENDURANCE
+	return Laborer.HP_BASE + maxi(1, attribute("endurance")) * Laborer.HP_PER_ENDURANCE
 
 func heal_full() -> void:
 	hp = max_hp()
@@ -400,15 +570,26 @@ func combat_name() -> String:
 ## 3.1 rule 3 does the rest. If this ever needed a hand-written profile, the
 ## rule would be wrong rather than the villain special.
 func combat_profile() -> Dictionary:
-	return Combat.profile_for(strength, dexterity, intelligence)
+	return Combat.profile_for(attribute("strength"), attribute("dexterity"),
+		attribute("intelligence"))
 
 func combat_defence(key: String) -> int:
 	return attribute(key)
 
-## Any of the nine by name. Same shape and same average-rather-than-zero
-## fallback as Laborer.attribute() -- he is not a Laborer (and structurally must
-## never become one), so the nine lines are restated rather than inherited.
+## Any of the nine by name, **plus whatever banked relics add to it**. Same
+## shape and same average-rather-than-zero fallback as Laborer.attribute() -- he
+## is not a Laborer (and structurally must never become one), so the nine lines
+## are restated rather than inherited.
+##
+## Relic deltas land here rather than on the nine vars, which is what makes
+## "effective, computed at use time, never stored" (CLAUDE.md) survive the Sermon
+## of Ash: `max_hp()`, `combat_profile()` and `carry_capacity()` all read through
+## this, so a +1 Intelligence relic changes his casting without a second code
+## path and a +1 Endurance one would change his hit points and his hands at once.
 func attribute(key: String) -> int:
+	return _base_attribute(key) + _relic_attribute_delta(key)
+
+func _base_attribute(key: String) -> int:
 	match key:
 		"strength": return strength
 		"dexterity": return dexterity
@@ -422,6 +603,18 @@ func attribute(key: String) -> int:
 		_:
 			push_warning("Necromancer: unknown attribute '%s'" % key)
 			return RaceCatalog.REFERENCE_VALUE
+
+func _relic_attribute_delta(key: String) -> int:
+	if relics_banked.is_empty():
+		return 0
+	var total: int = 0
+	for id in relics_banked:
+		for effect in LootCatalog.relic(id).get("effects", []):
+			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "attribute":
+				continue
+			if String(effect.get("attribute", "")) == key:
+				total += int(effect.get("delta", 0))
+	return total
 
 func is_alive() -> bool:
 	return hp > 0
@@ -483,31 +676,60 @@ func _ground_row() -> Dictionary:
 func activity_label() -> String:
 	if not is_alive():
 		return "Fallen"
+	if is_channelling:
+		return "Working at something"
 	if is_moving:
 		return "Walking his domain"
 	if _pacing:
 		return "Surveying his domain"
 	return "Standing still"
 
+## The two relic rows, and only when there is something to say. A relic in hand
+## says out loud that it is doing nothing yet -- section 7's deposit rule is a
+## real trade-off on the return leg, and the panel has to be honest about it or
+## the player never feels it.
+func _relic_rows() -> Array:
+	var rows: Array = []
+	if not relics_carried.is_empty():
+		var names: Array = []
+		for id in relics_carried:
+			names.append(String(LootCatalog.relic(id).get("name", id)))
+		rows.append({"label": "In hand", "value": ", ".join(names),
+			"color": Color(0.95, 0.85, 0.45)})
+		rows.append({"label": "", "value": "Carried relics do nothing. They wake when you get them home.", "muted": true})
+	if not relics_banked.is_empty():
+		var names: Array = []
+		for id in relics_banked:
+			names.append(String(LootCatalog.relic(id).get("name", id)))
+		rows.append({"label": "Banked", "value": ", ".join(names)})
+	return rows
+
 func get_inspect_data() -> Dictionary:
+	var rows: Array = [
+		{"label": "Activity", "value": activity_label()},
+		_hp_row(),
+		{"label": "Profile", "value": "%s — Intelligence %d vs Intelligence" % [
+			combat_profile()["profile"], attribute("intelligence")]},
+		{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
+			attribute("strength"), attribute("dexterity"), attribute("speed"), attribute("endurance")]},
+		{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d" % [
+			attribute("intelligence"), attribute("guile"), attribute("perception"), attribute("tact")]},
+		_ground_row(),
+		{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
+	]
+	rows.append_array(_relic_rows())
+	rows.append({"label": "Escort", "value": "None — he walks alone" if escort.is_empty()
+		else "%d following" % escort_count()})
+	if not raised_dead.is_empty():
+		rows.append({"label": "Raised", "value": "%d, waiting — they follow when you can lead them"
+			% raised_dead.size(), "muted": true})
+	if not deeds.is_empty():
+		rows.append({"label": "Deeds", "value": "%d this run" % deeds.size(), "muted": true})
+	rows.append({"label": "", "value": "He does not gather, and never counts toward your workforce.", "muted": true})
 	return {
 		"title": "The Necromancer",
 		"subtitle": "Master of the Settlement",
 		"sprite": PORTRAIT,
 		"description": "He walks the bone-strewn yard at all hours, counting what the living owe him. The dead do not need counting. They simply obey.",
-		"details": [
-			{"label": "Activity", "value": activity_label()},
-			_hp_row(),
-			{"label": "Profile", "value": "%s — Intelligence %d vs Intelligence" % [
-				combat_profile()["profile"], intelligence]},
-			{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
-				strength, dexterity, speed, endurance]},
-			{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d" % [
-				intelligence, guile, perception, tact]},
-			_ground_row(),
-			{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
-			{"label": "Escort", "value": "None — he walks alone" if escort.is_empty()
-				else "%d following" % escort_count()},
-			{"label": "", "value": "He does not gather, and never counts toward your workforce.", "muted": true},
-		],
+		"details": rows,
 	}

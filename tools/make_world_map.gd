@@ -765,6 +765,10 @@ func _step_dirt_network() -> void:
 	# signpost to loot.
 	_paint_route(_route(LAIR_GATE, _nearest_road(LAIR_GATE)), "t", 2)
 
+	var lootable: Dictionary = {}
+	for entry in _lootable_sites():
+		lootable[entry["id"]] = entry
+
 	for site in _signposted_sites():
 		var cell: Vector2i = site["cell"]
 		var band: int = _band_of(cell)
@@ -773,6 +777,21 @@ func _step_dirt_network() -> void:
 				+ "signposted:true. TERRAIN_SPEC §7 forbids it -- the crypt, the "
 				+ "outlaw cave and the cursed battlefield are found, not followed.")
 				% [site.get("id", "?"), cell, band])
+			aborted = true
+			return
+		# **THE ROAD PROMISE** (designer ruling, 2026-08-27 P2 human check): a
+		# road always has something at its end, even minor loot. Every dirt
+		# track this step paints terminates at a signposted site, so the promise
+		# reduces to one rule -- a signposted site must be lootable -- and it is
+		# a hard error here rather than a convention, for the same reason the
+		# Band-3 check above is. `verify_terrain` re-checks it against the
+		# painted map, which is the half that catches a track laid by anything
+		# other than this loop.
+		if not lootable.has(site.get("id", "?")):
+			push_error(("make_world_map: site '%s' at %s sets signposted:true but has no "
+				+ "`lootable` block. A dirt track must end at something worth walking to "
+				+ "(the road promise, 2026-08-27) -- give it loot or unsignpost it.")
+				% [site.get("id", "?"), cell])
 			aborted = true
 			return
 		_paint_route(_route(_nearest_road(cell), cell), "t", 1)
@@ -925,12 +944,77 @@ func _step_dressing() -> void:
 	for cell in _ellipse_cells(Vector2i(34, 96), 9, 7, 0.4, 55):
 		if _at(cell.x, cell.y) in ["g", "s", "S", "e"]:
 			_put(cell.x, cell.y, ",")
-	# Ruins under the ruin sites: how a lootable site telegraphs itself without
-	# a line leading to it (§7 rule 4).
-	for centre in [Vector2i(64, 96), Vector2i(101, 122)]:
-		for cell in _ellipse_cells(centre, 4, 3, 0.5, 23):
-			if _at(cell.x, cell.y) in ["g", "s", "S", "e", "w"]:
-				_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, ["R", "R", "o"]))
+	_dress_lootable_sites()
+
+## **Terrain telegraphs, paths do not** (§7 rule 4, `LOOT_SITES_SPEC.md` §3).
+## A ruin pocket and a crypt sit on ruins, the cursed battlefield on charred
+## ground, a wolf den on gnawed bone -- so each reads as *something is here* from
+## a distance, which is what satisfies the telegraphing requirement without a
+## line leading to it.
+##
+## **Driven off `world_sites.json`, not off a list of cells.** The pair of
+## hardcoded centres this replaces had already drifted: one of them sat in the
+## middle of the frozen lake and painted nothing, and the other missed the crypt
+## by three cells. Reading the site file means the dressing cannot be somewhere
+## the site is not, and a site moved in the JSON brings its ground with it.
+##
+## Only ORDINARY GROUND is overpainted -- never blocking terrain, never water,
+## never a road or a wood. That is what keeps this a dressing step rather than a
+## second terrain generator: the battlefield at the foot of the northern range
+## chars the walkable cells between the scree and leaves the range itself alone,
+## and a den's bone patch stays inside its clearing because open woodland is not
+## on the list.
+const SITE_DRESSING := {
+	"ruin_pocket": {"chars": ["R", "R", "o"], "rx": 4, "ry": 3},
+	"crypt": {"chars": ["R", "R", "o"], "rx": 5, "ry": 4},
+	"outlaw_cave": {"chars": ["o", "o", "R"], "rx": 4, "ry": 3},
+	"cursed_battlefield": {"chars": ["X", "X", "B"], "rx": 5, "ry": 4},
+	"wolf_den": {"chars": ["B", "B", "b"], "rx": 3, "ry": 2},
+}
+## What a dressing patch may be laid over. Ordinary ground only.
+const DRESSABLE := ["g", "s", "S", "e", "w", "d", "D", "b", "f", "F"]
+
+func _dress_lootable_sites() -> void:
+	var salt: int = 23
+	for site in _lootable_sites():
+		var spec: Dictionary = SITE_DRESSING.get(String(site["type"]), {})
+		if spec.is_empty():
+			continue
+		salt += 7
+		var painted: int = 0
+		for cell in _ellipse_cells(site["cell"], int(spec["rx"]), int(spec["ry"]), 0.5, salt):
+			if _at(cell.x, cell.y) in DRESSABLE:
+				_put(cell.x, cell.y, _patch_pick(cell.x, cell.y, spec["chars"]))
+				painted += 1
+		# A site whose ground refused every cell is a site that no longer
+		# telegraphs, and that is worth saying out loud rather than discovering
+		# at a playtest.
+		if painted == 0:
+			push_warning("make_world_map: site '%s' (%s) at %s got no dressing -- nothing under it is ordinary ground."
+				% [site["id"], site["type"], str(site["cell"])])
+
+## Every entry carrying a `lootable` block, as `{id, type, band, cell,
+## signposted}`. Read once here and once by `_signposted_sites()`; kept separate
+## because the signposting check runs before the roads and this runs after.
+func _lootable_sites() -> Array:
+	var out: Array = []
+	if not FileAccess.file_exists("res://data/world_sites.json"):
+		return out
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/world_sites.json"))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return out
+	for entry in parsed.get("sites", []):
+		if not entry.has("lootable"):
+			continue
+		var c: Array = entry.get("cell", [0, 0])
+		out.append({
+			"id": String(entry.get("id", "?")),
+			"type": String(entry["lootable"].get("type", "")),
+			"band": int(entry["lootable"].get("band", 2)),
+			"cell": Vector2i(int(c[0]), int(c[1])),
+			"signposted": bool(entry.get("signposted", false)),
+		})
+	return out
 
 # ---------------- 9. Bake -----------------------------------------------------
 

@@ -5,7 +5,16 @@ extends RefCounted
 
 var bounty_name: String
 var bounty_type: String  # "Harvest" or "Reanimation" for the Undead Empire prototype
-var reward: int           # in dark_essence
+## What it pays, in **bones**.
+##
+## Was Dark Essence, and it is not any more (LOOT_SITES_SPEC section 5,
+## ROGUELITE_REWORK section 8): Dark Essence is field loot only -- exclusively
+## found out in the world by the villain himself -- and a board at home that
+## printed it was the largest of the three sources that made that a design goal
+## rather than a fact. **Re-pointed rather than retired**, because "Harvest
+## Corpses" paying bones is what the fiction said all along; the bounty layer
+## keeps working and the exclusivity rule (section 1.1) becomes true.
+var reward: int
 var risk: int             # 0-10, rough danger/complication scale
 var duration: float       # seconds to resolve, once accepted
 var threat_on_complete: int = 0

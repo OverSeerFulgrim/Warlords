@@ -238,8 +238,12 @@ func refresh_stats() -> void:
 	# Dark Essence trails behind its icon -- locked at 0 for the whole
 	# foundation build, but visible as the roadmap promise that Stage 4
 	# unlocks it.
-	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d" % [
-		GameState.wood, GameState.stone, GameState.bones, GameState.food
+	# Gold joined the strip with the lootable sites (LOOT_SITES_SPEC section 5).
+	# It sits with the other mundane resources rather than beside Dark Essence,
+	# because to the player it is one more number that goes up when he comes
+	# home -- that both of them are field-only is a design rule, not a layout.
+	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d   Gold: %d" % [
+		GameState.wood, GameState.stone, GameState.bones, GameState.food, GameState.gold
 	]
 	if lbl_dark_essence:
 		lbl_dark_essence.text = str(GameState.dark_essence)

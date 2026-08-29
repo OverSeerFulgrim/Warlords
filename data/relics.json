@@ -1,0 +1,56 @@
+{
+	"_comment": "The first relic set (LOOT_SITES_SPEC.md §7). Ten relics, six live effects, two honest trinkets, two dormant promises. Relics are UNIQUE PER RUN -- once one has dropped it is out of every table, which is why effects are additive and unstacked. A relic in hand grants NOTHING: effects activate on deposit at the lair (§7's carry rule, the banking rule applied to power), which is what keeps 'drop it and run' a live choice on the return leg. Effect keys the code implements: attribute (any of COMBAT_SPEC §2.1's nine), move_speed_mult, carry_delta, heal_at_dawn, fog_reveal_delta. An effect marked dormant:true is data with no consumer yet -- the panel says so out loud rather than shipping a lie.",
+
+	"relics": [
+		{
+			"id": "tarnished_locket", "name": "A Tarnished Locket", "tier": "trinket", "gold_value": 4,
+			"description": "Somebody's whole world, closed on a face nobody living remembers.",
+			"effects": []
+		},
+		{
+			"id": "grave_coins", "name": "Coins for the Ferryman", "tier": "trinket", "gold_value": 2,
+			"description": "Taken from under a tongue. The ferryman will have to wait.",
+			"effects": []
+		},
+		{
+			"id": "sextons_ring", "name": "The Sexton's Ring", "tier": "uncommon", "gold_value": 6,
+			"description": "He opened graves for forty years and was buried in one. The hands remember.",
+			"effects": [{"kind": "channel_mult", "tags": ["grave"], "value": 0.75}]
+		},
+		{
+			"id": "wolfhide_cloak", "name": "A Wolf-Hide Cloak", "tier": "uncommon", "gold_value": 6,
+			"description": "Cured badly, stinking, and warm. The snow does not slow whoever wears it.",
+			"effects": [{"kind": "move_speed_mult", "value": 1.10, "off_road": true}]
+		},
+		{
+			"id": "pallbearers_gloves", "name": "The Pallbearer's Gloves", "tier": "uncommon", "gold_value": 5,
+			"description": "Leather worn smooth by the weight of other people.",
+			"effects": [{"kind": "carry_delta", "value": 2}]
+		},
+		{
+			"id": "chipped_censer", "name": "A Chipped Censer", "tier": "uncommon", "gold_value": 5,
+			"description": "It still holds a little of whatever they were burning to keep you out.",
+			"effects": [{"kind": "heal_at_dawn", "value": 2}]
+		},
+		{
+			"id": "noble_seal", "name": "A Noble's Seal", "tier": "rare", "gold_value": 10,
+			"description": "A house that has never had to prove itself, pressed into wax.",
+			"effects": [{"kind": "axis_gain_mult", "axis": "wealth", "value": 1.25, "dormant": true}]
+		},
+		{
+			"id": "sermon_of_ash", "name": "The Sermon of Ash", "tier": "rare", "gold_value": 9,
+			"description": "Heresy, written out in a careful hand by someone who believed it.",
+			"effects": [{"kind": "attribute", "attribute": "intelligence", "delta": 1}]
+		},
+		{
+			"id": "barrow_lantern", "name": "A Barrow Lantern", "tier": "rare", "gold_value": 9,
+			"description": "It was lit when you found it. Nobody has been down there in three hundred years.",
+			"effects": [{"kind": "fog_reveal_delta", "value": 2}]
+		},
+		{
+			"id": "ledger_of_names", "name": "The Ledger of Names", "tier": "rare", "gold_value": 8,
+			"description": "Every name in it is dead. Most of them are still listening.",
+			"effects": [{"kind": "escort_cap_delta", "value": 1, "dormant": true}]
+		}
+	]
+}

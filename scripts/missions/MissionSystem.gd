@@ -86,7 +86,18 @@ func _apply_effects(effects: Dictionary) -> void:
 		var value = effects[key]
 		match key:
 			"dark_essence":
-				GameState.add_resource("dark_essence", value)
+				# **Retired as a source, kept as a sink.** Dark Essence is field
+				# loot only (LOOT_SITES_SPEC section 5, ROGUELITE_REWORK section
+				# 8): exclusively found out in the world, by the villain, on
+				# foot. A mission resolved from a menu at home may still *cost*
+				# it -- spending is what it has always lacked -- but it may not
+				# print it, and this refuses loudly rather than silently so a
+				# re-added grant in missions.json is a warning and not a
+				# quietly-broken design rule.
+				if value >= 0:
+					push_warning("MissionSystem: mission grants %d dark_essence; it is field loot only (LOOT_SITES_SPEC 5). Ignored." % value)
+				else:
+					GameState.spend_resource("dark_essence", -value)
 			"bones":
 				GameState.add_resource("bones", value)
 			"reputation":

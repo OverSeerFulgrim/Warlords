@@ -326,10 +326,18 @@ const HUMAN_TARGETS := {
 	"village": Vector2i(120, 64), "manor": Vector2i(129, 83),
 	"church": Vector2i(124, 102), "cemetery": Vector2i(127, 105),
 }
-const BAND_4_SITES := [
+## The regions §6 marks Band 4, checked whether or not a site stands in one.
+## **Kept alongside the real sites rather than replaced by them**: the "found,
+## not followed" rule is about the *ground*, so a road creeping into the Old
+## Crypt's rect is a finding even in a shuffle that left the crypt out.
+const BAND_4_REGIONS := [
 	Vector2i(64, 17), Vector2i(67, 96), Vector2i(13, 28), Vector2i(101, 123),
 ]
 const MAX_CROSSING_GAP: int = 25
+
+## Where a dirt track may end: at a lootable site, or at the lair (§7 rule 3 --
+## the player's own approach is his track, not a signpost to loot).
+const TERMINUS_TOLERANCE: int = 2
 
 func _generation(world: WorldMap) -> void:
 	# **Every road network is connected**, checked by walking road cells only --
@@ -363,7 +371,20 @@ func _generation(world: WorldMap) -> void:
 	# **Found, not followed** (section 7): no path of any kind may terminate
 	# within 3 cells of a Band 4 site. The crypt, the outlaw cave and the cursed
 	# battlefield are the whole reason distance buys quality.
-	for site_variant in BAND_4_SITES:
+	#
+	# Checked against **the sites that are actually placed** as well as the
+	# regions, which is new in R2a: until the loot layer landed there was
+	# nothing in a Band-4 rect for a road to lead to, and the assertion could
+	# only guard the ground. Now it guards the crypt, the cave and the
+	# battlefield by name -- and would catch a site moved onto a road, which the
+	# region check never could.
+	var band_4: Array = BAND_4_REGIONS.duplicate()
+	var named := {}
+	for entry in _lootable_sites():
+		if int(entry["band"]) >= 4:
+			band_4.append(entry["cell"])
+			named[entry["cell"]] = entry["id"]
+	for site_variant in band_4:
 		var site: Vector2i = site_variant
 		var near: Array = []
 		for dy in range(-3, 4):
@@ -371,8 +392,11 @@ func _generation(world: WorldMap) -> void:
 				var c: Vector2i = site + Vector2i(dx, dy)
 				if _is_road(world, c):
 					near.append(c)
-		_check("no path runs within 3 cells of the Band 4 site at %s" % site,
+		_check("no path runs within 3 cells of the Band 4 site at %s%s" % [site,
+			"" if not named.has(site) else " (%s)" % named[site]],
 			near.is_empty(), "%d road cells: %s" % [near.size(), str(near.slice(0, 4))])
+
+	_road_promise(world)
 
 	# **The river has its doors, and they are not far apart** (section 6).
 	var crossings: Array = []
@@ -441,6 +465,76 @@ func _generation(world: WorldMap) -> void:
 	print("    note: largest stranded pocket outside a blocking mass: %d cells" % worst_pocket)
 	_check("flood fill from the lair seals off no region (largest pocket <= 8 cells)",
 		worst_pocket <= 8, "a %d-cell region is unreachable" % worst_pocket)
+
+## **THE ROAD PROMISE** (designer ruling, 2026-08-27 P2 human check): *a road
+## always has something at its end, even minor loot.*
+##
+## The generator enforces the rule it can see -- a signposted site must carry a
+## `lootable` block -- but that only covers tracks it laid on purpose. This is
+## the half that reads the finished map: every dead end in the dirt network must
+## be a lootable site with at least one loot action at generation time, or the
+## lair's own gate (section 7 rule 3: the player's approach is his track, not a
+## signpost to loot).
+##
+## A dead end is a track cell with at most one road neighbour. Cobble is
+## deliberately excluded -- the Old Road runs off the map edge at both ends, and
+## the map edge is not a broken promise.
+func _road_promise(world: WorldMap) -> void:
+	var sites: Array = _lootable_sites()
+	var termini: Array = []
+	for y in range(world.height):
+		for x in range(world.width):
+			var here := Vector2i(x, y)
+			if _type_name(world, here) != "Worn track":
+				continue
+			var neighbours: int = 0
+			for dy in range(-1, 2):
+				for dx in range(-1, 2):
+					if dx == 0 and dy == 0:
+						continue
+					if _is_road(world, here + Vector2i(dx, dy)):
+						neighbours += 1
+			if neighbours <= 1:
+				termini.append(here)
+	print("    note: %d dirt-track dead ends" % termini.size())
+	for t_variant in termini:
+		var t: Vector2i = t_variant
+		if world.lair_band.has_point(t):
+			continue   # his own gate, and the one sanctioned exception
+		var found: String = ""
+		for entry in sites:
+			var cell: Vector2i = entry["cell"]
+			if maxi(absi(cell.x - t.x), absi(cell.y - t.y)) <= TERMINUS_TOLERANCE \
+					and bool(entry["has_loot_action"]):
+				found = String(entry["id"])
+				break
+		_check("the dirt track ending at %s leads to something worth the walk" % t,
+			found != "", "nothing lootable within %d cells" % TERMINUS_TOLERANCE)
+
+## Every entry of `world_sites.json` carrying a `lootable` block. Read here
+## rather than off the live `WorldSites` so the assertions are about the data
+## the generator saw, which is the thing they are really guarding.
+func _lootable_sites() -> Array:
+	var out: Array = []
+	var data: Dictionary = _json("res://data/world_sites.json")
+	for entry in data.get("sites", []):
+		if not entry.has("lootable"):
+			continue
+		var block: Dictionary = entry["lootable"]
+		var c: Array = entry.get("cell", [0, 0])
+		out.append({
+			"id": String(entry.get("id", "?")),
+			"type": String(block.get("type", "")),
+			"band": int(block.get("band", 2)),
+			"cell": Vector2i(int(c[0]), int(c[1])),
+			"signposted": bool(entry.get("signposted", false)),
+			# "At least one loot action at generation time": a charge to spend,
+			# and either a table to roll or a sheet to answer.
+			"has_loot_action": int(block.get("charges", 0)) > 0
+				and (String(block.get("loot_table", "")) != ""
+					or String(block.get("choices", "")) != ""),
+		})
+	return out
 
 ## Section 6b: every dense mass crossable, corridor mouths close enough together,
 ## every clearing with exactly one mouth and nothing paved inside a wood.

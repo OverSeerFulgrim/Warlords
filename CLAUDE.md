@@ -11,8 +11,11 @@ that system). Session write-ups append to `docs/history/`, NEVER here.
 
 ## Current phase
 
-Roguelite rework, stage **R2 next** (`docs/design/ROGUELITE_REWORK.md` §13 is the roadmap; it
-supersedes GAME_OUTLINE stages 4–5). R1 is done: directly-controlled killable Necromancer (WASD,
+Roguelite rework, **R2 in progress — R2a done, R2b next** (`docs/design/ROGUELITE_REWORK.md` §13
+is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
+placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
+raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`).
+R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
 economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat,
@@ -72,7 +75,8 @@ scripts/Main.gd            wiring root + input-mode arbitration (placement > dem
 scripts/ui/                InspectionPanel (the one inspect panel), Minimap, HudTopBar, BuildMenu,
                            EconomyTab, EventPanelUI, InspectorActions, TokenLayer,
                            CombatFeedback (pooled floating damage numbers)
-scripts/autoload/          GameState, EventBus, BuildingCatalog, RaceCatalog (load-once JSON catalogs)
+scripts/autoload/          GameState, EventBus, BuildingCatalog, RaceCatalog, LootCatalog (load-once
+                           JSON catalogs; LootCatalog also owns THE loot roll)
 scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                            MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/           Necromancer (data), VillainController (WASD+camera follow)
@@ -80,9 +84,11 @@ scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), 
 scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles + ONE
                            MultiMeshInstance2D canopy),
                            FogOfWar (one 144×144 image), DayNightCycle,
-                           WorldSite(s), Patrol, Wolf, Roaming, TravelLog
+                           WorldSite(s) (loot state on the node), SiteGuardian, Patrol, Wolf,
+                           Roaming, TravelLog
 scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
-data/                      the JSON content (races/buildings/events/missions/recruitment/world_*)
+data/                      the JSON content (races/buildings/events/missions/recruitment/world_*,
+                           loot_tables/relics/site_choices)
 tools/                     generators + verification harnesses (KEEP: they re-derive every number),
                            make_world_map.gd (GENERATES the layout by rule -- 9-step pipeline,
                            TERRAIN_SPEC §8; re-run and commit the JSON after editing),
@@ -96,15 +102,20 @@ assets/official|placeholder|vendor/      see Graphics rules
 
 - `godot --headless --path . --import` — required after adding any `class_name`
 - headless boot: `godot --headless --path . --quit-after 200` — clean start check
-- `tools/check_sprite_scales.tscn` — 40 assertions: everything draws at its claimed size
+- `tools/check_sprite_scales.tscn` — 122 assertions: everything draws at its claimed size, and
+  every looted-state sprite shares its unlooted partner's canvas
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3. **The gate on any map change**
   (TERRAIN_SPEC §9): every row must be back in band, and walk speed is not a knob
-- `tools/verify_terrain.tscn` — 254 assertions: per-file sheet slicing, 112 distinct atlas tiles
+- `tools/verify_terrain.tscn` — 261 assertions: per-file sheet slicing, 112 distinct atlas tiles
   with none all-black, every legend char and all 80 mask entries resolving, the flipped
   alternatives, **and the generated layout** — road network connected to every landmark, no path
   within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
   region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
   windowed for that gate)
+- `tools/verify_loot_tables.tscn` — 468 assertions: every table rolled 10k times against
+  LOOT_SITES_SPEC §5's bands (four per-column authored exceptions), relics unique, the grave
+  sheet's gating, remainder charges, the notice-vs-deeds split, relic effects waking only on
+  deposit, Dark Essence unprintable at home, and the dusk gate (1,000 dusks each way)
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

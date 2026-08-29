@@ -58,7 +58,9 @@ func _resolve_bounty(entry: Dictionary) -> void:
 	var success: bool = randf() <= success_chance
 
 	if success:
-		GameState.add_resource("dark_essence", bounty.reward)
+		# Bones, not Dark Essence -- see Bounty.reward. Dark Essence is field loot
+		# only from R2a on, and nothing at home may print it.
+		GameState.add_resource("bones", bounty.reward)
 		GameState.add_threat(bounty.threat_on_complete)
 	else:
 		# Failure still raises Threat (something went wrong out there) but pays nothing.

@@ -24,8 +24,8 @@
     "title": "A Lost Trader",
     "description": "A trader has lost his way and stumbled into your territory.",
     "choices": [
-      { "label": "Rob him", "effects": { "dark_essence": 8, "reputation": -2, "threat": 2 } },
-      { "label": "Extort him for future tribute", "effects": { "dark_essence": 3, "reputation": -1, "threat": 1 } },
+      { "label": "Rob him", "effects": { "wood": 4, "food": 4, "reputation": -2, "threat": 2 } },
+      { "label": "Extort him for future tribute", "effects": { "food": 3, "reputation": -1, "threat": 1 } },
       { "label": "Let him pass, quietly", "effects": {} }
     ]
   },
@@ -86,7 +86,7 @@
     "title": "A Noble's Secret Offer",
     "description": "A minor noble, deep in debt, offers you a quiet arrangement.",
     "choices": [
-      { "label": "Take the deal", "effects": { "dark_essence": 6, "threat": 1 } },
+      { "label": "Take the deal", "effects": { "wood": 3, "stone": 3, "threat": 1 } },
       { "label": "Refuse", "effects": {} }
     ]
   },
@@ -106,7 +106,7 @@
     "title": "An Ancient Ruin",
     "description": "Scouts report ruins nearby, radiating old power -- and old wards.",
     "choices": [
-      { "label": "Excavate", "effects": { "dark_essence": 10, "threat": 2 }, "risk_effects": { "bones": -6 } },
+      { "label": "Excavate", "effects": { "stone": 6, "bones": 4, "threat": 2 }, "risk_effects": { "bones": -6 } },
       { "label": "Leave it sealed", "effects": {} }
     ]
   },
@@ -126,7 +126,7 @@
     "title": "Plague Outbreak",
     "description": "Sickness spreads through a nearby village.",
     "choices": [
-      { "label": "Weaponize it", "effects": { "threat": 3, "dark_essence": 5 } },
+      { "label": "Weaponize it", "effects": { "threat": 3, "bones": 5 } },
       { "label": "Ignore it", "effects": {} }
     ]
   },

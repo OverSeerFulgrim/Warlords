@@ -31,6 +31,19 @@ var wood: int = 8
 var stone: int = 5
 var food: int = 5
 
+## **The sixth resource, and the first field-only one to be spendable** (LOOT_
+## SITES_SPEC section 5). Gold enters the game with the lootable sites: no
+## worker source, no building cost uses it yet, and its sinks arrive with R3 (the
+## Wealth axis reads hoarded gold) and R5 (stash value). Carrying a dead-end
+## resource for one milestone is acceptable; shipping loot without the loot is
+## not.
+##
+## `arms` is deliberately NOT here. It is the amendment ruling 2 loot kind and
+## it lives in `Necromancer.carried` only -- LOOT_SITES_SPEC section 9 says
+## GameState gains gold and "nothing else", and arms has no home in the
+## settlement economy until COMBAT_SPEC section 9's gear v1.
+var gold: int = 0
+
 # --- Reputation / Threat ---
 var reputation: int = 0
 var threat: int = 0
@@ -72,7 +85,7 @@ func record_departure(follower, reason: String, day: int) -> void:
 	})
 
 func _ready() -> void:
-	print("[GameState] ready. dark_essence=%d bones=%d wood=%d stone=%d food=%d" % [dark_essence, bones, wood, stone, food])
+	print("[GameState] ready. dark_essence=%d bones=%d wood=%d stone=%d food=%d gold=%d" % [dark_essence, bones, wood, stone, food, gold])
 
 # ---------------- Resources ----------------
 
@@ -88,6 +101,8 @@ func add_resource(kind: String, amount: int) -> void:
 			stone += amount
 		"food":
 			food += amount
+		"gold":
+			gold += amount
 		_:
 			push_warning("GameState.add_resource: unknown kind '%s'" % kind)
 			return
@@ -107,6 +122,8 @@ func can_afford(kind: String, amount: int) -> bool:
 			return stone >= amount
 		"food":
 			return food >= amount
+		"gold":
+			return gold >= amount
 		_:
 			return false
 
@@ -139,6 +156,10 @@ func spend_resource(kind: String, amount: int) -> bool:
 			if food < amount:
 				return false
 			food -= amount
+		"gold":
+			if gold < amount:
+				return false
+			gold -= amount
 		_:
 			push_warning("GameState.spend_resource: unknown kind '%s'" % kind)
 			return false
@@ -216,6 +237,7 @@ func reset() -> void:
 	wood = 8
 	stone = 5
 	food = 5
+	gold = 0
 	reputation = 0
 	threat = 0
 	threat_tier = ThreatTier.LOW

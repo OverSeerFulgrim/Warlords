@@ -1,5 +1,39 @@
 {
-	"_comment": "Static world content for R1: the village, the sealed rival ground, and a few band-2 landmarks. Positions are WORLD CELLS (the settlement's own buildings use settlement cells and live in buildings.json). Nothing here has behaviour -- see scripts/world/WorldSite.gd and Patrol.gd. Sites do not block movement in R1; you walk through the village, you do not walk around it.",
+	"_comment": "Static world content: the village, the sealed rival ground, the landmarks, and -- since R2a -- fifteen lootable sites. Positions are WORLD CELLS (the settlement's own buildings use settlement cells and live in buildings.json). Sites do not block movement; you walk through the village, you do not walk around it.",
+
+	"_comment_lootable": "The optional `lootable` block is LOOT_SITES_SPEC.md section 8. FIFTEEN ACTIVE SITES, which is the top of ROGUELITE_REWORK section 4's 10-15 active budget -- section 2's per-type 'per run' numbers are POOL bounds the R4 shuffle draws from and deliberately sum past it (~25), not additive targets. Thirteen types are represented once each, plus a second fresh grave and a second wolf den. `pool` and `active_count` are specified now and honoured in R4 (section 8), so the shuffle will not have to reopen this schema.\n\nTERRAIN TELEGRAPHS, PATHS DO NOT (section 3 + the 2026-08-06 amendment): the crypt sits on the ruins the generator paints under it, the battlefield on charred ground, the church cemetery inside the church grounds. `signposted: true` earns a worn dirt track and is legal on Band 1-2 ONLY -- tools/make_world_map.gd hard-errors on a Band 3 or 4 site that sets it. THE ROAD PROMISE (designer ruling, 2026-08-27 human check): a road always has something at its end, so every dirt-track terminus is a site with at least one loot action at generation time, and tools/verify_terrain.tscn asserts it.",
+
+	"_comment_guardians": "`guardian.kind` selects a statline from the `guardians` table below; a bare string reads as {kind, count: 1} so nothing already written reopens. Every kind wears an AUTHORED RACE ROW -- the wolf wears Wolf.gd's own row and art so a den wolf and a dusk wolf are the same animal, and there is deliberately no bespoke statline in this file. A Band-4 guardian that wants numbers the roster does not have is a workbook row (tools/export_roster.gd), not a JSON invention.",
+
+	"guardians": {
+		"wolf": {
+			"name": "Pack wolf",
+			"race_id": "wolf",
+			"sprite": "res://assets/placeholder/generated/creature_wolf.png",
+			"size": 74,
+			"width_scaled": true,
+			"flee_below_hp": 5,
+			"prowl_cells": 3,
+			"_comment": "Wolf.gd's own numbers: Str 5 / End 5 (18 hp), the flee-below-5 rule, and the one width-scaled sprite in the project (SPRITE_SPEC section 3's quadruped rule). A pack wolf that flees LEAVES THE RUN -- a den's defenders are finite, which is what makes attrition across two visits a legitimate tactic."
+		},
+		"crypt_sentinel": {
+			"name": "A dead sentinel",
+			"race_id": "skeleton_worker",
+			"sprite": "res://assets/official/characters/Skeleton_Worker.png",
+			"size": 58,
+			"alignment": "Undead",
+			"prowl_cells": 2,
+			"_comment": "Undead ON PURPOSE, and commandable because of it: Command Undead flipping a crypt's dead sentinel is the fantasy, not a hole in the rules (section 9). It wears the skeleton_worker row because that is the Undead statline the roster actually has; a tougher barrow-guard is a workbook row someone has to author, not a number invented here."
+		},
+		"outlaw": {
+			"name": "An outlaw",
+			"race_id": "human_outcast",
+			"sprite": "res://assets/official/characters/Human_Outcast.png",
+			"size": 58,
+			"prowl_cells": 3,
+			"_comment": "Str 5 / End 5, the human peasant measuring stick -- individually a match for a skeleton and clearly beneath a Warrior-category recruit. The cave is occupied by definition; two of them is the fight."
+		}
+	},
 
 	"sites": [
 		{
@@ -33,17 +67,30 @@
 		},
 		{
 			"id": "cemetery",
-			"name": "The Cemetery",
-			"subtitle": "Human lordship — Band 3",
+			"name": "The Church Cemetery",
+			"subtitle": "Consecrated ground — Band 3",
 			"cell": [127, 105],
-			"size": 54,
-			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
-			"description": "Consecrated ground, filled and tended. Every one of them is bones somebody would miss.",
+			"size": 78,
+			"sprite": "res://assets/placeholder/generated/site_graveyard.png",
+			"description": "Consecrated, filled and tended. Every one of them is bones somebody would miss, and the priest lives forty paces that way.",
 			"details": [
-				{"label": "Graves", "value": "More than you could carry"},
-				{"label": "", "value": "Robbing this is R2's business, and it will not go unnoticed.", "muted": true}
-			]
+				{"label": "Graves", "value": "More than you could carry"}
+			],
+			"lootable": {
+				"type": "church_cemetery",
+				"band": 3,
+				"charges": 4,
+				"channel_seconds": 4.0,
+				"loot_table": "church_cemetery",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/placeholder/generated/site_graveyard_looted.png",
+				"guardian": null,
+				"notice": {"threat": 3, "escalates": true},
+				"pool": "graveyard_band3",
+				"active_count": 1
+			}
 		},
+
 		{ "id": "house_1", "name": "A Villager's House", "subtitle": "Village", "cell": [122, 60], "size": 58, "sprite": "res://assets/placeholder/kenney/House/house_1_red.png",
 			"description": "Smoke from the chimney, a woodpile, a dog somewhere behind it. Nobody inside has heard of you.",
 			"details": [{"label": "", "value": "Static in v1: no routines, no schedule, nobody to meet.", "muted": true}] },
@@ -86,45 +133,355 @@
 		},
 
 		{
+			"id": "fresh_grave_hollow",
+			"name": "A Fresh Grave",
+			"subtitle": "Lair Surroundings — Band 1",
+			"cell": [15, 53],
+			"size": 46,
+			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
+			"description": "Turned earth, no marker, and the shovel marks still sharp. Somebody was buried in a hurry and nobody came back.",
+			"details": [
+				{"label": "", "value": "The tutorial loot, and the tutorial decision: four ways to leave a grave, and only one of them is free.", "muted": true}
+			],
+			"lootable": {
+				"type": "fresh_grave",
+				"band": 1,
+				"charges": 1,
+				"channel_seconds": 4.0,
+				"loot_table": "fresh_grave",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/official/nodes/Grave_Dug_Up.png",
+				"guardian": null,
+				"notice": {"threat": 1},
+				"pool": "grave_band1",
+				"active_count": 2
+			}
+		},
+		{
+			"id": "fresh_grave_scree",
+			"name": "A Fresh Grave",
+			"subtitle": "Lair Surroundings — Band 1",
+			"cell": [33, 70],
+			"size": 46,
+			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
+			"description": "Piled stones instead of earth, because whoever dug it hit rock at two feet and gave up.",
+			"details": [],
+			"lootable": {
+				"type": "fresh_grave",
+				"band": 1,
+				"charges": 1,
+				"channel_seconds": 4.0,
+				"loot_table": "fresh_grave",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/official/nodes/Grave_Dug_Up.png",
+				"guardian": null,
+				"notice": {"threat": 1},
+				"pool": "grave_band1",
+				"active_count": 2
+			}
+		},
+		{
+			"id": "hidden_cache",
+			"name": "A Hidden Cache",
+			"subtitle": "Lair Surroundings — Band 1",
+			"cell": [16, 72],
+			"size": 46,
+			"sprite": "res://assets/placeholder/generated/site_cache.png",
+			"description": "Flat stones dragged over something, in a spot chosen by someone who meant to come back for it.",
+			"details": [
+				{"label": "", "value": "Coin and small treasure. The wood beside it is what somebody used to cover the hole.", "muted": true}
+			],
+			"lootable": {
+				"type": "small_cache",
+				"band": 1,
+				"charges": 1,
+				"channel_seconds": 8.0,
+				"loot_table": "small_cache",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_cache_looted.png",
+				"guardian": null,
+				"notice": {"threat": 0},
+				"pool": "cache_band1",
+				"active_count": 1
+			}
+		},
+
+		{
 			"id": "broken_shrine", "signposted": true,
 			"name": "The Broken Shrine",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [44, 48],
-			"size": 62,
+			"size": 58,
 			"landmark": true,
-			"modulate": "#8d8a80",
-			"sprite": "res://assets/placeholder/kenney/Tower/tower_green.png",
-			"description": "Toppled, scoured, and older than the road that ignores it. Somebody left offerings here once.",
+			"sprite": "res://assets/placeholder/generated/site_shrine.png",
+			"description": "Toppled once already, scoured, and older than the road that ignores it. Somebody still leaves offerings here.",
 			"details": [
-				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites — this one sits in the ring where the first ones belong.", "muted": true}
-			]
+				{"label": "", "value": "Desecration is loud. Taking the coin and leaving the stone standing is not.", "muted": true}
+			],
+			"lootable": {
+				"type": "wayside_shrine",
+				"band": 2,
+				"charges": 1,
+				"channel_seconds": 8.0,
+				"loot_table": "wayside_shrine",
+				"choices": "shrine_choices",
+				"looted_sprite": "res://assets/placeholder/generated/site_shrine_looted.png",
+				"guardian": null,
+				"notice": {"threat": 2},
+				"pool": "shrine_band2",
+				"active_count": 1
+			}
 		},
 		{
 			"id": "abandoned_camp", "signposted": true,
 			"name": "An Abandoned Camp",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [30, 83],
-			"size": 58,
+			"size": 62,
 			"landmark": true,
-			"modulate": "#8d8a80",
-			"sprite": "res://assets/placeholder/kenney/House/house_2_red.png",
-			"description": "A lean-to, a cold firepit, and nothing worth taking. Whoever camped here left in a hurry or did not leave at all.",
+			"sprite": "res://assets/placeholder/generated/site_camp.png",
+			"description": "A lean-to, a cold firepit, and more left behind than anyone would leave on purpose. Whoever camped here left in a hurry or did not leave at all.",
 			"details": [
-				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites.", "muted": true}
-			]
+				{"label": "", "value": "Sometimes there are weapons in the packs. Somebody stopped needing them.", "muted": true}
+			],
+			"lootable": {
+				"type": "abandoned_camp",
+				"band": 2,
+				"charges": 1,
+				"channel_seconds": 8.0,
+				"loot_table": "abandoned_camp",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_camp_looted.png",
+				"guardian": null,
+				"notice": {"threat": 1},
+				"pool": "camp_band2",
+				"active_count": 1
+			}
 		},
 		{
 			"id": "standing_stones", "signposted": true,
 			"name": "The Standing Stones",
 			"subtitle": "Contested Wilderness — Band 2",
 			"cell": [50, 70],
-			"size": 54,
+			"size": 62,
 			"landmark": true,
-			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
-			"description": "Three of them, leaning, with the snow scoured off the western faces. Nobody in the village remembers who set them.",
+			"sprite": "res://assets/placeholder/generated/site_ruin.png",
+			"description": "Three of them, leaning, with the snow scoured off the western faces. Nobody in the village remembers who set them, and the ground under them is older still.",
 			"details": [
-				{"label": "", "value": "Scenery. R2 turns landmarks like this into encounter sites.", "muted": true}
-			]
+				{"label": "", "value": "Three pulls, and each one is a fresh chance that something under there objects.", "muted": true}
+			],
+			"lootable": {
+				"type": "ruin_pocket",
+				"band": 2,
+				"charges": 3,
+				"channel_seconds": 12.0,
+				"loot_table": "ruin_pocket",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_ruin_looted.png",
+				"guardian": null,
+				"guardian_roll": {"kind": "crypt_sentinel", "count": 1, "chance": 0.25},
+				"notice": {"threat": 1},
+				"pool": "ruin_band2",
+				"active_count": 1
+			}
+		},
+		{
+			"id": "marked_grave_treeline",
+			"name": "A Marked Grave",
+			"subtitle": "Contested Wilderness — Band 2",
+			"cell": [39, 84],
+			"size": 52,
+			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
+			"description": "A proper stone, at the edge of the wood, a long way from anywhere that would have paid for it. Whoever is under it was worth the carry.",
+			"details": [],
+			"lootable": {
+				"type": "valuable_grave",
+				"band": 2,
+				"charges": 1,
+				"channel_seconds": 4.0,
+				"loot_table": "valuable_grave",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/official/nodes/Grave_Dug_Up.png",
+				"guardian": null,
+				"notice": {"threat": 2},
+				"pool": "grave_band2",
+				"active_count": 2
+			}
+		},
+		{
+			"id": "derelict_graveyard", "signposted": true,
+			"name": "A Derelict Graveyard",
+			"subtitle": "Contested Wilderness — Band 2",
+			"cell": [40, 64],
+			"size": 66,
+			"sprite": "res://assets/placeholder/generated/site_graveyard.png",
+			"description": "A dozen stones under the snow at the end of a track nobody has walked in years. Whatever village buried these people is not there any more.",
+			"details": [
+				{"label": "", "value": "Nobody comes here. Nobody would know. This is where you learn what a grave is worth.", "muted": true}
+			],
+			"lootable": {
+				"type": "derelict_graveyard",
+				"band": 2,
+				"charges": 3,
+				"channel_seconds": 4.0,
+				"loot_table": "derelict_graveyard",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/placeholder/generated/site_graveyard_looted.png",
+				"guardian": null,
+				"notice": {"threat": 0},
+				"pool": "graveyard_band2",
+				"active_count": 1
+			}
+		},
+		{
+			"id": "village_graveyard",
+			"name": "The Village Graveyard",
+			"subtitle": "Village outskirt — Band 3",
+			"cell": [117, 70],
+			"size": 66,
+			"sprite": "res://assets/placeholder/generated/site_graveyard.png",
+			"description": "Out past the last field, where the ground is cheap and the wind gets at it. Someone walks out here most weeks with flowers.",
+			"details": [],
+			"lootable": {
+				"type": "village_graveyard",
+				"band": 3,
+				"charges": 3,
+				"channel_seconds": 4.0,
+				"loot_table": "village_graveyard",
+				"choices": "grave_choices",
+				"looted_sprite": "res://assets/placeholder/generated/site_graveyard_looted.png",
+				"guardian": null,
+				"notice": {"threat": 2},
+				"pool": "graveyard_band2",
+				"active_count": 1
+			}
+		},
+		{
+			"id": "wolf_den_valley",
+			"name": "A Wolf Den",
+			"subtitle": "Forest clearing — Band 2",
+			"cell": [54, 108],
+			"size": 70,
+			"sprite": "res://assets/placeholder/generated/site_den.png",
+			"description": "A hole under a root ball at the end of a corridor of trees, and gnawed bones all the way in. This is where the thing that comes at dusk sleeps.",
+			"details": [
+				{"label": "", "value": "Clear every den and the dusk raids stop for the run. That is the reward — the hide is a bonus.", "muted": true}
+			],
+			"lootable": {
+				"type": "wolf_den",
+				"band": 2,
+				"charges": 1,
+				"channel_seconds": 8.0,
+				"loot_table": "wolf_den",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_den_looted.png",
+				"guardian": {"kind": "wolf", "count": 2},
+				"notice": {"threat": 1},
+				"pool": "den_band2",
+				"active_count": 2
+			}
+		},
+		{
+			"id": "wolf_den_southwood",
+			"name": "A Wolf Den",
+			"subtitle": "Forest clearing — Band 2",
+			"cell": [125, 122],
+			"size": 70,
+			"sprite": "res://assets/placeholder/generated/site_den.png",
+			"description": "Deeper in, and bigger. The pack that lives here has never had a reason to be careful.",
+			"details": [],
+			"lootable": {
+				"type": "wolf_den",
+				"band": 2,
+				"charges": 1,
+				"channel_seconds": 8.0,
+				"loot_table": "wolf_den",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_den_looted.png",
+				"guardian": {"kind": "wolf", "count": 3},
+				"notice": {"threat": 1},
+				"pool": "den_band2",
+				"active_count": 2
+			}
+		},
+
+		{
+			"id": "old_crypt",
+			"name": "An Ancient Crypt",
+			"subtitle": "Nobody goes this far — Band 4",
+			"cell": [98, 122],
+			"size": 88,
+			"sprite": "res://assets/placeholder/generated/site_crypt.png",
+			"description": "A stone door in a mound, in ruins nobody has a name for. Something is inside. The crypt does not pretend otherwise.",
+			"details": [
+				{"label": "Inside", "value": "Two of them, and they were put there to stay awake"},
+				{"label": "", "value": "Guaranteed relic, heavy Dark Essence, and a fight with no way around it.", "muted": true}
+			],
+			"lootable": {
+				"type": "crypt",
+				"band": 4,
+				"charges": 1,
+				"channel_seconds": 12.0,
+				"loot_table": "crypt",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_crypt_looted.png",
+				"guardian": {"kind": "crypt_sentinel", "count": 2},
+				"notice": {"threat": 2},
+				"pool": "crypt_band4",
+				"active_count": 1
+			}
+		},
+		{
+			"id": "outlaw_cave",
+			"name": "An Outlaw Cave",
+			"subtitle": "Nobody goes this far — Band 4",
+			"cell": [13, 28],
+			"size": 84,
+			"sprite": "res://assets/placeholder/generated/site_cave.png",
+			"description": "A mouth in the rock with a path worn to it, and a skull on a stake to explain the arrangement. Occupied. Fight or leave.",
+			"details": [
+				{"label": "Inside", "value": "Two, and they have been up here a long time"},
+				{"label": "", "value": "The hoard, and weapons you did not have to buy from the Workshop.", "muted": true}
+			],
+			"lootable": {
+				"type": "outlaw_cave",
+				"band": 4,
+				"charges": 1,
+				"channel_seconds": 12.0,
+				"loot_table": "outlaw_cave",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_cave_looted.png",
+				"guardian": {"kind": "outlaw", "count": 2},
+				"notice": {"threat": 1},
+				"pool": "cave_band4",
+				"active_count": 1
+			}
+		},
+		{
+			"id": "cursed_battlefield",
+			"name": "A Cursed Battlefield",
+			"subtitle": "Nobody goes this far — Band 4",
+			"cell": [64, 21],
+			"size": 74,
+			"sprite": "res://assets/placeholder/generated/site_battlefield.png",
+			"description": "Burnt ground at the foot of the range, and enough bone in it that the snow will not lie flat. Nobody buried anybody here.",
+			"details": [
+				{"label": "", "value": "Four pulls, and the more you take the likelier it is that something takes exception.", "muted": true}
+			],
+			"lootable": {
+				"type": "cursed_battlefield",
+				"band": 4,
+				"charges": 4,
+				"channel_seconds": 12.0,
+				"loot_table": "cursed_battlefield",
+				"choices": "",
+				"looted_sprite": "res://assets/placeholder/generated/site_battlefield_looted.png",
+				"guardian": null,
+				"guardian_roll": {"kind": "crypt_sentinel", "count": 1, "chance": 0.2, "escalates": true},
+				"notice": {"threat": 2},
+				"pool": "battlefield_band4",
+				"active_count": 1
+			}
 		}
 	],
 

@@ -1,0 +1,111 @@
+{
+	"_comment": "Choice sheets for lootable sites (LOOT_SITES_SPEC.md §4). Same grammar as events.json choices -- label plus effects -- extended with the effect keys §8 names: loot_table, deed, notice, raise_corpse, conceal. ONE RENDERER, TWO DATA SOURCES: EventPanelUI draws these exactly as it draws an events.json event. New VALUES here are a JSON edit; a new effect KEY is code, in the system that owns the key.\n\n`requires` is what makes the grave a dilemma rather than a menu, and each token is a rule from §4: `corpse` (the body is still in there), `valuables` (mercy has not foreclosed profit and nobody has taken them yet), `disturbed` (something has already been raised or robbed -- destroy-the-evidence is only offered afterwards). `notice` is a MULTIPLIER on the site's own notice.threat, so how loud a place is stays authored per site and the choice only says how much louder this particular act made it.",
+
+	"grave_choices": {
+		"prompt": "Somebody is buried here, and somebody meant them to stay buried.",
+		"choices": [
+			{
+				"id": "raise",
+				"label": "Raise the corpse",
+				"blurb": "It walks out of its own grave and falls in behind you.",
+				"requires": ["corpse"],
+				"channel_seconds": 4.0,
+				"channel_tags": ["grave"],
+				"effects": {
+					"raise_corpse": 1,
+					"deed": "raise_the_dead",
+					"axes": {"forbidden_knowledge": 1},
+					"notice": 1.0
+				}
+			},
+			{
+				"id": "steal",
+				"label": "Steal the valuables",
+				"blurb": "Rings, coin, whatever the mourners could not bring themselves to keep.",
+				"requires": ["valuables"],
+				"channel_seconds": 4.0,
+				"channel_tags": ["grave"],
+				"effects": {
+					"loot_table": true,
+					"deed": "rob_the_dead",
+					"axes": {"wealth": 1},
+					"notice": 1.0
+				}
+			},
+			{
+				"id": "return",
+				"label": "Return the belongings",
+				"blurb": "Fill it back in. Whatever was in there stays in there, for good.",
+				"requires": ["valuables"],
+				"channel_seconds": 4.0,
+				"channel_tags": ["grave"],
+				"effects": {
+					"consume_valuables": true,
+					"deed": "return_the_belongings",
+					"axes": {"mercy": 1},
+					"notice": 0.0
+				}
+			},
+			{
+				"id": "conceal",
+				"label": "Destroy the evidence",
+				"blurb": "A second dig, twice as long, and the ground looks undisturbed. This grave only.",
+				"requires": ["disturbed"],
+				"channel_seconds": 8.0,
+				"channel_tags": ["grave"],
+				"effects": {
+					"conceal": true,
+					"deed": "destroy_the_evidence",
+					"axes": {"cruelty": 1},
+					"notice": -1.0
+				}
+			}
+		]
+	},
+
+	"shrine_choices": {
+		"prompt": "Offerings, left by people who expected them to be left alone.",
+		"choices": [
+			{
+				"id": "desecrate",
+				"label": "Take it all and break the stone",
+				"blurb": "Loud. The kind of loud that gets repeated in a village.",
+				"requires": ["valuables"],
+				"channel_seconds": 8.0,
+				"effects": {
+					"loot_table": true,
+					"deed": "desecrate_a_shrine",
+					"axes": {"cruelty": 1, "forbidden_knowledge": 1},
+					"notice": 1.5
+				}
+			},
+			{
+				"id": "skim",
+				"label": "Take the coin and leave the stone standing",
+				"blurb": "Half the haul, and nobody notices for a season.",
+				"requires": ["valuables"],
+				"channel_seconds": 8.0,
+				"effects": {
+					"loot_table": true,
+					"loot_fraction": 0.5,
+					"deed": "rob_a_shrine",
+					"axes": {"wealth": 1},
+					"notice": 0.5
+				}
+			},
+			{
+				"id": "leave",
+				"label": "Leave an offering of your own",
+				"blurb": "Costs nothing you were carrying. Buys nothing you can spend.",
+				"requires": ["valuables"],
+				"channel_seconds": 4.0,
+				"effects": {
+					"consume_valuables": true,
+					"deed": "honour_a_shrine",
+					"axes": {"mercy": 1},
+					"notice": 0.0
+				}
+			}
+		]
+	}
+}

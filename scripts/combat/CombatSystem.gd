@@ -103,6 +103,10 @@ var villain: Necromancer = null
 ## than through them.
 var world: WorldMap = null
 var day_night: DayNightCycle = null
+## The site layer, for **the dusk gate** (LOOT_SITES_SPEC section 3b) and for
+## the guardians it owns. A reference passed in like every other system here;
+## null-safe, so a smoke test with no world map still spawns dusk wolves.
+var world_sites: WorldSites = null
 
 var wolves: Array = []          # Array[Wolf]
 var _engagements: Array = []    # Array[Engagement]
@@ -120,6 +124,9 @@ func _process(delta: float) -> void:
 	_necro_fear_cooldown = maxf(0.0, _necro_fear_cooldown - delta)
 	for wolf in wolves.duplicate():
 		_advance_wolf(wolf, delta)
+	if world_sites:
+		for g in world_sites.live_guardians():
+			_advance_guardian(g)
 	for e in _engagements.duplicate():
 		_advance_engagement(e, delta)
 	_tick_throne_repair(delta)
@@ -129,7 +136,25 @@ func _process(delta: float) -> void:
 ## Wolves come at dusk, from the treeline. The forest is the east edge of the
 ## map, which is also where your woodcutters and your carcass-gatherers are --
 ## so the creature arrives where the work is, without any code aiming it there.
+##
+## **The dusk gate** (LOOT_SITES_SPEC section 3b). While at least one den still
+## stands the roll is exactly what it always was, first-dusk guarantee included;
+## when the last den is cleared, dusk raids stop for the run. The fiction and
+## the mechanics finally agree about where the wolves have been coming from.
+##
+## Asked **before the first-dusk guarantee**, deliberately: a player who spent
+## day one clearing every den has earned a quiet first night, and a guaranteed
+## wolf from a forest with nothing in it would be the version of this feature
+## that does not work.
+##
+## The two guards from the spec, restated because both are easy to lose:
+## the spawn **entry point stays settlement-relative** (see `spawn_wolf` -- a
+## wolf that had to walk 60 cells from its den would arrive at midnight or
+## never; the den explains the wolf, it does not path it), and den pack wolves
+## are `SiteGuardian`s that never enter `wolves`.
 func _on_dusk(_day: int) -> void:
+	if world_sites and not world_sites.any_den_uncleared():
+		return
 	if wolves.size() >= MAX_WOLVES:
 		return
 	var guaranteed: bool = not _first_dusk_done
@@ -227,6 +252,52 @@ func _advance_wolf(wolf: Wolf, _delta: float) -> void:
 		return
 	_begin_fight(wolf, target)
 
+# ---------------- Site guardians (LOOT_SITES_SPEC section 3b / 9) ------------
+
+## A guardian objects to whoever walks into the disc it is guarding, closes on
+## them, and fights. Same three states and the same `Engagement` as the wolf --
+## this is the policy layer's whole point, and a raider or a bounty monster gets
+## the identical treatment for free.
+##
+## **The lair aura does not apply out here.** `LAIR_AURA_PROTECTS_VILLAIN` is a
+## rule about his own domain (see the flag's header), and a den whose wolves
+## refused to face him would be a den nobody could ever clear.
+func _advance_guardian(g: SiteGuardian) -> void:
+	if g.state == SiteGuardian.State.FIGHT:
+		return
+	var target = g.current_target()
+	if target == null or not _is_live(target):
+		target = _find_intruder(g)
+		g.set_target(target)
+		if target == null:
+			return
+	if not g.is_within_engage_range():
+		return
+	_begin_fight(g, target)
+	if g.site and villain and target == villain:
+		EventBus.site_guardian_engaged.emit(villain, g.site)
+
+## The villain first, then anything of his standing in the way. Nearest wins,
+## same as the wolf -- and the villain outranks his own units because he is the
+## reason the guardian woke up.
+func _find_intruder(g: SiteGuardian):
+	if villain != null and villain.is_alive() and g.notices(villain.position):
+		return villain
+	var best = null
+	var best_dist: float = INF
+	if worker_system:
+		for l in worker_system.all_units():
+			if not _is_live(l) or not g.notices(l.position):
+				continue
+			var d: float = g.position.distance_to(l.position)
+			if d < best_dist:
+				best_dist = d
+				best = l
+	return best
+
+func _is_live(t) -> bool:
+	return t != null and is_instance_valid(t) and t.has_method("is_alive") and t.is_alive()
+
 ## Nearest living recruit, worker or deer inside the hunt radius. No preference
 ## between them -- see Wolf's header for why "nearest" is sufficient.
 func _find_prey(wolf: Wolf):
@@ -319,35 +390,50 @@ func _take_deer(wolf: Wolf, deer) -> void:
 ## are nominally reversed there (the skeleton is the aggressor) but combat is
 ## symmetric, both sides swing, so the Engagement doesn't care who is filed as
 ## the attacker.
-func engage(wolf: Wolf, unit) -> void:
-	if wolf == null or unit == null or not is_instance_valid(wolf):
+func engage(attacker, unit) -> void:
+	if attacker == null or unit == null or not is_instance_valid(attacker):
 		return
-	var existing := _engagement_for(wolf)
+	var existing := _engagement_for(attacker)
 	if existing:
 		if existing.add_defender(unit):
-			unit.in_combat = true
-			unit.abandon_trip()
+			_enter_combat(unit)
 		return
-	_begin_fight(wolf, unit)
+	_begin_fight(attacker, unit)
 
-func _engagement_for(wolf: Wolf) -> Engagement:
+func _engagement_for(attacker) -> Engagement:
 	for e in _engagements:
-		if e.attacker == wolf:
+		if e.attacker == attacker:
 			return e
 	return null
 
-func _begin_fight(wolf: Wolf, defender) -> void:
-	if not Combat.is_combatant(wolf) or not Combat.is_combatant(defender):
+## **Not every defender is a Laborer.** The villain is a full Combatant and has
+## neither `in_combat` nor a trip to abandon, so the two bookkeeping calls that
+## used to be inline are behind a property check. That is the whole cost of the
+## fight loop no longer being wolf-and-worker only.
+func _enter_combat(unit) -> void:
+	if "in_combat" in unit:
+		unit.in_combat = true
+	if unit.has_method("abandon_trip"):
+		unit.abandon_trip()
+
+func _leave_combat(unit) -> void:
+	if unit != null and is_instance_valid(unit) and "in_combat" in unit:
+		unit.in_combat = false
+
+func _begin_fight(attacker, defender) -> void:
+	if not Combat.is_combatant(attacker) or not Combat.is_combatant(defender):
 		push_warning("CombatSystem: refusing to start a fight with a non-Combatant.")
 		return
-	var e := Engagement.new(wolf)
+	var e := Engagement.new(attacker)
 	e.add_defender(defender)
-	defender.in_combat = true
-	defender.abandon_trip()
-	wolf.state = Wolf.State.FIGHT
+	_enter_combat(defender)
+	if attacker is Wolf:
+		attacker.state = Wolf.State.FIGHT
+	elif attacker is SiteGuardian:
+		attacker.state = SiteGuardian.State.FIGHT
 	_engagements.append(e)
-	EventBus.combat_started.emit(wolf.combat_name(), defender.combat_name())
-	_rally_and_scatter(wolf, e)
+	EventBus.combat_started.emit(attacker.combat_name(), defender.combat_name())
+	_rally_and_scatter(attacker, e)
 
 ## The emergent-defence rule, and the reason this is worth building before
 ## guard posts exist: **nobody is ordered to fight.** Any Warrior-category or
@@ -355,13 +441,13 @@ func _begin_fight(wolf: Wolf, defender) -> void:
 ## else drops what they're carrying and runs. The player's only lever is who
 ## they recruited and where those people happen to be -- which is the Majesty
 ## indirect-control pillar applied to defence.
-func _rally_and_scatter(wolf: Wolf, e: Engagement) -> void:
+func _rally_and_scatter(attacker, e: Engagement) -> void:
 	if worker_system == null:
 		return
 	for l in worker_system.all_units():
 		if l.in_combat or not l.is_alive():
 			continue
-		if l.position.distance_to(wolf.position) > ASSIST_RADIUS_PX:
+		if l.position.distance_to(attacker.position) > ASSIST_RADIUS_PX:
 			continue
 		# Skeletons neither rally nor scatter (see _will_fight) -- and a rallied
 		# one is under standing orders that outrank a panic, so it is skipped
@@ -370,9 +456,8 @@ func _rally_and_scatter(wolf: Wolf, e: Engagement) -> void:
 			continue
 		if _will_fight(l):
 			e.add_defender(l)
-			l.in_combat = true
-			l.abandon_trip()
-			EventBus.combat_joined.emit(l, wolf.combat_name())
+			_enter_combat(l)
+			EventBus.combat_joined.emit(l, attacker.combat_name())
 		else:
 			l.begin_flee()
 
@@ -388,9 +473,14 @@ func _will_fight(l) -> bool:
 		return false
 	return l.category == "Warrior" or l.strength >= ASSIST_STRENGTH_THRESHOLD
 
+## One fight, advanced. **Attacker-agnostic since R2a**: a dusk wolf and a den's
+## pack wolf and a crypt's dead sentinel all run through this, because the
+## consequence rules are policy and policy is what this file is. The only two
+## places the kind still matters are what a corpse leaves behind and who owns
+## the despawn -- both dispatched in `_remove_attacker`.
 func _advance_engagement(e: Engagement, delta: float) -> void:
-	var wolf: Wolf = e.attacker
-	if wolf == null or not is_instance_valid(wolf):
+	var attacker = e.attacker
+	if attacker == null or not is_instance_valid(attacker):
 		_finish(e)
 		return
 
@@ -405,99 +495,135 @@ func _advance_engagement(e: Engagement, delta: float) -> void:
 		# this exchange must still show the number that killed it, and
 		# `_resolve_defeat` may remove it from the engagement.
 		_show_hp_change(defender, result["damage_to_b"], "damage")
-		_show_hp_change(wolf, result["damage_to_a"], "damage")
+		_show_hp_change(attacker, result["damage_to_a"], "damage")
 		# Consequences are checked per exchange, not per frame, so a unit can
 		# never take two lethal hits before anyone notices.
 		if not defender.is_alive():
-			_resolve_defeat(defender, wolf)
+			_resolve_defeat(defender, attacker)
 			e.remove_defender(defender)
 		elif defender is Follower and defender.hp_fraction() < Combat.FLEE_HP_FRACTION:
-			_injure_and_flee(defender, wolf)
+			_injure_and_flee(defender, attacker)
 			e.remove_defender(defender)
 
-	if not wolf.is_alive():
+	if not attacker.is_alive():
 		# **Killed outright**, which is the good outcome and now pays for itself:
 		# the body is left on the map as a carcass any labourer can gather. It
 		# reuses the ordinary carcass node, so hauling a dead wolf home is the
 		# same trip as hauling any other bones -- no new mechanic, and the
-		# reward for defending the settlement is a real one.
+		# reward for defending the settlement is a real one. A den's pack wolves
+		# leave one each too, at the *site's* location: a long carry from home,
+		# which is the escort's problem to enjoy (LOOT_SITES_SPEC section 3b).
 		for d in e.defenders:
-			d.in_combat = false
-		_leave_carcass(wolf)
-		wolf.leave_reason = "killed"
-		_despawn(wolf)
+			_leave_combat(d)
+		if _leaves_a_carcass(attacker):
+			_leave_carcass(attacker)
+		attacker.leave_reason = "killed"
+		_remove_attacker(attacker)
 		_finish(e)
 		return
 
-	if wolf.should_flee():
+	if attacker.should_flee():
 		# Hurt but alive: it breaks off and leaves. No body, no bones -- driving
-		# it away is the cheap win and killing it is the paying one.
+		# it away is the cheap win and killing it is the paying one. A pack wolf
+		# that flees is gone for the run and its den counts it as dealt with,
+		# which is what makes attrition across two visits a real tactic.
 		for d in e.defenders:
-			d.in_combat = false
-		wolf.depart("beaten off")
+			_leave_combat(d)
+		attacker.depart("beaten off")
+		if attacker is SiteGuardian:
+			_remove_attacker(attacker)
 		_finish(e)
 		return
 
 	if not e.has_defenders():
 		# Everyone it was fighting is gone -- back to prowling, unless the fight
 		# was the last thing it needed.
-		wolf.state = Wolf.State.PROWL
-		wolf.clear_target()
+		attacker.clear_target()
 		_finish(e)
+
+## Only a corpse that was flesh leaves one. The wolf and a den's pack wolves do;
+## a skeleton sentinel that was already dead has nothing left to gather, and an
+## outlaw's body is Era-III business rather than a bone pile.
+func _leaves_a_carcass(attacker) -> bool:
+	if attacker is Wolf:
+		return true
+	return attacker is SiteGuardian and attacker.kind == "wolf"
+
+## Who owns the despawn. The one place the attacker's kind still matters, and it
+## is bookkeeping rather than policy: a dusk wolf leaves `wolves`, a guardian
+## leaves its site -- and clearing the last one is what unlocks the den.
+func _remove_attacker(attacker) -> void:
+	if attacker is SiteGuardian:
+		if world_sites:
+			world_sites.remove_guardian(attacker, villain)
+		else:
+			attacker.queue_free()
+		return
+	_despawn(attacker)
 
 ## Drops a gatherable carcass where the wolf fell. Added to ResourceField the
 ## same way the seeded ones are, so the priority list, the crowding rules and
 ## the inspection panel all pick it up with no special casing -- a dead wolf is
 ## simply another pile of bones that happens to have arrived late.
-func _leave_carcass(wolf: Wolf) -> void:
+func _leave_carcass(attacker) -> void:
 	if resource_field == null:
 		return
-	var carcass := ResourceNode.make_carcass(wolf.position)
+	var carcass := ResourceNode.make_carcass(attacker.position)
 	carcass.capacity = WOLF_CARCASS_BONES
 	carcass.remaining = WOLF_CARCASS_BONES
 	# Drawn at the same size as the seeded carcasses, from their constant rather
 	# than a literal: sizes are content heights now, and a bare 28.0 here was a
 	# leftover canvas-width number that would have quietly meant something else.
 	resource_field.add_node(carcass, ResourceField.SPRITE_CARCASS, "", ResourceField.NODE_SIZE_CARCASS)
-	EventBus.wolf_killed.emit(wolf.position, WOLF_CARCASS_BONES)
+	EventBus.wolf_killed.emit(attacker.position, WOLF_CARCASS_BONES)
 
 func _finish(e: Engagement) -> void:
 	e.finished = true
 	for d in e.defenders:
-		d.in_combat = false
+		_leave_combat(d)
 	_engagements.erase(e)
 
-func _end_engagements_with(wolf: Wolf) -> void:
+func _end_engagements_with(attacker) -> void:
 	for e in _engagements.duplicate():
-		if e.attacker == wolf:
+		if e.attacker == attacker:
 			_finish(e)
 
 ## Rule 1. Only ever reached by a Worker -- a Follower is pulled out at 30% by
 ## _injure_and_flee well before hp hits zero, which is what makes "living
 ## recruits are never killed by wildlife" true by construction rather than by a
 ## check at the moment of death.
-func _resolve_defeat(unit, wolf: Wolf) -> void:
-	unit.in_combat = false
+func _resolve_defeat(unit, attacker) -> void:
+	_leave_combat(unit)
 	if unit is Worker:
 		unit.abandon_trip()
 		worker_system.remove_worker(unit)
-		EventBus.worker_destroyed.emit(unit, wolf.combat_name())
+		EventBus.worker_destroyed.emit(unit, attacker.combat_name())
+		return
+	if unit is Necromancer:
+		# **The branch that used to be missing.** Rule 4's header said outright
+		# that there was no branch here for a villain losing a fight, and that
+		# it would be "the run ends" when R4 arrived. Out in the world a
+		# guardian can now actually kill him, so there has to be one -- and this
+		# is deliberately all of it: `Necromancer.take_damage()` already emitted
+		# `villain_died` (from the data object, so *anything* that can hurt him
+		# announces it), Main logs it loudly, and the run lifecycle stays R4's.
+		# `SORTIE_SPEC.md` section 6 owns clearing the unbanked haul, in R2c.
 		return
 	# Defensive: a Follower should never get here. If one does, treat it as an
 	# injury rather than a death, so the design rule holds even if a future
 	# caller skips the flee check.
 	push_warning("CombatSystem: a Follower reached 0 hp -- injuring instead of killing.")
 	unit.hp = 1
-	_injure_and_flee(unit, wolf)
+	_injure_and_flee(unit, attacker)
 
 ## Rule 2.
-func _injure_and_flee(f, wolf: Wolf) -> void:
+func _injure_and_flee(f, attacker) -> void:
 	f.in_combat = false
 	f.is_injured = true
 	f.adjust_morale(-1)
 	f.begin_flee()
 	EventBus.morale_changed.emit(f, f.morale)
-	EventBus.recruit_injured.emit(f, wolf.combat_name())
+	EventBus.recruit_injured.emit(f, attacker.combat_name())
 
 # ---------------- Hit-point maintenance ----------------
 

@@ -37,17 +37,75 @@ signal follow_toggle_requested
 ## Close the panel *and* reset the bottom info strip, which is Main.gd's
 ## _close_inspector() -- inspector.close() alone would leave the strip stale.
 signal close_requested
+## A lootable site's action was pressed. **Requested, not performed**, for the
+## same reason rally placement is: resolving one can open the choice sheet,
+## which is `EventPanelUI`'s, and only Main.gd can see both.
+signal site_action_requested(site, action_id)
+## Open this site's choice sheet (the four-way grave model, LOOT_SITES_SPEC 4).
+signal site_sheet_requested(site)
 
 # ---------------- References handed in by Main.gd ----------------
 var _undead_command: UndeadCommand
 var _inspector: InspectionPanel
 var _villain_controller: VillainController
+## The villain the buttons act for. A **reference handed in**, never looked up
+## -- sites answer to whoever walked up (LOOT_SITES_SPEC section 3), and a
+## second villain's panel would simply be handed a different one.
+var _villain: Necromancer
 
 func setup(undead_command: UndeadCommand, inspector: InspectionPanel,
-		villain_controller: VillainController) -> void:
+		villain_controller: VillainController, villain: Necromancer = null) -> void:
 	_undead_command = undead_command
 	_inspector = inspector
 	_villain_controller = villain_controller
+	_villain = villain
+
+## A lootable site's action block. Bound to the site rather than reading one off
+## a member, so two sites can never disagree about which one the panel is
+## showing -- `Callable.bind()` appends, hence the argument order.
+##
+## The reach rule lives here in its honest form: a site out of reach still
+## inspects (description, details, the danger row), it just offers nothing. That
+## is section 3's "no remote looting" as a *visible* rule rather than a silent
+## one -- the player can read the crypt from a distance and see exactly why the
+## buttons are not there.
+func site_actions(box: VBoxContainer, site: WorldSite) -> void:
+	if site == null or not site.lootable:
+		return
+	if not site.in_reach(_villain):
+		_note(box, "Too far. He has to stand at it.")
+		return
+	if site.is_channelling():
+		_note(box, "Working — moving stops it, and refunds nothing.")
+		return
+	if site.is_guarded():
+		_note(box, "Whatever is here is not finished with you yet.")
+		return
+
+	var actions: Array = site.actions_for(_villain)
+	if actions.is_empty():
+		_note(box, "Nothing left here. Spent for the run.")
+		return
+	for action in actions:
+		var id: String = String(action["id"])
+		var b := Button.new()
+		b.text = String(action["label"])
+		b.tooltip_text = String(action.get("blurb", ""))
+		b.disabled = not bool(action.get("enabled", true))
+		if id == "open_sheet":
+			b.pressed.connect(func(): site_sheet_requested.emit(site))
+		else:
+			b.pressed.connect(func(): site_action_requested.emit(site, id))
+		box.add_child(b)
+
+func _note(box: VBoxContainer, text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 11)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
+	label.modulate = Color(1, 1, 1, 0.6)
+	box.add_child(label)
 
 ## Which action-button builder (if any) a building contributes. The Keep and
 ## the Barracks are the only two with menus; everything else is pure

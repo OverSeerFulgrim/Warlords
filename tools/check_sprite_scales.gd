@@ -28,6 +28,7 @@ func _ready() -> void:
 	_check_resource_nodes()
 	_check_tokens()
 	_check_buildings()
+	_check_site_sprites()
 	_check_orderings()
 	print("\n%d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
@@ -177,6 +178,83 @@ func _check_buildings() -> void:
 			drawn.y, Building.SPRITE_MAX_SIDE)
 		print("   (%s draws %.0fx%.0f)" % [name, drawn.x, drawn.y])
 		b.queue_free()
+
+# ---------------- Lootable sites and their looted states ----------------
+
+## `WorldSite` is the one thing left in the project sized by **canvas width**
+## (its own header explains the hold-back, and it is not this pass's to
+## convert). That has a consequence the spent-site swap walks straight into:
+## if a looted sprite sits on a different canvas from the sprite it replaces,
+## the site silently changes size the moment it is looted -- bigger, smaller, or
+## sunk into the ground -- and nothing errors.
+##
+## So this asserts the pairing rather than the pixel size: **a looted sprite
+## shares its unlooted partner's canvas**, both resolve, and neither is blank.
+## The drawn size then follows from `size` in `world_sites.json`, which is where
+## it is tuned. When the world map converts to content heights, this section
+## becomes an ordinary drawn-size check like the ones above.
+func _check_site_sprites() -> void:
+	print("\n-- Lootable sites: the looted swap is size-neutral --")
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/world_sites.json"))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		_ok("world_sites.json parses", false)
+		return
+	var checked: int = 0
+	for entry in parsed.get("sites", []):
+		if not entry.has("lootable"):
+			continue
+		var id: String = String(entry.get("id", "?"))
+		var unlooted: String = String(entry.get("sprite", ""))
+		var looted: String = String(entry["lootable"].get("looted_sprite", ""))
+		_ok("%s: has a looted-state sprite" % id, looted != "")
+		if looted == "":
+			continue
+		_ok("%s: both sprites exist on disk" % id,
+			ResourceLoader.exists(unlooted) and ResourceLoader.exists(looted))
+		if not (ResourceLoader.exists(unlooted) and ResourceLoader.exists(looted)):
+			continue
+		var a: Texture2D = load(unlooted)
+		var b: Texture2D = load(looted)
+		_eq("%s: the looted sprite is on the same canvas (canvas-width sizing)" % id,
+			b.get_size(), a.get_size())
+		# A blank looted state is the failure that looks like a working one: the
+		# site simply vanishes when it is spent, and no warning fires.
+		var box: Rect2 = Anchoring.content_rect(b)
+		_ok("%s: the looted sprite has something drawn on it" % id,
+			box.size.x > 4.0 and box.size.y > 4.0)
+		# It must also *read* as spent from across the valley: a looted state
+		# that is pixel-identical to its unlooted partner tells the player
+		# nothing, which is the whole job of the swap.
+		_ok("%s: the looted state is a different picture, not a tint" % id,
+			not _same_image(a, b))
+		checked += 1
+	print("   (%d lootable sites, each with a paired looted state)" % checked)
+	# Guardians are units, not sites, and follow the token rules -- the den's
+	# wolf must be the same animal as the dusk wolf, which means the same art at
+	# the same width (SPRITE_SPEC section 3's quadruped rule).
+	for kind in parsed.get("guardians", {}).keys():
+		var spec: Dictionary = parsed["guardians"][kind]
+		_ok("guardian '%s': its sprite exists" % kind,
+			ResourceLoader.exists(String(spec.get("sprite", ""))))
+	var wolf_kind: Dictionary = parsed.get("guardians", {}).get("wolf", {})
+	_close("a den wolf is drawn at the same 74px width as the dusk wolf",
+		float(wolf_kind.get("size", 0.0)), Wolf.TOKEN_SIZE)
+	_ok("...and by the same width rule, not a height one",
+		bool(wolf_kind.get("width_scaled", false)))
+	_ok("...from the same sprite file", String(wolf_kind.get("sprite", "")) == Wolf.SPRITE_PATH)
+
+## Cheap pixel comparison over a sparse grid -- enough to catch "somebody
+## duplicated the file", not so tight that a one-pixel edit passes for identity.
+func _same_image(a: Texture2D, b: Texture2D) -> bool:
+	if a.get_size() != b.get_size():
+		return false
+	var ia: Image = a.get_image()
+	var ib: Image = b.get_image()
+	for y in range(0, ia.get_height(), 8):
+		for x in range(0, ia.get_width(), 8):
+			if not ia.get_pixel(x, y).is_equal_approx(ib.get_pixel(x, y)):
+				return false
+	return true
 
 # ---------------- The orderings that are the actual point ----------------
 

@@ -111,6 +111,27 @@ signal villain_died(villain, cause: String)
 ## criterion, so it is instrumented rather than eyeballed.
 signal travel_noted(text: String, elapsed_seconds: float)
 
+# Lootable sites (see scripts/world/WorldSite.gd, LOOT_SITES_SPEC.md section 9)
+#
+# **Every one of these carries the villain object.** Never assume there is one
+# of him (ROGUELITE_REWORK section 11) -- and mind the arity: a handler missing
+# an argument connects fine and fails silently at emit (CLAUDE.md gotcha).
+## A site paid out. `loot` is what actually reached his hands, not what was
+## rolled -- the difference is the remainder left at the site (SORTIE_SPEC 4).
+signal site_looted(villain, site, loot: Dictionary)
+## One entry of a choice sheet was answered. Carries the choice id, not the
+## label: labels are content and change with a copy edit.
+signal site_choice_resolved(villain, site, choice_id: String)
+## A relic reached his hands. It does nothing yet -- effects activate on deposit
+## (LOOT_SITES_SPEC section 7), and this fires at the moment of finding.
+signal relic_found(villain, relic_id: String)
+## **The ledger R3 will read.** `axes` is R3's five, e.g. {"wealth": 1}; R2
+## consumes none of it beyond a log line. Emitted from Necromancer.record_deed()
+## so the array and the signal cannot disagree about what happened.
+signal deed_committed(villain, deed_id: String, axes: Dictionary)
+## Something posted at a site has decided he is a problem.
+signal site_guardian_engaged(villain, site)
+
 # Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
 ## Cast, moved, or re-ordered. Carries the new order and how many undead answered.
 signal undead_commanded(at: Vector2, order_name: String, bound: int)

@@ -32,5 +32,6 @@ Newest at the bottom; the order below is the order the passes happened in.
 | [2026-08-stat-rework.md](2026-08-stat-rework.md) | The stat rework: one Might becomes nine attributes, workbook-exported roster, attack profiles (COMBAT_SPEC slice C2) |
 | [2026-08-terrain-tiles.md](2026-08-terrain-tiles.md) | Seven sheets, and roads that know their corners — the seven-sheet atlas, connection tiles with flip/transpose, cliff ridge and walkable ice (P1) |
 | [2026-08-generated-world.md](2026-08-generated-world.md) | The world stops being drawn and starts being generated — the nine-step pipeline, forests and their clearings, a river with doors, roads by A* (P1 final) |
+| [2026-08-loot-sites.md](2026-08-loot-sites.md) | The world becomes worth walking into — fifteen lootable sites, channelled looting and the grave choice sheet, loot tables/relics/gold, remainder charges, wolf dens and the dusk gate, deeds vs notice, Dark Essence finished moving to field-only (R2a) |
 
 New session write-ups go here as `YYYY-MM-topic.md`, never back into `CLAUDE.md`.

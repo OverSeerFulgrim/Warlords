@@ -59,6 +59,11 @@ var event_panel_ui: EventPanelUI
 var hud_top_bar: HudTopBar
 var minimap: Minimap
 var minimap_hint: Label
+## The minimap and its legend together, so **M** hides both. The P2 human check
+## could not run "Throne to village by ground alone" strictly because there was
+## no way to turn the map off (`docs/history/2026-08-27-r1-playtest-notes.md`),
+## and the R2 exit check needs the same thing. Default on.
+var minimap_column: VBoxContainer
 
 ## Scratch buffer for _fog_sources(), reused every frame -- see there.
 var _fog_source_buf: Array = []
@@ -262,7 +267,11 @@ func _process(delta: float) -> void:
 ## is exactly the case the playtest raised (33 bound undead).
 func _fog_sources() -> Array:
 	_fog_source_buf.clear()
-	_fog_source_buf.append([villain.position, FogOfWar.REVEAL_RADIUS_CELLS])
+	# The Barrow Lantern widens his own disc once it is banked -- a relic effect
+	# expressed as data, read here rather than anywhere near FogOfWar, which
+	# still knows nothing about relics.
+	_fog_source_buf.append([villain.position,
+		FogOfWar.REVEAL_RADIUS_CELLS + villain.fog_reveal_bonus()])
 	if worker_system:
 		for u in worker_system.all_units():
 			if u.is_alive():
@@ -386,6 +395,10 @@ func _build_systems() -> void:
 	combat_system.villain = villain
 	combat_system.world = world_map
 	combat_system.day_night = day_night
+	# **The dusk gate** (LOOT_SITES_SPEC section 3b) and the site guardians. The
+	# world map is built before this, so the dens already exist -- which they
+	# have to, because the first dusk asks whether any of them still stands.
+	combat_system.world_sites = world_sites
 	add_child(combat_system)
 
 	# Command Undead. Needs combat_system to hand fights to, so it comes after.
@@ -452,6 +465,10 @@ func _build_world_map() -> void:
 	world_sites.name = "WorldSites"
 	world_sites.y_sort_enabled = true
 	settlement.add_child(world_sites)
+	# Deeds are stamped in game-days (LOOT_SITES_SPEC section 6), and the site
+	# layer gets the clock as a Callable rather than a DayNightCycle reference --
+	# it is a container, and it should stay one.
+	world_sites.day_provider = func(): return day_night.day_number if day_night else 1
 	world_sites.build(world_map)
 
 	fog = FogOfWar.new()
@@ -595,7 +612,7 @@ func _build_inspection_panel(hud_root: Control) -> void:
 	inspector_actions = InspectorActions.new()
 	inspector_actions.name = "InspectorActions"
 	add_child(inspector_actions)
-	inspector_actions.setup(undead_command, inspector, villain_controller)
+	inspector_actions.setup(undead_command, inspector, villain_controller, villain)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -703,7 +720,7 @@ func _build_bottom_shell(hud_root: Control) -> void:
 
 	# The real minimap, replacing the ColorRect placeholder that stood here.
 	# MINIMAP_SIZE is the world's cell count on purpose: one pixel per cell.
-	var minimap_column := VBoxContainer.new()
+	minimap_column = VBoxContainer.new()
 	minimap_column.add_theme_constant_override("separation", 2)
 	minimap = Minimap.new()
 	minimap.custom_minimum_size = Vector2(MINIMAP_SIZE, MINIMAP_SIZE)
@@ -717,7 +734,7 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	minimap_hint = Label.new()
 	minimap_hint.add_theme_font_size_override("font_size", 9)
 	minimap_hint.modulate = Color(1, 1, 1, 0.55)
-	minimap_hint.text = "○ lair   ● you   · yours"
+	minimap_hint.text = "○ lair   ● you   · yours   (M hides)"
 	minimap_column.add_child(minimap_hint)
 	bar_hbox.add_child(minimap_column)
 
@@ -956,6 +973,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	# M hides the minimap. Below the placement blocks with everything else, and
+	# `echo`-guarded so holding the key does not strobe the log.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+		_toggle_minimap()
+		get_viewport().set_input_as_handled()
+		return
+
 	# Esc closes the inspector. Deliberately *below* the two placement blocks
 	# above, which both return early: while you're placing or demolishing,
 	# Esc cancels that mode, and the inspector is not what Esc is for.
@@ -1031,15 +1055,17 @@ func _inspect_at(world_pos: Vector2) -> bool:
 			_inspect(rp, inspector_actions.rally_actions)
 			return true
 
-	# --- 1c. Patrols and world sites -----------------------------------------
-	# Patrols sit with the characters (WorldSites.pick_at checks them first);
-	# the village buildings and landmarks rank below resource nodes for the same
+	# --- 1c. Patrols and site guardians --------------------------------------
+	# Both sit with the characters (WorldSites.pick_at checks them first); the
+	# village buildings and landmarks rank below resource nodes for the same
 	# reason settlement buildings do -- a deer standing in front of a house is
-	# the thing on top.
+	# the thing on top. A guardian standing over its den outranks the den for
+	# the same reason a wolf outranks the ground it is standing on: it is the
+	# thing you meant to click, and it is the thing about to bite you.
 	if world_sites:
-		var hit_patrol = world_sites.pick_at(world_pos)
-		if hit_patrol is Patrol:
-			_inspect(hit_patrol)
+		var hit_character = world_sites.pick_at(world_pos)
+		if hit_character is Patrol or hit_character is SiteGuardian:
+			_inspect(hit_character)
 			return true
 
 	# --- 2. Resource nodes ---------------------------------------------------
@@ -1051,11 +1077,17 @@ func _inspect_at(world_pos: Vector2) -> bool:
 		_inspect(hit_node)
 		return true
 
-	# --- 2b. World sites (village, sealed ground, landmarks) -----------------
+	# --- 2b. World sites (village, sealed ground, landmarks, loot) -----------
+	# A lootable site contributes action buttons; an inert one is pure
+	# information, exactly as it was. `bind()` appends the site, so the builder
+	# stays stateless -- see InspectorActions.site_actions.
 	if world_sites:
 		var hit_site = world_sites.pick_at(world_pos)
-		if hit_site:
-			_inspect(hit_site)
+		if hit_site is WorldSite:
+			if hit_site.lootable:
+				_inspect(hit_site, inspector_actions.site_actions.bind(hit_site))
+			else:
+				_inspect(hit_site)
 			return true
 
 	# --- 3. Buildings --------------------------------------------------------
@@ -1122,6 +1154,60 @@ func _enter_rally_placement_mode() -> void:
 	build_menu.show_hint("Command Undead — click where the dead should rally (Esc to cancel)")
 
 # ---------------- Right-click: walk there ------------------------------------
+
+## A site action the inspection panel asked for. Main.gd does this rather than
+## `InspectorActions` for the usual reason: the site starts a channel, and the
+## panel has to be told to redraw so the progress row appears immediately rather
+## than on the next 0.4s poll.
+func _begin_site_action(site: WorldSite, action_id: String) -> void:
+	if site == null or villain == null:
+		return
+	if not site.begin_action(villain, action_id):
+		_alert("He cannot do that from here.", "warn")
+		return
+	inspector.refresh()
+
+## Opens a site's four-way sheet through the **event panel**, which is the one
+## choice renderer this project has (LOOT_SITES_SPEC section 3: one renderer,
+## two data sources). The chosen entry comes back here and starts the channel.
+##
+## `sheet_choices()` decides what is even offered -- mercy is gone once the
+## valuables are, and destroy-the-evidence only exists after something has been
+## taken. That gating is the dilemma, so it lives on the site and not here.
+func _open_site_sheet(site: WorldSite) -> void:
+	if site == null or villain == null:
+		return
+	if not site.in_reach(villain):
+		_alert("He has to be standing at it.", "warn")
+		return
+	var choices: Array = site.sheet_choices(villain)
+	if choices.is_empty():
+		_alert("There is nothing left to decide here.", "info")
+		return
+	var sheet: Dictionary = LootCatalog.choice_sheet(site.choices_id)
+	var opened: bool = event_panel_ui.present_sheet(
+		site.display_name, String(sheet.get("prompt", "")), choices,
+		func(choice: Dictionary):
+			if not site.begin_action(villain, "choice", choice):
+				_alert("He cannot do that from here.", "warn")
+			inspector.refresh())
+	if not opened:
+		_alert("Answer what is already in front of you first.", "warn")
+
+## **M — hide the minimap.** The one thing the P2 human check needed and did not
+## have: "Throne to village by ground alone" cannot be tested with a map on
+## screen, and neither can R2's exit walk. It hides the whole column (map and
+## legend together), because a legend for an invisible map is worse than either.
+##
+## One travel-log line per change, and no alert: this is the player telling the
+## game something, not the game telling the player something.
+func _toggle_minimap() -> void:
+	if minimap_column == null:
+		return
+	minimap_column.visible = not minimap_column.visible
+	EventBus.travel_noted.emit(
+		"Minimap on. Press M to navigate by the ground alone." if minimap_column.visible
+		else "Minimap off. Find your way by the ground — M brings it back.", 0.0)
 
 ## A right-click tap on the world or on the minimap.
 ##
@@ -1281,6 +1367,8 @@ func _connect_signals() -> void:
 	inspector_actions.rally_placement_requested.connect(_enter_rally_placement_mode)
 	inspector_actions.fund_house_requested.connect(_fund_house)
 	inspector_actions.close_requested.connect(_close_inspector)
+	inspector_actions.site_action_requested.connect(_begin_site_action)
+	inspector_actions.site_sheet_requested.connect(_open_site_sheet)
 	inspector_actions.follow_toggle_requested.connect(func():
 		villain_controller.toggle_follow()
 		hud_top_bar.refresh_follow_state()
@@ -1340,7 +1428,44 @@ func _connect_signals() -> void:
 	)
 	EventBus.dawn_started.connect(func(day: int):
 		_log("[color=lightblue]Dawn of day %d -- berries regrow, game wanders in.[/color]" % day, "events")
+		# Heal-at-dawn is a banked-relic effect (LOOT_SITES_SPEC section 7). The
+		# hook lives here because the rest of the dawn work already does, and
+		# because a relic that healed him while it was still in his hands would
+		# undo section 7's whole point.
+		var mended: int = villain.heal(villain.dawn_heal()) if villain else 0
+		if mended > 0:
+			_log("[color=#9fd8b0]The censer smokes at dawn. He mends %d.[/color]" % mended, "characters")
 		hud_top_bar.refresh_stats()  # the top bar carries the Day/Night readout
+	)
+
+	# ---- Lootable sites (LOOT_SITES_SPEC section 9) ----
+	EventBus.site_looted.connect(func(v, site, loot: Dictionary):
+		if loot.is_empty():
+			_log("[color=#9fb6c8]%s gives up nothing he can carry.[/color]" % site.display_name, "events")
+		else:
+			_log("[color=#d8c78a]%s: %s.[/color]" % [site.display_name, LootCatalog.describe(loot)], "events")
+		if site.has_remainder():
+			_log("[color=#c8a45a]He leaves %s behind. It stays there.[/color]" % site._remainder_label(), "events")
+		hud_top_bar.refresh_stats()
+	)
+	EventBus.relic_found.connect(func(v, relic_id: String):
+		var r: Dictionary = LootCatalog.relic(relic_id)
+		_log("[color=#e0c060]%s — %s. It does nothing until it is home.[/color]"
+			% [r.get("name", relic_id), r.get("description", "")], "events alerts")
+		_alert("Relic found: %s" % r.get("name", relic_id), "info")
+	)
+	# **The ledger R3 will read.** R2 consumes none of it beyond this line --
+	# which is the point: the array is being written now so R3 has a history
+	# rather than an archaeology problem.
+	EventBus.deed_committed.connect(func(v, deed_id: String, axes: Dictionary):
+		var words: Array = []
+		for axis in axes.keys():
+			words.append(String(axis).capitalize().replace("_", " "))
+		_log("[color=#a898c8]Deed: %s%s[/color]" % [deed_id.replace("_", " "),
+			"" if words.is_empty() else "  (%s)" % ", ".join(words)], "characters")
+	)
+	EventBus.site_guardian_engaged.connect(func(v, site):
+		_alert("Something at %s has taken exception." % site.display_name, "warn")
 	)
 	EventBus.dusk_started.connect(func(day: int):
 		_log("[color=#8899cc]Dusk falls on day %d.[/color]" % day, "events")

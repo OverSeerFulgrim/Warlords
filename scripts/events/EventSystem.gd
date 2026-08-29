@@ -237,8 +237,14 @@ func _apply_effects(effects: Dictionary) -> void:
 		var value = effects[key]
 		match key:
 			"dark_essence":
+				# **Retired as a source, kept as a sink** -- the same rule
+				# MissionSystem now follows, and for the same reason: Dark
+				# Essence is field loot only (LOOT_SITES_SPEC section 5,
+				# ROGUELITE_REWORK section 8). An event may still charge it;
+				# nothing at home may pay it out. Loud rather than silent, so a
+				# re-added grant in events.json shows up as a warning.
 				if value >= 0:
-					GameState.add_resource("dark_essence", value)
+					push_warning("EventSystem: event grants %d dark_essence; it is field loot only (LOOT_SITES_SPEC 5). Ignored." % value)
 				else:
 					GameState.spend_resource("dark_essence", -value)
 			"bones":
