@@ -541,7 +541,13 @@ after it is the loop closing around it.
    the interaction model (reach, InspectorActions surface, channelled
    looting, charges, guardians), the four-way grave choice sheet, loot
    tables in data/loot_tables.json, gold as the sixth GameState resource,
-   relics in data/relics.json, and the site_choices.json grammar.
+   relics in data/relics.json, and the site_choices.json grammar. The
+   2026-08-29 amendment block at the top of the spec is BINDING and
+   supersedes the body where they differ: three graveyard tiers replace
+   the single cemetery (twelve types), the `arms` loot kind exists
+   (human sites only), and the cache tables are gold-first with mundane
+   demoted to garnish. Witnesses and haulage in that block are R3+/gear
+   material -- do NOT build them here.
 
 1b. THE WOLF DENS, per LOOT_SITES_SPEC.md §3b: 1-2 wolf_den sites in P2's
    forest clearings (one in the mass east of the lair valley), each with

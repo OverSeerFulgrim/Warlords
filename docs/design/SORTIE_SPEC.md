@@ -229,6 +229,11 @@ assumed.
 
 - **Carry capacity (6) vs per-site yield** — the pair `LOOT_SITES_SPEC.md` §10 flagged, and the one
   that decides sortie length. Tune the *yield*, not the capacity: capacity is a rule.
+  *If* that tuning cannot make the exit question real, the designated next lever (designer
+  ruling 2026-08-29) is load slowing the carrier — adopted only by striking this spec's
+  loaded-return-time assertion openly, never as a quiet tweak. Backpacks and the road-bound
+  hand cart are recorded in `LOOT_SITES_SPEC.md`'s 2026-08-29 amendment, ruling 5 — gear v1+
+  and R3+ respectively, not R2 answers.
 - `DEPOSIT_RADIUS_PX` — 1.5 cells is a guess borrowed from Throne repair.
 - Whether a partial deposit should cost a channel (currently free, and probably should stay free).
 - Whether dropping in open country should be destructive at all, or merely lossy (e.g. half).

@@ -341,6 +341,8 @@ That last part is the reason gear belongs in this game rather than being generic
 
 **v1, when it happens, is one weapon slot** that sets the attack profile (§3.1 rule 2) plus a flat damage modifier. No armour slots, no durability, no inventory grid, no two-handed rules. The full system — item data, per-unit slots, Workshop-as-shop, the discount-for-loyalty mechanic — is larger than the combat work itself and needs its own spec.
 
+*Amendment, 2026-08-29 (spec review):* the gear family also owns **backpacks** — a carry-raising slot item, v1+ material, deliberately scarce so the escort economy (`SORTIE_SPEC.md` §1.4) survives contact with it. See `LOOT_SITES_SPEC.md`'s 2026-08-29 amendment, ruling 5.
+
 ## 10. Classes — specified, unscheduled
 
 Mages are a **role layer on top of race**, not a race. Every race has its own flavour: orcs have shamans, elves have wizards. Rare, but they appear.

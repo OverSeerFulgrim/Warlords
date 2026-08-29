@@ -37,6 +37,67 @@ tuning, the deposit-at-lair step, the escort, and Raven pings — this document 
 > deed split and the `guardian` schema growing a `count` are in §6/§8; the dusk-gate touchpoint
 > is in §9.
 
+> **Amendment, 2026-08-29 — spec review (designer). Five rulings: caches, arms, graveyards,
+> witnesses, haulage.** Where this block disagrees with the body below, this block governs;
+> prompt R2a builds this version.
+>
+> **1. Exclusivity, tightened at the caches.** §1.1's law is reaffirmed and applied to the two
+> sites that leaned on mundane yield: for `small_cache` and `abandoned_camp`, the gold and
+> trinket chance IS the point; wood/stone/food are demoted to garnish (low weight, small
+> amounts) in their §5 tables. A cache whose best outcome is wood is a bug by the first law.
+>
+> **2. Arms enter as field loot.** New loot kind `arms` — weapons and armour pieces, generic
+> units for now. Field-only, no worker source, and deliberately a dead-end resource until
+> `COMBAT_SPEC.md` §9's gear v1 lands (the gold precedent from §5: carrying a dead-end resource
+> for one milestone is acceptable; shipping an outlaw cave with no weapons in it is not).
+> Found arms are the field-exclusive counterpart to the Workshop's bought gear — the cave and
+> the battlefield are where you get it without paying. Table entries: `outlaw_cave` (its hoard
+> gains guaranteed arms), `cursed_battlefield` (arms alongside the mass bones),
+> `abandoned_camp` (small chance). Human sites only — the wolf den keeps its cloak and carries
+> no arms. Crafting materials stay expressed through the existing mundane kinds — wood, stone,
+> bones are what the settlement already builds with; a dedicated crafting-material kind waits
+> for a crafting spec (`GAME_IMPROVEMENT_REVIEW.md` §13 defers the system).
+>
+> **3. The cemetery becomes three graveyards.** The single Band-3 `cemetery` row in §2 is
+> replaced by a tier of three, distance and watchfulness rising together:
+>
+> | Type id | Name | Band | Per run | Watcher | Notice |
+> |---|---|---|---|---|---|
+> | `derelict_graveyard` | A Derelict Graveyard | 2 | 1–2 | none — forgotten | **none, ever** |
+> | `village_graveyard` | The Village Graveyard | 2–3 | 1 (village outskirt) | a visiting peasant, sometimes | standard per grave |
+> | `church_cemetery` | The Church Cemetery | 3 | 1 (fixed, church grounds) | the priest, resident | escalating per grave (§2's old cemetery rule) |
+>
+> All three offer the §4 choice sheet per grave. Loot quality rises with the watcher: derelict
+> uses Band-2 ratios per grave, village sits between, church keeps §5's Band-3 row (best grave
+> loot in the run). Placement follows the telegraph rule (§3): derelict in the wilds off a dead
+> dirt track, village graveyard at the village outskirt, church cemetery inside the grounds.
+> The derelict graveyard is the school — where a player learns grave-robbing before anyone is
+> watching. Twelve types now; the 10–15 active budget holds (pool maxima already deliberately
+> sum past it). §2's Band-3 note (notice vs deeds split) applies to the church cemetery.
+>
+> **4. Witnesses — designed now, built in R3.** The principle behind the tier above, recorded
+> so R3 inherits it: **threat from a witnessed crime lands only when the witness reaches a
+> guard or guard building.** A human who sees looting, grave-robbing, or violence becomes a
+> report-in-transit — they path to the watchtower/guard, and threat is added on ARRIVAL, not
+> on sight. The player can prevent the report (intercept, mislead, or kill — killing the
+> witness is a Cruelty deed with its own notice risk if itself witnessed). Unwitnessed crimes
+> generate no threat at all — which is what retroactively makes the derelict graveyard free
+> and the church cemetery expensive. In R2 notice stays abstract (a per-site roll standing in
+> for "was someone there"), because civilians don't wander and the guard buildings are inert
+> until Era III; R3's patrol-escalation work replaces the abstract roll with this loop. This
+> is the bridge §2's Band-3 note gestures at, made diegetic.
+>
+> **5. Haulage — designed now, scheduled later.** Three designer ideas recorded with homes, so
+> nothing lands in R2 (SORTIE_SPEC §1.3's one-number rule and its loaded-return-time assertion
+> stand for the R2 playtests): **backpacks** are gear — a carry-raising slot item under
+> `COMBAT_SPEC.md` §9's v1+, scarce by design so the escort economy (SORTIE_SPEC §1.4)
+> survives; **load slowing the carrier** is the designated fallback lever at the R2 exit
+> playtest — if capacity-vs-yield tuning cannot make "one more grave or turn back?" real, it is
+> the next thing tried, adopted by striking SORTIE_SPEC §10's loaded-return assertion openly;
+> the **hand cart** is R3+ material — a huge haul that only rolls on roads, slow, visible, and
+> routed past exactly the places where witnesses and patrols live, so it gets better once the
+> witness loop exists.
+
 ---
 
 ## 1. Design goals
