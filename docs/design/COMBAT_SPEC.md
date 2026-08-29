@@ -343,6 +343,8 @@ That last part is the reason gear belongs in this game rather than being generic
 
 *Amendment, 2026-08-29 (spec review):* the gear family also owns **backpacks** — a carry-raising slot item, v1+ material, deliberately scarce so the escort economy (`SORTIE_SPEC.md` §1.4) survives contact with it. See `LOOT_SITES_SPEC.md`'s 2026-08-29 amendment, ruling 5.
 
+*Amendment, 2026-08-29 (second):* the gear/economy spec also owns the **Storage Shed** (the built home of banked loot; the banking anchor moves there from the Throne when it exists) and the **Shop** — the player sells chosen items at prices they set, recruits buy, which is this section's discount-for-loyalty mechanic generalized. Gold and `arms` get their sinks there. See `SORTIE_SPEC.md`'s 2026-08-29 amendment, ruling 1.
+
 ## 10. Classes — specified, unscheduled
 
 Mages are a **role layer on top of race**, not a race. Every race has its own flavour: orcs have shamans, elves have wizards. Rare, but they appear.

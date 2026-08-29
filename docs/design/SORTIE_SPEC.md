@@ -19,6 +19,41 @@ tables, §7 relics), `WORLD_MAP_PLAN.md` (§3 travel times, §9 danger from choi
 
 ---
 
+> **Amendment, 2026-08-29 — spec review (designer). Three rulings: the deposit anchor, the
+> drop, and the night.** Where this block disagrees with the body below, this block governs;
+> prompt R2c builds this version.
+>
+> **1. The Throne stays R2's banking anchor.** A deposit point you must first build is a
+> dependency the unproven loop doesn't need. The **Storage Shed** (the built home of banked
+> loot) and the **Shop** (the player sells chosen items at prices they set; recruits buy —
+> `COMBAT_SPEC.md` §9's discount-for-loyalty mechanic, generalized) are both owned by §9's
+> future gear/economy spec, where gold and `arms` finally get their sinks. Moving the banking
+> anchor from Throne to Shed is a one-line position-test change whenever that spec lands.
+>
+> **2. Dropping in open country no longer destroys the load — it leaves it.** §5's
+> destruction rule is struck. An open-country drop spawns a **`dropped_cache`** site holding
+> exactly what was dropped: full reuse of the site machinery (charges, inspection payload,
+> sprite), never Raven-eligible (a cache is discovered by definition, so the honesty
+> invariant already excludes it), and outside the 10–15 active density budget. Drop-in-reach
+> still returns loot to the site it came from; the two paths still emit different signals.
+> In R2 nothing disturbs a cache — the cost of dropping is the time-taxed walk back. From R3,
+> **scavengers** restore the price: bandits and beasts can find a cache and haul it to their
+> own lair or house, turning an abandoned haul into someone else's treasure and a retrieval
+> problem. §10's "drop-in-open destroys" assertion is replaced by: the cache holds the exact
+> dropped contents, re-looting it empties it, and it is never pinged.
+>
+> **3. The night belongs to him — designed now, built in R3.** Time of day becomes a risk
+> *axis*, shipped as one coherent pass with R3's world-reaction work, not piecemeal: **day**
+> carries road patrols, bears, and adventurers out hunting monsters (in time, hunting *his*
+> undead); **night** carries wolves and monsters — and **his undead and his magic run
+> stronger at night**. Sortie by day and he is weaker but among beasts; sortie by night and
+> he is in his element, but so is everything else — and the humans who would witness him
+> (`LOOT_SITES_SPEC.md` 2026-08-29 amendment, ruling 4) are asleep. R2 stays dusk-only so the
+> exit playtest measures a single pressure, and `NECROMANCER_SPEC.md` §10's win-rate bands
+> stay clock-flat until the axis ships.
+
+---
+
 ## 1. Design goals
 
 1. **The banking rule is the whole game, at this scale.** Nothing is yours until it is home

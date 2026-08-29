@@ -692,7 +692,15 @@ Close the loop: the haul becomes real only when it reaches the Throne.
    deposit at 1.5 cells from the Throne (automatic, no button -- the worker
    trip loop deposits without a prompt and this is the same rule at longer
    range), the drop action with its in-reach/open-country asymmetry, and
-   death clearing the unbanked haul.
+   death clearing the unbanked haul. The 2026-08-29 amendment block at
+   the top of the spec is BINDING and supersedes the body where they
+   differ: an open-country drop spawns a `dropped_cache` site (full site-
+   machinery reuse; holds the exact dropped contents; re-looting empties
+   it; never Raven-eligible; outside the density budget) instead of
+   destroying the load. The Storage Shed, the Shop, scavengers, and the
+   day/night risk axis in that block are gear-spec/R3 material -- do NOT
+   build them here. verify_sortie asserts cache behaviour, not
+   destruction.
 
 2. THE BAND IS NOT THE THRONE. TravelLog treats lair_band membership as
    "home" for MEASURING a journey, and that stays. Banking is a different
