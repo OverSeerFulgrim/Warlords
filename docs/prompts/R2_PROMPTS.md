@@ -663,15 +663,18 @@ him an attack button.
    amendment's hot-slot row is R5 material -- do NOT build it here.
 
 4c. THE DEN BREADCRUMB (designer ruling, 2026-08-30 playtest: finding a
-   den felt like a chore). When a dusk raid resolves, the log line gains
-   a direction: "the wolves slunk off toward the south woods" -- the
-   compass bearing from the SETTLEMENT toward the nearest uncleared den,
-   in plain words (south woods / eastern forest / etc). This is a HINT
-   in a sentence, not a marker, not a path, and the spawn entry point
+   den felt like a chore; placement settled 2026-08-30 after the first
+   build put it at dusk). AT DAWN, when the raid resolves and the wolves
+   have gone, the log line gains a direction read off the ground:
+   "tracks in the snow lead toward the south woods" -- the compass
+   bearing from the SETTLEMENT toward the nearest uncleared den, in
+   plain words (south woods / eastern forest / etc). This is a HINT in
+   a sentence, not a marker, not a path, and the spawn entry point
    stays settlement-relative exactly as before -- wolves are still never
-   pathed from dens. One line in the dusk handler reading
-   WorldSites.nearest_uncleared_den(); silent when none remain (the
-   quiet is the reward).
+   pathed from dens. One line in _on_dawn reading
+   WorldSites.nearest_uncleared_den(), and only when the night actually
+   brought a wolf -- a quiet night leaves no tracks. Silent when no dens
+   remain (the quiet is the reward).
 
 5. EventBus: villain_engaged(villain, foe_name), villain_disengaged(
    villain, foe_name, reason). HUD hp readout red below 30%; the panel's

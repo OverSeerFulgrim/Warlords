@@ -242,8 +242,17 @@ a dead flag beside a live rule is how the next reader flips the wrong one.
   exchange interval; once engaged he lands exchanges from up to 5 cells; walking beyond 5 cells
   stops his swings the next interval
 - a hostile that hits him first is engaged back with no input, from range
-- kiting is bounded: against a chasing wolf, simulated flat-ground retreat yields at most 2–3
-  exchanges before the wolf closes — if it yields more, Speed or chase numbers have drifted
+- kiting is bounded: against a chasing wolf, simulated flat-ground retreat yields **10** exchanges
+  before the wolf closes — the wolf is always faster, so a retreat delays and never escapes.
+  (**Corrected 2026-08-30**, designer-approved: this row said "at most 2–3", which followed from
+  none of the numbers this spec states. The arithmetic, shown here so it stops being re-derived:
+  `320px` Arcane reach − `26px` bite distance = `294px` to close, at `83.2 − 64 = 19.2px/s` of
+  closing speed = `15.3s` = **10** `EXCHANGE_INTERVAL`s. §3's own quoted "78px/s against his 64"
+  would give 14, not 3. Both speeds are deliberate and load-bearing elsewhere — his 1.0 cells/sec
+  is R1's tuned travel value, which `TERRAIN_SPEC.md` §9 says outright is not a knob, and the
+  wolf's 1.3 is what `COMBAT_SPEC.md` §7 asks for by name — so the prose was wrong and the
+  constants were right. The harness pins the derived figure and prints it every run, so drift in
+  Speed, chase, reach or the exchange interval trips it.)
 - his death clears the haul before any other handler (cross-check `verify_sortie`) and he
   respawns at the Throne
 - Int 7 vs one wolf (Int 2): simulate 1,000 fights, he wins the large majority but averages
@@ -258,8 +267,14 @@ chosen for.
 
 **Tunables:** `VILLAIN_ENGAGE_PX` (26); wolf Intelligence (2 — the arcane-vs-beast damage knob);
 whether disengage should have a parting-shot cost (currently no — the chase *is* the cost);
-out-of-combat regen (currently none); the 1,000-fight win-rate bands above; whether the aura
-should shrink to Throne radius rather than the full band in later eras.
+out-of-combat regen rates (a trickle afield, greatly increased at home — amendment ruling 1); the
+1,000-fight win-rate bands above; whether the aura should shrink to Throne radius rather than the
+full band in later eras.
+
+**If the playtest shows a lone wolf can be killed damage-free by kiting**, the lever is wolf hit
+points or a chase-lunge (`COMBAT_SPEC.md` §7 territory) — **never the two speeds**, which are
+load-bearing elsewhere (his walk is the tuned travel value; the wolf's chase is what stops a
+melee-only predator being trivialised by anything ranged).
 
 **Exit criterion for this slice** (feeds R2's overall exit): outside his lair, the Necromancer
 kills a lone wolf with his own craft and it costs him a third of his health; he starts a den

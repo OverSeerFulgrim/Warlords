@@ -256,29 +256,30 @@ func _on_dusk(_day: int) -> void:
 	if not guaranteed and randf() * 100.0 > WOLF_SPAWN_CHANCE_PERCENT:
 		return
 	spawn_wolf()
-	_note_where_they_come_from()
 
 ## **The breadcrumb** (designer ruling, 2026-08-30 playtest: finding a den felt
-## like a chore). The dusk line gains a direction -- the bearing from the
-## settlement to the nearest den still standing, in plain words.
+## like a chore). The direction of the nearest den still standing, from the
+## settlement, in plain words.
+##
+## **At dawn, as tracks** (placement approved 2026-08-30). It was briefly in the
+## dusk handler, which put an arrival's verb on a departure's sentence: at dusk
+## nothing has gone anywhere yet, and the thing a player can actually read off
+## the snow is where the wolves *went*. Dawn is also when the raid resolves,
+## which is what the ruling asked for in the first place.
 ##
 ## A hint in a sentence. Not a marker, not a path, and **not** a change to the
 ## spawn: the wolf still enters settlement-relative, and nothing is ever pathed
 ## from a den. Silent once the last den is cleared, because at that point there
 ## is nothing to point at and the quiet is the whole reward.
-##
-## Worth flagging for the designer: the ruling's example sentence reads as a
-## departure ("slunk off toward"), but it also asks for the line in the *dusk*
-## handler, where nothing has departed yet -- so the direction is the same and
-## the verb is an arrival's.
-func _note_where_they_come_from() -> void:
+func _note_the_tracks() -> void:
 	if world_sites == null or settlement == null:
 		return
 	var home: Vector2 = _settlement_centre()
 	var den: WorldSite = world_sites.nearest_uncleared_den(home)
 	if den == null:
 		return
-	EventBus.travel_noted.emit("They come from %s." % _compass_phrase(home, den.position), 0.0)
+	EventBus.travel_noted.emit("Tracks in the snow lead toward %s."
+		% _compass_phrase(home, den.position), 0.0)
 
 func _settlement_centre() -> Vector2:
 	var cell: float = float(SettlementGrid.CELL_SIZE)
@@ -303,9 +304,15 @@ func _compass_phrase(from: Vector2, to: Vector2) -> String:
 ## honest without needing a despawn timer, and means a wolf the player never
 ## dealt with doesn't accumulate into a permanent resident.
 func _on_dawn(_day: int) -> void:
+	# Whether the night actually brought anything, checked before they are sent
+	# off: tracks are what a raid leaves behind, so a quiet night leaves none and
+	# says nothing.
+	var raided: bool = not wolves.is_empty()
 	for wolf in wolves:
 		if wolf.state != Wolf.State.LEAVING:
 			wolf.depart("driven off by the light")
+	if raided:
+		_note_the_tracks()
 
 ## Public so a smoke test (or a future event) can force one. `at` overrides the
 ## spawn point; leave it null-ish (Vector2.INF) for the default treeline entry.

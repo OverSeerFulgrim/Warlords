@@ -124,7 +124,7 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `tools/smoke_site_actions.tscn` — 26 assertions: presses the site action buttons **as buttons**,
   through `Main._inspect_at` and the real panel, checking no later sibling Control covers them.
   The only cover on the click→`begin_action` chain; a human mouse is still the last word
-- `tools/verify_villain_combat.tscn` — 62 assertions: the aura band edge from both sides, engage
+- `tools/verify_villain_combat.tscn` — 65 assertions: the aura band edge from both sides, engage
   at 26px / cast to 5 cells / disengage by walking, retaliation, bounded kiting, regen halting
   under engagement, death clearing the haul before any later handler, and the 1,000-fight bands
   (one wolf: a costly win; a three-wolf pack alone: never)

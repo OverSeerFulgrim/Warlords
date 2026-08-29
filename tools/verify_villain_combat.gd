@@ -244,24 +244,24 @@ func _retaliation_needs_no_input() -> void:
 ## points rather than by his legs: on flat ground he can never open the gap, so
 ## retreating is a delaying tactic and never an escape.
 ##
-## ## A discrepancy worth recording, not papering over
+## ## The number, and why it is printed every run
 ##
-## §10 asks for "at most 2-3 exchanges before the wolf closes". **That figure
-## does not follow from any of the numbers the spec itself states.** Closing the
-## full reach gap (5 cells down to biting distance, 294px) at the difference
-## between the two speeds takes 15.3s, which is ten exchange intervals — and
-## even using §3's own quoted "78px/s against his 64" it would be fourteen, not
-## three.
+## §10 used to ask for "at most 2-3 exchanges", which followed from none of the
+## numbers the spec itself stated: closing the full reach gap (294px) at the
+## difference between the two speeds takes 15.3s, which is **ten** exchange
+## intervals — and even §3's own quoted "78px/s against his 64" gives fourteen.
+## The constants were right and the prose was wrong; the spec was corrected to
+## the derived figure on 2026-08-30 rather than the speeds being bent to fit a
+## sentence, because both are load-bearing elsewhere (his 1.0 cells/sec is R1's
+## tuned travel value, which TERRAIN_SPEC §9 says outright is not a knob; the
+## wolf's 1.3 is what COMBAT_SPEC §7 asks for by name).
 ##
-## Both speeds are correct and deliberate: his 1.0 cells/sec is R1's tuned
-## travel value (TERRAIN_SPEC §9 — explicitly not a knob) and the wolf's 1.3 is
-## what COMBAT_SPEC §7 asks for by name. So the constants are right and the
-## prose is wrong, and the honest thing is to assert the derived truth and hand
-## the designer the arithmetic rather than quietly weaken the check or bend a
-## tuned number to fit a sentence.
+## The derivation is printed on every run and pinned as a band, so drift in his
+## Speed, the wolf's chase, his reach or the exchange interval trips it — and so
+## the next reader gets the arithmetic instead of having to re-derive it.
 ##
-## Asserted as a pinned band around the shipped figure, so any drift in his
-## Speed, the wolf's chase, his reach or the exchange interval trips it.
+## **If a playtest shows a lone wolf dying damage-free to kiting**, the lever is
+## wolf hit points or a chase-lunge (COMBAT_SPEC §7), never the two speeds.
 func _kiting_is_bounded() -> void:
 	print("-- Kiting is real but bounded (§3) --")
 	var v: Necromancer = _main.villain
@@ -282,7 +282,8 @@ func _kiting_is_bounded() -> void:
 	var seconds: float = gap / (chase - flee)
 	var casts: int = int(floor(seconds / Combat.EXCHANGE_INTERVAL))
 	print("    a full-reach retreat buys %.1fs = %d exchanges before it closes" % [seconds, casts])
-	print("    NOTE: §10 says 2-3. The shipped speeds give %d; see this function's header." % casts)
+	print("    (%.0fpx reach - %.0fpx bite = %.0fpx, closing at %.1f px/s; §10 corrected to %d on 2026-08-30)"
+		% [float(v.combat_profile()["reach_px"]), Wolf.ENGAGE_RADIUS_PX, gap, chase - flee, casts])
 	_check("a retreat buys a bounded number of casts, not immunity",
 		casts >= 8 and casts <= 12, "%d -- Speed, chase, reach or the interval has moved" % casts)
 	wolf.queue_free()
@@ -379,22 +380,50 @@ func _death_clears_before_anything_else_reads() -> void:
 # ---------------- 4c: the breadcrumb ------------------------------------------
 
 func _the_breadcrumb() -> void:
-	print("-- The dusk line points at a den (designer ruling 2026-08-30) --")
+	print("-- Tracks at dawn point at a den (designer ruling 2026-08-30) --")
 	var combat: CombatSystem = _main.combat_system
 	var sites: WorldSites = _main.world_sites
 	_check("there is a den to point at", sites.nearest_uncleared_den(Vector2.ZERO) != null)
 
+	# **At dawn, and only after a raid.** Asserted through the real handlers
+	# rather than by calling the helper, because the placement is the ruling:
+	# dusk must say nothing (nothing has gone anywhere yet), and a quiet night
+	# must leave no tracks.
 	var lines: Array = []
 	var conn := func(text: String, _s: float): lines.append(text)
 	EventBus.travel_noted.connect(conn)
-	combat._note_where_they_come_from()
+	combat._on_dusk(2)
 	EventBus.travel_noted.disconnect(conn)
-	_check("the dusk handler says where they come from", lines.size() == 1, str(lines))
-	if not lines.is_empty():
-		var line: String = String(lines[0])
+	_check("dusk says nothing about tracks -- nothing has left yet",
+		_tracks_in(lines).is_empty(), str(lines))
+
+	# A wolf on the map, then dawn: the raid resolves and leaves tracks.
+	lines.clear()
+	if combat.wolves.is_empty():
+		combat.spawn_wolf()
+	var conn2 := func(text: String, _s: float): lines.append(text)
+	EventBus.travel_noted.connect(conn2)
+	combat._on_dawn(3)
+	EventBus.travel_noted.disconnect(conn2)
+	var found: Array = _tracks_in(lines)
+	_check("dawn after a raid reads the tracks", found.size() == 1, str(lines))
+	if not found.is_empty():
+		var line: String = String(found[0])
 		print("    %s" % line)
+		_check("...as tracks, not as an arrival", line.findn("tracks in the snow") >= 0, line)
 		_check("...in plain words, not coordinates",
 			line.findn("woods") >= 0 and line.find("(") < 0, line)
+
+	# A quiet night leaves none.
+	for w in combat.wolves.duplicate():
+		combat.wolves.erase(w)
+		w.queue_free()
+	lines.clear()
+	var conn3 := func(text: String, _s: float): lines.append(text)
+	EventBus.travel_noted.connect(conn3)
+	combat._on_dawn(4)
+	EventBus.travel_noted.disconnect(conn3)
+	_check("a night with no wolf leaves no tracks", _tracks_in(lines).is_empty(), str(lines))
 
 	# The compass itself, from a known bearing rather than from whatever the map
 	# happens to hold: +x is east, +y is south on screen.
@@ -414,11 +443,18 @@ func _the_breadcrumb() -> void:
 	for g in guardians:
 		sites.remove_guardian(g, _main.villain)
 	lines.clear()
-	var conn2 := func(text: String, _s: float): lines.append(text)
-	EventBus.travel_noted.connect(conn2)
-	combat._note_where_they_come_from()
-	EventBus.travel_noted.disconnect(conn2)
-	_check("with every den cleared it says nothing at all", lines.is_empty(), str(lines))
+	var conn4 := func(text: String, _s: float): lines.append(text)
+	EventBus.travel_noted.connect(conn4)
+	combat._note_the_tracks()
+	EventBus.travel_noted.disconnect(conn4)
+	_check("with every den cleared it says nothing at all",
+		_tracks_in(lines).is_empty(), str(lines))
+
+## The tracks line only. The dusk and dawn handlers emit other travel-log lines
+## (the den-clearing notices, for one), and asserting on "was anything logged"
+## would make this test pass or fail for reasons that have nothing to do with it.
+func _tracks_in(lines: Array) -> Array:
+	return lines.filter(func(t): return String(t).findn("tracks") >= 0)
 
 # ---------------- §10: the win-rate bands --------------------------------------
 

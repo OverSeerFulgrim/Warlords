@@ -117,17 +117,21 @@ inside it rather than by inspecting the aftermath.
 
 ## 5. The den breadcrumb (designer ruling, 2026-08-30)
 
-The dusk line gains a direction: *"They come from the woods south-east of here."* — the bearing
-from the settlement to the nearest den still standing, in eight plain-word sectors. A hint in a
-sentence: no marker, no path, and **no change to the spawn**, which stays settlement-relative
-exactly as before. Silent once the last den falls, because at that point there is nothing to point
-at and the quiet is the reward.
+At dawn, when the raid resolves and the wolves have gone, the log reads the ground: *"Tracks in the
+snow lead toward the woods south-east of here."* — the bearing from the settlement to the nearest
+den still standing, in eight plain-word sectors. A hint in a sentence: no marker, no path, and **no
+change to the spawn**, which stays settlement-relative exactly as before. Silent once the last den
+falls, because at that point there is nothing to point at and the quiet is the reward.
 
-> **One deviation to flag.** The ruling's example sentence reads as a departure — *"the wolves
-> slunk off toward the south woods"* — but it also asks for the line in the **dusk handler**, where
-> nothing has departed yet. Same direction, arrival's verb. If the departure phrasing was the point
-> rather than the illustration, the line wants moving to `_on_dawn`; it is a one-line change and
-> the compass helper is already separate.
+> **Placement settled 2026-08-30.** The first build put this in the dusk handler, which is where
+> the ruling asked for it — but that puts an arrival's verb on a departure's sentence, because at
+> dusk nothing has gone anywhere yet. Dawn is when the raid actually resolves, and tracks are what
+> a player can read off snow. Moved, and phrased as tracks; `R2_PROMPTS.md`'s 4c item was reworded
+> to match what shipped so the prompt file stays honest.
+>
+> One consequence worth stating: a quiet night leaves no tracks. The line fires only when the night
+> actually brought a wolf, which the harness asserts alongside the placement itself — dusk must say
+> nothing, dawn-after-a-raid must speak, dawn-after-nothing must not.
 
 ---
 
@@ -158,7 +162,7 @@ gotcha, because the shape generalises to every global signal that carries a vill
 
 ## 7. Verification
 
-`tools/verify_villain_combat.tscn` — **62 assertions**, run as a scene, per §10:
+`tools/verify_villain_combat.tscn` — **65 assertions**, run as a scene, per §10:
 
 | Claim | How it is tested |
 |---|---|
@@ -170,7 +174,7 @@ gotcha, because the shape generalises to every global signal that carries a vill
 | never rooted | `in_combat` is asserted **absent** from him |
 | regen | half an interval heals nothing, a full one heals exactly 1, the band multiplies it, and it is **stopped** — not slowed — while engaged |
 | his zero | a handler connected *after* the system's reads an already-empty haul; full hp; at the Throne; out of the fight |
-| the breadcrumb | the compass from four known bearings, plain words with no coordinates, and silence once every den is cleared |
+| the breadcrumb | the compass from four known bearings; **the placement** through the real handlers -- dusk silent, dawn-after-a-raid speaks, dawn-after-a-quiet-night silent; and silence once every den is cleared |
 | the flag is gone | `LAIR_AURA_PROTECTS_VILLAIN` is asserted not to exist |
 
 The 1,000-fight bands, printed on every run:
@@ -184,14 +188,14 @@ That is §1.2's "costly win" shape exactly: he takes a lone wolf every time and 
 his health, and the den is not soloable at baseline. Both are asserted as **bands**, not points — a
 point estimate would fail on noise and teach everyone to ignore the harness.
 
-Full suite green: `verify_villain_combat` 62, `verify_loot_tables` 500, `smoke_site_actions` 26,
+Full suite green: `verify_villain_combat` 65, `verify_loot_tables` 500, `smoke_site_actions` 26,
 `verify_terrain` 261, `check_sprite_scales` 122, `verify_stats` 505, `verify_combat_feedback` 31,
 `check_fog_and_minimap` 41. Headless boot clean.
 
-### The one number that does not match the spec
+### The one number that did not match the spec — corrected
 
-§10 asks the harness to assert that kiting yields "at most 2–3 exchanges before the wolf closes".
-**It yields ten, and the spec's own figures do not produce three either.**
+§10 asked the harness to assert that kiting yields "at most 2–3 exchanges before the wolf closes".
+**It yields ten, and the spec's own figures did not produce three either.**
 
 ```
 reach 320px − bite 26px            = 294px to close
@@ -207,11 +211,13 @@ constants are right and the prose is wrong.
 The harness therefore asserts what is true and load-bearing: **the wolf is faster, so retreating
 can never open the gap** — kiting delays and never escapes, bounded by his hit points rather than
 his legs — plus a pinned band around the shipped figure so drift in Speed, chase, reach or the
-exchange interval trips it. The discrepancy is printed on every run rather than buried.
+exchange interval trips it. The derivation is printed on every run rather than buried.
 
-**This wants a designer ruling**: either §10's "2–3" is corrected to the derived number, or the
-intended scenario is a different one than the arithmetic above. Nothing was tuned to fit the
-sentence.
+**Ruled 2026-08-30: the pin is accepted and the spec was corrected**, with the arithmetic written
+into §10 in place so nobody re-derives it. Nothing was tuned to fit the sentence. §10's tunables
+gained the matching line: if a playtest shows a lone wolf dying damage-free to kiting, the lever is
+**wolf hit points or a chase-lunge** (`COMBAT_SPEC.md` §7 territory) — never the two speeds, which
+are load-bearing elsewhere.
 
 ---
 
