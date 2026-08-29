@@ -28,6 +28,30 @@ cover-the-retreat, which reads the thresholds set here), `CLAUDE.md`.
 
 ---
 
+> **Amendment, 2026-08-29 — spec review (designer). Two rulings: regen, and the hot-slot row.**
+> Where this block disagrees with the body below, this block governs; prompt R2b builds
+> ruling 1 and does not build ruling 2.
+>
+> **1. He regenerates — slowly afield, strongly at home.** §10's "out-of-combat regen:
+> currently none" is struck. Out of combat he heals: a slow trickle outside the lair band,
+> **greatly increased inside it** — driven by the *same* §5 position test the aura uses, which
+> is the whole implementation: one test, two consequences (protection, and recovery). Regen is
+> suppressed entirely while engaged. Rates are tunables; the constraint that sets them is that
+> the field trickle must never let a den fight be reset by circling the clearing — waiting to
+> heal must cost *daylight* the player feels. This adds the missing push-your-luck dial: a hurt
+> villain in the field can now trade sun for health instead of only limping home.
+>
+> **2. The hot-slot row — designed now, built with R5's spell unlocks.** Above the command
+> bar, slots 1–9: press the number or click the slot to select a spell, then aim it where the
+> spell takes a target. This is the designed input model for §7's spell surface as it grows —
+> recorded now so R5 inherits it designed rather than improvised. **The hard line: a hot slot
+> can never hold an attack.** His combat casting stays proximity-engaged (§3) — walk in, he
+> fights; walk out, he stops — and no spell that lands damage on a hostile may ever sit behind
+> a key. The hotbar is for spells-as-tools (Command Undead today; wards, rituals, and the R5
+> kit later). Not built in R2: two spells do not need nine slots.
+
+---
+
 ## 1. Design goals
 
 1. **He fights with his own hands only when the player walks him into it.** No attack button, no
