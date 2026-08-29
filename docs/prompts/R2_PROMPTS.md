@@ -531,6 +531,12 @@ docs/design/LOOT_SITES_SPEC.md first. P2 must be done.
 Build the lootable-site layer. This is the biggest R2 prompt; everything
 after it is the loop closing around it.
 
+0. FIRST, THE MINIMAP TOGGLE the P2 human check found missing (docs/
+   history/2026-08-27-r1-playtest-notes.md, "P2 human check"): the M key
+   toggles minimap visibility, default on, one TravelLog line when it
+   changes. No other minimap change. The R2 exit walk ("Throne to village
+   by ground alone") cannot be run without it.
+
 1. Everything in LOOT_SITES_SPEC.md §2-§5 and §7-§8: the site type catalog,
    the interaction model (reach, InspectorActions surface, channelled
    looting, charges, guardians), the four-way grave choice sheet, loot
@@ -560,7 +566,11 @@ after it is the loop closing around it.
    ground, the cemetery inside the church grounds. That is how a site
    telegraphs (LOOT_SITES §3) -- NOT by a path leading to it. Set
    signposted:true only on Band 1-2 sites; the generator hard-errors
-   otherwise.
+   otherwise. THE ROAD PROMISE (designer ruling, 2026-08-27 human
+   check): a road always has something at its end, even minor loot --
+   every dirt-track terminus must be a site with at least one loot
+   action at generation time. Assert it in verify_terrain beside the
+   no-path-near-Band-4 check.
 
 4. REMAINDER CHARGES come from SORTIE_SPEC.md §4, not from LOOT_SITES:
    loot that doesn't fit stays at the site as a remainder charge, the site

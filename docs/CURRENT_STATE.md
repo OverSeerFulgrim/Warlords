@@ -95,9 +95,10 @@ points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2
    them — same dependency as the playtest, same person.
 4. **This pass's amendments are date-stamped 08-06 inside the files** (see the dating note up
    top). Cosmetic, but worth knowing before trusting a date over this table.
-5. **`GAME_IMPROVEMENT_REVIEW.md` §12 recommends a thin-slice R2** (two graves + carry + deposit
-   + death before the full catalog) — a real, unadopted alternative to R2a's build-it-all order.
-   Decide at spec review whether R2a gets split into R2a-thin + R2a-full.
+5. ~~`GAME_IMPROVEMENT_REVIEW.md` §12 recommends a thin-slice R2~~ — **ruled 2026-08-29: R2a
+   stays whole.** The thin slice would defer only catalog data while still needing all of R2a's
+   code, and would re-sequence R2a–R2c; §12's concern is carried by the playtest-between-prompts
+   gates and the After-R2 tuning knobs (tier ratios, capacity vs yield) instead.
 6. **Repo `README.md` (root) still describes the pre-rework game** per the review's §11 — small,
    still owed.
 
