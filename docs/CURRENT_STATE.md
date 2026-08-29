@@ -91,8 +91,10 @@ points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2
    the aura positional and deletes the flag.
 2. ~~SORTIE_SPEC §1.5 "send an escort back"~~ — **ruled and struck 08-09**: no independent
    delivery; if it ever exists it is a spell (R5 material). The strikeout note sits in the spec.
-3. **The seven R2 specs are still marked "draft for review."** The review is the designer reading
-   them — same dependency as the playtest, same person.
+3. ~~The seven R2 specs are still marked "draft for review."~~ — **done 2026-08-29**: all seven
+   reviewed by the designer; five carry dated amendment blocks (LOOT_SITES five rulings,
+   SORTIE three, NECROMANCER two, ESCORT one, RAVEN one), TERRAIN and COMBAT_FEEDBACK accepted
+   as-built. Amendment blocks are binding over spec bodies; the R2a–R2e prompts point at them.
 4. **This pass's amendments are date-stamped 08-06 inside the files** (see the dating note up
    top). Cosmetic, but worth knowing before trusting a date over this table.
 5. ~~`GAME_IMPROVEMENT_REVIEW.md` §12 recommends a thin-slice R2~~ — **ruled 2026-08-29: R2a
@@ -108,7 +110,7 @@ points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2
 
 1. ~~**Play R1**~~ (done 2026-08-27) — twenty minutes, human at keyboard: does leaving the lair feel like a decision?
    Tick the six foundation-checklist boxes in the same session. Everything is gated on this.
-2. Review the seven R2 specs (they wait on the designer, not on code).
+2. ~~Review the seven R2 specs~~ (done 2026-08-29 — see rough edge 3; amendment blocks binding).
 3. Run P0, then U1, then F1, then C2 — safe, map-untouched, and every later prompt builds on them.
 4. Run P1 → P2, re-running `measure_travel` until every row is back in band.
 5. Run R2a → R2e in order, playtesting between prompts.

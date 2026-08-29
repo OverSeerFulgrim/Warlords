@@ -1,6 +1,6 @@
 # COMBAT FEEDBACK SPEC — Red Numbers, in Real Time
 
-**Status:** Draft for review, 2026-08-06. Small by design and independent of every other R2
+**Status:** Reviewed as-built (shipped in F1), designer review 2026-08-29. Originally drafted 2026-08-06. Small by design and independent of every other R2
 slice — it can be built the day after P0 and makes every combat that follows (guardians, dens,
 the villain's own melee) legible for free. Nothing here is implemented.
 

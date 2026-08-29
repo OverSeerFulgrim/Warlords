@@ -1,6 +1,6 @@
 # ESCORT SPEC — The Dead Who Walk With Him (R2)
 
-**Status:** Draft for review, 2026-08-06. Details `ROGUELITE_REWORK.md` §5 (the escort behaves
+**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §5 (the escort behaves
 automatically, built on the Command Undead order model) and covers the R2 piece
 `LOOT_SITES_SPEC.md` put out of scope. Nothing here is implemented.
 

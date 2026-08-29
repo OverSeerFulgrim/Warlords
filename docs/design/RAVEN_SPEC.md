@@ -1,6 +1,6 @@
 # RAVEN SPEC — The Bird That Never Lies (R2)
 
-**Status:** Draft for review, 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
+**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
 `LOOT_SITES_SPEC.md` put out of scope. Nothing here is implemented.
 
 > **Correction, load-bearing.** `docs/history/2026-08-world-map-r1.md` said, in its fog-of-war

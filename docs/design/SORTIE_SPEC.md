@@ -1,6 +1,6 @@
 # SORTIE SPEC — Carrying It, and Getting It Home (R2)
 
-**Status:** Draft for review, 2026-08-06. Details `ROGUELITE_REWORK.md` §1 (the banking rule) and
+**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §1 (the banking rule) and
 §5 (the sortie loop), and covers the two R2 pieces `LOOT_SITES_SPEC.md` put out of scope: **carry
 capacity** and **deposit-at-lair**. Nothing here is implemented.
 

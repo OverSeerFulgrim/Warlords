@@ -1,6 +1,6 @@
 # TERRAIN SPEC — Seven Sheets, and Roads That Lead Somewhere
 
-**Status:** Draft for review, 2026-08-06. Extends the terrain layer built in R1
+**Status:** Reviewed as-built (shipped in P1/P2), designer review 2026-08-29. Originally drafted 2026-08-06. Extends the terrain layer built in R1
 (`docs/history/2026-08-world-map-r1.md`) from one tilesheet to seven, adds a connection-tile
 (autotile) layer, and teaches `tools/make_world_map.gd` to lay roads by rule instead of by hand.
 Nothing here is implemented. **Sits between P0 and R2a** in `docs/prompts/R2_PROMPTS.md`.

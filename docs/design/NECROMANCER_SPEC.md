@@ -1,6 +1,6 @@
 # NECROMANCER SPEC — His Own Two Hands (R2)
 
-**Status:** Draft for review, 2026-08-06. Answers the open tunable `ROGUELITE_REWORK.md` §15 has
+**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Answers the open tunable `ROGUELITE_REWORK.md` §15 has
 carried since the rework was written — *"Necromancer combat stats, and whether a protective aura
 applies inside his own lair"* — and gives the villain the one thing R2's world makes urgent:
 **a way to fight back.** Nothing here is implemented.
