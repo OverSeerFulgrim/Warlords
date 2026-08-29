@@ -841,8 +841,11 @@ func _guardians_actually_fight(den: WorldSite) -> void:
 			break
 		await get_tree().process_frame
 	_check("a pack wolf comes for him when he walks into the den", engaged)
+	# The aura is a position now, not a flag (NECROMANCER_SPEC §5). A den sits
+	# far outside the lair band by construction, so the protection cannot reach
+	# it -- which is what makes a den clearable at all.
 	_check("...and the lair aura does not protect him out here (§3b)",
-		engaged or CombatSystem.LAIR_AURA_PROTECTS_VILLAIN == false)
+		not combat.aura_protects_villain())
 
 	# Let it run to a conclusion. He is one caster against a pack, which section
 	# 3b calls a real gamble -- so either outcome is correct, and what is

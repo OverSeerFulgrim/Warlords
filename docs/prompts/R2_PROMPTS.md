@@ -662,6 +662,17 @@ him an attack button.
    the 1,000-fight bands are unaffected (they are per-fight). The
    amendment's hot-slot row is R5 material -- do NOT build it here.
 
+4c. THE DEN BREADCRUMB (designer ruling, 2026-08-30 playtest: finding a
+   den felt like a chore). When a dusk raid resolves, the log line gains
+   a direction: "the wolves slunk off toward the south woods" -- the
+   compass bearing from the SETTLEMENT toward the nearest uncleared den,
+   in plain words (south woods / eastern forest / etc). This is a HINT
+   in a sentence, not a marker, not a path, and the spawn entry point
+   stays settlement-relative exactly as before -- wolves are still never
+   pathed from dens. One line in the dusk handler reading
+   WorldSites.nearest_uncleared_den(); silent when none remain (the
+   quiet is the reward).
+
 5. EventBus: villain_engaged(villain, foe_name), villain_disengaged(
    villain, foe_name, reason). HUD hp readout red below 30%; the panel's
    Activity row says who he is fighting.

@@ -142,6 +142,27 @@ var deeds: Array = []
 ## had to unpick.
 var raised_dead: Array = []
 
+## Answers "is he home?" -- and it is deliberately **one question with three
+## consumers**, because NECROMANCER_SPEC §5 and its 2026-08-29 amendment both
+## turn on the same line:
+##
+##   1. the lair aura (§5): wolves fear him inside the band and nowhere else
+##   2. whether he is prey (§4): outside it, everything hunts him
+##   3. his regeneration rate (amendment 1): a trickle afield, strong at home
+##
+## It lives here rather than in `CombatSystem` because it is a fact about *his
+## position*, and he owns his position. The policy built on it is the combat
+## layer's; the geography is his. `LAIR_AURA_PROTECTS_VILLAIN` used to be a
+## global bool and is gone -- a flag beside a live rule is how the next reader
+## flips the wrong one (§8).
+##
+## Null-safe: with no world he is never home, which is the safe answer for a
+## test whose true branch grants protection.
+func is_in_lair_band() -> bool:
+	if world == null or world.lair_band.size.x <= 0:
+		return false
+	return world.lair_band.has_point(world.cell_at(position))
+
 ## True while he is channelling a site action. **Read by `step()` below**, which
 ## is the whole reason it lives on him rather than on the site: his idle pacing
 ## would otherwise wander him out of range of the grave he is digging, eight
@@ -681,9 +702,25 @@ func _ground_row() -> Dictionary:
 		value += "  —  %d%% pace" % roundi(speed * 100.0)
 	return {"label": "Ground", "value": value}
 
+## Who he is fighting, asked of whoever owns that knowledge. A **Callable, not a
+## field**, and the distinction is the whole of NECROMANCER_SPEC §9's
+## `Necromancer.gd` row: his engagement membership lives in `CombatSystem`,
+## because an `in_combat` flag on him is one refactor away from rooting him, and
+## rooting him is the one thing the direct-control carve-out must never allow.
+##
+## A stored copy would also go stale the moment he walks out of reach -- which
+## he can do at any time, without asking anyone.
+var foe_provider: Callable = Callable()
+
+func fighting_name() -> String:
+	return String(foe_provider.call()) if foe_provider.is_valid() else ""
+
 func activity_label() -> String:
 	if not is_alive():
 		return "Fallen"
+	var foe: String = fighting_name()
+	if foe != "":
+		return "Fighting — %s" % foe
 	if is_channelling:
 		return "Working at something"
 	if is_moving:

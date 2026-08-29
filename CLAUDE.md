@@ -11,10 +11,12 @@ that system). Session write-ups append to `docs/history/`, NEVER here.
 
 ## Current phase
 
-Roguelite rework, **R2 in progress — R2a done, R2b next** (`docs/design/ROGUELITE_REWORK.md` §13
+Roguelite rework, **R2 in progress — R2a and R2b done, R2c next** (`docs/design/ROGUELITE_REWORK.md` §13
 is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
 placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
-raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`).
+raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`). R2b gave him his own
+fight — engage close / cast far, the lair aura as geography, out-of-combat regen, and a death that
+costs the haul (`docs/history/2026-08-villain-combat.md`).
 R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
@@ -48,6 +50,9 @@ autoload/global).
   profile means the rule is wrong, not the unit special. Creatures and villains use the same nine.
 - Indirect control is a pillar: no unit orders. The exceptions are the Necromancer (driven
   directly) and Command Undead (binds the dead as a class, via `alignment: "Undead"`).
+  **His casting is proximity-engaged, not ordered** (NECROMANCER_SPEC §3): walking within 26px
+  of a hostile opens a fight, walking past his 5-cell Arcane reach ends it, there is no attack
+  button, and he is never rooted — his engagement membership lives in `CombatSystem`.
 - The Necromancer is NOT a Laborer and not in any labor pool — keep the exclusion structural.
 - Timers must be delta-accumulators or SceneTreeTimers so `Engine.time_scale` (debug 1x/10x/60x)
   scales everything together. Never `Time.get_ticks_msec()` for gameplay.
@@ -119,6 +124,10 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `tools/smoke_site_actions.tscn` — 26 assertions: presses the site action buttons **as buttons**,
   through `Main._inspect_at` and the real panel, checking no later sibling Control covers them.
   The only cover on the click→`begin_action` chain; a human mouse is still the last word
+- `tools/verify_villain_combat.tscn` — 62 assertions: the aura band edge from both sides, engage
+  at 26px / cast to 5 cells / disengage by walking, retaliation, bounded kiting, regen halting
+  under engagement, death clearing the haul before any later handler, and the 1,000-fight bands
+  (one wolf: a costly win; a three-wolf pack alone: never)
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)
@@ -130,6 +139,10 @@ assets/official|placeholder|vendor/      see Graphics rules
 
 ## Gotchas (one line each; details in docs/history/)
 
+- The lair aura is a POSITION, not a flag: `CombatSystem.aura_protects_villain()` reads
+  `Necromancer.is_in_lair_band()`. One test, three consumers (aura, prey membership, regen rate).
+- A global signal carrying a villain needs an owner check: `villain_died` fires for every villain,
+  so a handler must ignore one that is not its own (it healed simulated villains mid-fight).
 - godot-mcp simulated input NEVER reaches the game (`_unhandled_input`/`Input.is_key_pressed`);
   only `click_button_by_text` works. Real mouse/keyboard QA needs a human.
 - The debug game window may eat its first real click (OS focus) — click once, then test.

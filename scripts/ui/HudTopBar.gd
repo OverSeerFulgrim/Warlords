@@ -35,6 +35,8 @@ var lbl_resources_right: Label
 var lbl_dark_essence: Label    # sits right of the Dark Essence icon
 var time_scale_btn: Button
 var necro_badge: Button
+## His hit points, beside the badge. Red below 30%. See refresh_villain_hp().
+var villain_hp_label: Label
 ## Camera-follow readout, under the badge. See refresh_follow_state().
 var follow_state_label: Label
 ## Where am I / how deep am I / which way is home. See refresh_orientation().
@@ -84,6 +86,14 @@ func _connect_signals() -> void:
 	# Fires on Dawn/Daylight/Dusk/Night word changes only, not per frame.
 	EventBus.day_phase_changed.connect(func(_label: String): refresh_stats())
 	EventBus.main_building_damaged.connect(func(_b): refresh_stats())
+	# Every hp change on him, from any source -- a wolf's bite, a guardian's, the
+	# out-of-combat regen. `damage_shown` is already the one signal the policy
+	# layer fires for exactly this (COMBAT_FEEDBACK_SPEC §2), so the readout
+	# rides it rather than being polled or needing a second announcement.
+	EventBus.damage_shown.connect(func(unit, _amount: int, _kind: String):
+		if unit == _villain:
+			refresh_villain_hp()
+	)
 
 ## Thin single-row resource strip along the very top: Dark Essence/Wood/
 ## Stone/Bones on the left, Threat/Power/Throne hp on the right, matching the
@@ -168,6 +178,18 @@ func _build_necro_badge(hud_root: Control) -> void:
 	necro_badge.pressed.connect(func(): badge_pressed.emit())
 	hud_root.add_child(necro_badge)
 
+	# **His hit points, beside the badge.** He is the run (R4), and until now the
+	# only place his health appeared was inside the inspection panel -- which is
+	# closed exactly when it matters, because closing it is how you get back to
+	# driving him. NECROMANCER_SPEC §6: the game's whole duty at 30% is that
+	# nobody dies uninformed.
+	villain_hp_label = Label.new()
+	villain_hp_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	villain_hp_label.position = Vector2(54, 36)
+	villain_hp_label.add_theme_font_size_override("font_size", 11)
+	hud_root.add_child(villain_hp_label)
+	refresh_villain_hp()
+
 	# Follow state, small, immediately under the badge -- the one bit of camera
 	# mode the player has to be able to read at a glance, since a right-drag
 	# silently drops out of it.
@@ -187,6 +209,28 @@ func _build_necro_badge(hud_root: Control) -> void:
 	orientation_label.add_theme_font_size_override("font_size", 10)
 	orientation_label.modulate = Color(1, 1, 1, 0.72)
 	hud_root.add_child(orientation_label)
+
+## "20 / 20 hp", and **red below 30%** -- the threshold `Combat.FLEE_HP_FRACTION`
+## already defines for everyone else, read from there rather than restated so the
+## HUD and the escort's cover-the-retreat rule can never disagree about when he
+## is in trouble.
+##
+## He does not auto-flee at it. That is deliberate and load-bearing
+## (NECROMANCER_SPEC §6): removing player control at low hp would break the one
+## carve-out the control pillar makes. Panic is the player's job; this readout
+## is the game making sure the player has the information to panic *with*.
+func refresh_villain_hp() -> void:
+	if villain_hp_label == null or _villain == null:
+		return
+	villain_hp_label.text = "%d / %d hp" % [_villain.hp, _villain.max_hp()]
+	if not _villain.is_alive():
+		villain_hp_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	elif _villain.hp_fraction() < Combat.FLEE_HP_FRACTION:
+		villain_hp_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
+	elif _villain.hp < _villain.max_hp():
+		villain_hp_label.add_theme_color_override("font_color", Color(0.95, 0.72, 0.42))
+	else:
+		villain_hp_label.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 
 ## The strip's laid-out height, which the camera insets and the floating panels
 ## size themselves against.

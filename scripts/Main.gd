@@ -400,6 +400,10 @@ func _build_systems() -> void:
 	# have to, because the first dusk asks whether any of them still stands.
 	combat_system.world_sites = world_sites
 	add_child(combat_system)
+	# Who he is fighting, asked rather than stored. His engagement membership
+	# lives in CombatSystem (NECROMANCER_SPEC §9) precisely so that nothing on
+	# him can root him; the panel gets a read-only question instead of a field.
+	villain.foe_provider = func(): return combat_system.villain_foe_name()
 
 	# Command Undead. Needs combat_system to hand fights to, so it comes after.
 	undead_command = UndeadCommand.new()
@@ -1535,14 +1539,35 @@ func _connect_signals() -> void:
 		_log("[color=red][b]THE NECROMANCER HAS FALLEN — the run would end here.[/b][/color] (%s)"
 			% cause, "events alerts characters")
 		_alert("THE NECROMANCER HAS FALLEN.", "bad")
+		# By the time this runs, CombatSystem's handler has already cleared the
+		# haul and put him back at the Throne (SORTIE_SPEC §6) -- it connects in
+		# _build_systems, well before this does, and the harness asserts that
+		# ordering rather than trusting it.
+		_log("[color=#c8a45a]Everything he was carrying is lost where he fell. He wakes at the Throne.[/color]",
+			"events characters")
 		push_warning("Villain down (%s, class '%s') — the run lifecycle is R4, so play continues."
 			% [v.combat_name(), v.class_id])
+		hud_top_bar.refresh_villain_hp()
 	)
 	# Journey milestones. Logged rather than alerted: pacing information is
 	# something you read afterwards, not something that should interrupt a walk.
 	EventBus.travel_noted.connect(func(text: String, seconds: float):
 		var stamp: String = "" if seconds <= 0.0 else " [%s]" % TravelLog._fmt(seconds)
 		_log("[color=#9fb6c8]%s%s[/color]" % [text, stamp], "events")
+	)
+	# ---- The villain's own fight (NECROMANCER_SPEC §3/§9) ----
+	# Loud, because walking into engage range is a decision and the player must
+	# be certain it registered -- there is no attack button to confirm it.
+	EventBus.villain_engaged.connect(func(v, foe_name: String):
+		_log("[color=#c9a0ff]He raises a hand, and the air goes cold. — %s[/color]" % foe_name,
+			"characters alerts events")
+		_alert("The Necromancer is fighting a %s." % foe_name, "warn")
+		hud_top_bar.refresh_villain_hp()
+	)
+	EventBus.villain_disengaged.connect(func(v, foe_name: String, reason: String):
+		_log("[color=#9fb6c8]He breaks off from the %s — %s.[/color]" % [foe_name, reason],
+			"characters events")
+		hud_top_bar.refresh_villain_hp()
 	)
 	EventBus.combat_started.connect(func(attacker: String, defender: String):
 		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")

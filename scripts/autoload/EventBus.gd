@@ -81,8 +81,17 @@ signal recruit_recovered(follower)
 ## A predator ate a deer: the map loses the food, nobody gets hurt.
 signal deer_taken_by_predator(node, predator_name: String)
 ## Flavor only: something hostile came too close to the Necromancer and thought
-## better of it. Only fires while CombatSystem.LAIR_AURA_PROTECTS_VILLAIN holds.
+## better of it. Only fires while he is **inside his own lair band** -- the aura
+## is a position now, not a flag (NECROMANCER_SPEC section 5, and see
+## `CombatSystem.aura_protects_villain()`).
 signal necromancer_feared(predator_name: String)
+## He is in a fight. Either he walked to within 26px of something hostile
+## (walking in is attacking) or something hit him first and he answered.
+## **Carries the villain object** -- never assume there is one of him.
+signal villain_engaged(villain, foe_name: String)
+## He is out of it: he walked beyond his casting reach, or the fight ended under
+## him. `reason` is for the log, not for logic.
+signal villain_disengaged(villain, foe_name: String, reason: String)
 ## One unit's hp visibly changed, for the floating numbers (`CombatFeedback.gd`,
 ## COMBAT_FEEDBACK_SPEC §2). `kind` is "damage" or "heal"; `amount` is always
 ## positive and always the hp *actually* applied, not the roll.

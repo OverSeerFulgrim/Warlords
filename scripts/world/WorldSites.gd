@@ -198,6 +198,28 @@ func any_den_uncleared() -> bool:
 func dens() -> Array:
 	return sites.filter(func(s: WorldSite): return s.is_den())
 
+## The nearest den still standing, or null. Feeds **the breadcrumb** (designer
+## ruling, 2026-08-30 playtest: finding a den felt like a chore) -- one direction
+## word in the dusk log line, so a player who has met the wolf has some idea
+## which way their home is.
+##
+## Deliberately **not** a marker, not a path, and not a change to where wolves
+## spawn: the entry point stays settlement-relative exactly as before (a wolf
+## pathed from a den sixty cells away arrives at midnight or never). It is a hint
+## in a sentence, and it goes quiet when the last den falls, because the quiet is
+## the reward.
+func nearest_uncleared_den(from: Vector2) -> WorldSite:
+	var best: WorldSite = null
+	var best_dist: float = INF
+	for site in dens():
+		if not site.is_guarded():
+			continue
+		var d: float = from.distance_to(site.position)
+		if d < best_dist:
+			best_dist = d
+			best = site
+	return best
+
 # ---------------- Queries -----------------------------------------------------
 
 ## The lootable site he is standing on, or null. **Takes the villain**, never

@@ -23,29 +23,60 @@ class_name CombatSystem
 #    they break off, run home, and are Injured until healed to full. -1 morale.
 # 3. **A deer taken by a wolf is a pure economic loss** -- the food is gone, the
 #    wolf is fed and stands down for the night. This is the common case.
-# 4. **Wolves will not approach the Necromancer** -- while LAIR_AURA_PROTECTS_
-#    VILLAIN holds. He is a real Combatant now (he implements the whole contract
-#    on `Necromancer`, and Combat.exchange() hits him with no special casing);
-#    this rule is a *lair* rule, not an invulnerability, and it lives behind the
-#    flag below so R2 can turn it off out in the world.
+# 4. **Wolves will not approach the Necromancer INSIDE HIS OWN LAIR BAND.** He
+#    is a real Combatant (he implements the whole contract on `Necromancer`, and
+#    Combat.exchange() hits him with no special casing), and this is a *lair*
+#    rule rather than an invulnerability. See `aura_protects_villain()`.
+# 5. **He fights when the player walks him into it** -- engage close, cast far
+#    (NECROMANCER_SPEC section 3). There is no attack button and there is no
+#    auto-seek; walking in is attacking and walking out is disengaging.
 
-## **The lair aura.** While true, wolves won't come near the villain and anything
-## standing in his shadow is invisible to them -- the settlement-era rule, kept
-## because inside his own domain he should read as the apex predator.
+## **The lair aura, as geography.**
 ##
-## It is a named flag rather than hardcoded behaviour because ROGUELITE_REWORK
-## section 15 lists "whether a protective aura applies inside his own lair" as an
-## open tunable, and section 5 repeals it out in the world: **R2 flips this off**
-## (or makes it positional, holding only near the Throne). Deleting the rule now
-## would mean rediscovering it then; leaving it hardcoded would mean hunting it.
-## Leave the switch.
+## This was `LAIR_AURA_PROTECTS_VILLAIN`, a global bool, and its own header
+## predicted this prompt: ROGUELITE_REWORK section 15 carried "whether a
+## protective aura applies inside his own lair" as an open tunable, and
+## NECROMANCER_SPEC section 5 answers it -- **the aura holds while he stands in
+## `world.lair_band`, and nowhere else.** One band edge, one rule, no flag.
 ##
-## Flipping it off is necessary but **not sufficient** to make wildlife hunt him:
-## he is not in `_prey_candidates()` at all, and the consequence rules below have
-## no branch for a villain losing a fight (that branch is "the run ends", which
-## is R4). Turning this off today only stops wolves *avoiding* him. `Combat` is
-## already complete on him -- `Combat.exchange(wolf, villain)` works right now.
-const LAIR_AURA_PROTECTS_VILLAIN: bool = true
+## The flag is deleted rather than left set to false, per section 8: a dead flag
+## beside a live rule is how the next reader flips the wrong one.
+##
+## The position test itself is `Necromancer.is_in_lair_band()` -- a fact about
+## his position, which he owns -- and it has **three consumers reading the same
+## line**: this aura, his membership in `_prey_candidates()`, and his
+## regeneration rate. That the amendment's regen ruling reuses this exact test
+## is the whole of its implementation.
+##
+## Consequence worth stating out loud: the lair band is now *mechanically* home.
+## Fleeing a botched sortie back across the band edge is reaching sanctuary.
+func aura_protects_villain() -> bool:
+	return villain != null and villain.is_alive() and villain.is_in_lair_band()
+
+## **One "close enough to start a fight" number in the whole game.** Taken from
+## the wolf rather than restated, because a second engage radius that drifted
+## from this one would be invisible until a playtest could not explain why a
+## fight started early.
+##
+## Note this is only the *opening* distance. Once engaged he exchanges at his
+## Arcane profile reach -- five cells, from `Combat`'s C2 profile table, not a
+## constant here. Section 3's split: starting a fight is deliberate and close;
+## running one rewards positioning.
+const VILLAIN_ENGAGE_PX: float = Wolf.ENGAGE_RADIUS_PX
+
+## Out-of-combat regeneration (NECROMANCER_SPEC amendment 2026-08-29, ruling 1).
+## One hit point per this many seconds while nothing is fighting him.
+##
+## **Tuned by one constraint:** the field trickle must never let a den fight be
+## reset by circling the clearing. At 24 seconds a hit point, clawing back the
+## ~12 hp a pack costs is five minutes of a thirty-minute day standing still --
+## a real trade of daylight for health, which is the push-your-luck dial the
+## amendment asks for, rather than a free reset.
+const VILLAIN_REGEN_FIELD_SECONDS: float = 24.0
+## How much faster it is at home. Same position test as the aura: one test, two
+## consequences. 6x puts a full heal at roughly a minute inside the band, which
+## is what makes limping home worth doing.
+const VILLAIN_REGEN_LAIR_MULTIPLIER: float = 6.0
 
 ## Only one wolf at a time for now.
 const MAX_WOLVES: int = 1
@@ -118,7 +149,65 @@ var _necro_fear_cooldown: float = 0.0
 func _ready() -> void:
 	EventBus.dusk_started.connect(_on_dusk)
 	EventBus.dawn_started.connect(_on_dawn)
+	# **Connected first, on purpose.** SORTIE_SPEC section 6 requires the haul to
+	# be cleared "before anything else reads them", and Godot calls handlers in
+	# connection order -- this system is built in `_build_systems()`, well before
+	# `Main._connect_signals()`, so this handler runs before the log line does.
+	# The harness asserts the ordering rather than trusting the build order.
+	EventBus.villain_died.connect(_on_villain_died)
 	set_process(true)
+
+## His zero (NECROMANCER_SPEC section 6, SORTIE_SPEC section 6). The *emission*
+## stays on the data object -- `Necromancer.take_damage()` announces it, so that
+## anything able to hurt him announces it, not just this file -- and this is the
+## consequence half.
+##
+## R2: the unbanked haul is lost, he respawns at the Throne at full hp, the log
+## is loud. **The run ending is R4's**, and the escort's own loads are R2d's.
+## This handler is where `SortieSystem` will take over rather than reinvent.
+##
+## Losing the load has to be true from the first commit: shipping a version
+## where death is free teaches exactly the opposite of the lesson the run frame
+## depends on.
+func _on_villain_died(v, _cause: String) -> void:
+	# **Only our own.** `villain_died` is a global signal and every villain on
+	# the map emits it; this system belongs to exactly one of them, and
+	# respawning somebody else's villain at *our* Throne is the precise mistake
+	# ROGUELITE_REWORK section 11 exists to prevent.
+	#
+	# Not hypothetical: the harness simulates a thousand fights with throwaway
+	# `Necromancer` objects, and without this line the death handler healed them
+	# back to full mid-fight and the win rates it reported were fiction.
+	if v == null or v != villain:
+		return
+	# Cleared before anything else can read it -- including the log line that
+	# would otherwise report a haul he no longer has.
+	v.carried.clear()
+	v.relics_carried.clear()
+	_end_engagements_with_defender(v)
+	var throne_at: Vector2 = _throne_position()
+	if throne_at != Vector2.INF:
+		v.place_at(throne_at)
+	v.heal_full()
+
+func _end_engagements_with_defender(unit) -> void:
+	for e in _engagements.duplicate():
+		if e.defenders.has(unit):
+			e.remove_defender(unit)
+			if not e.has_defenders():
+				if e.attacker and is_instance_valid(e.attacker):
+					e.attacker.clear_target()
+				_finish(e)
+
+func _throne_position() -> Vector2:
+	if settlement == null:
+		return Vector2.INF
+	var throne: Building = settlement.get_main_building()
+	if throne == null:
+		return Vector2.INF
+	var half: float = float(SettlementGrid.CELL_SIZE) * 0.5
+	return Vector2(throne.cell.x * SettlementGrid.CELL_SIZE + half,
+		throne.cell.y * SettlementGrid.CELL_SIZE + half)
 
 func _process(delta: float) -> void:
 	_necro_fear_cooldown = maxf(0.0, _necro_fear_cooldown - delta)
@@ -127,9 +216,14 @@ func _process(delta: float) -> void:
 	if world_sites:
 		for g in world_sites.live_guardians():
 			_advance_guardian(g)
+	# Before the engagements, so a villain who has walked out of reach is off the
+	# defender list by the time this frame's exchanges are rolled -- which is
+	# what "walking beyond his reach stops his swings the next interval" means.
+	_advance_villain()
 	for e in _engagements.duplicate():
 		_advance_engagement(e, delta)
 	_tick_throne_repair(delta)
+	_tick_villain_regen(delta)
 
 # ---------------- Spawning ----------------
 
@@ -162,6 +256,48 @@ func _on_dusk(_day: int) -> void:
 	if not guaranteed and randf() * 100.0 > WOLF_SPAWN_CHANCE_PERCENT:
 		return
 	spawn_wolf()
+	_note_where_they_come_from()
+
+## **The breadcrumb** (designer ruling, 2026-08-30 playtest: finding a den felt
+## like a chore). The dusk line gains a direction -- the bearing from the
+## settlement to the nearest den still standing, in plain words.
+##
+## A hint in a sentence. Not a marker, not a path, and **not** a change to the
+## spawn: the wolf still enters settlement-relative, and nothing is ever pathed
+## from a den. Silent once the last den is cleared, because at that point there
+## is nothing to point at and the quiet is the whole reward.
+##
+## Worth flagging for the designer: the ruling's example sentence reads as a
+## departure ("slunk off toward"), but it also asks for the line in the *dusk*
+## handler, where nothing has departed yet -- so the direction is the same and
+## the verb is an arrival's.
+func _note_where_they_come_from() -> void:
+	if world_sites == null or settlement == null:
+		return
+	var home: Vector2 = _settlement_centre()
+	var den: WorldSite = world_sites.nearest_uncleared_den(home)
+	if den == null:
+		return
+	EventBus.travel_noted.emit("They come from %s." % _compass_phrase(home, den.position), 0.0)
+
+func _settlement_centre() -> Vector2:
+	var cell: float = float(SettlementGrid.CELL_SIZE)
+	return Vector2(SettlementGrid.GRID_WIDTH * cell, SettlementGrid.GRID_HEIGHT * cell) * 0.5
+
+## Eight sectors, in words a person would actually use. Screen space, so +y is
+## south -- the same convention the HUD's orientation readout uses.
+const COMPASS_PHRASES := [
+	"the eastern woods", "the woods south-east of here", "the south woods",
+	"the woods south-west of here", "the western woods", "the woods north-west of here",
+	"the north woods", "the woods north-east of here",
+]
+
+func _compass_phrase(from: Vector2, to: Vector2) -> String:
+	var offset: Vector2 = to - from
+	# Sector 0 is due east and they run clockwise (south is +y on screen), each
+	# 45 degrees wide, so the +22.5 offset centres each word on its bearing.
+	var degrees: float = fposmod(rad_to_deg(offset.angle()) + 22.5, 360.0)
+	return COMPASS_PHRASES[int(degrees / 45.0) % COMPASS_PHRASES.size()]
 
 ## Dawn clears the board: any wolf still around slinks off. Keeps "max 1 alive"
 ## honest without needing a despawn timer, and means a wolf the player never
@@ -204,7 +340,7 @@ func spawn_wolf(at: Vector2 = Vector2.INF) -> Wolf:
 	# The prowl area covers the settlement and its surroundings; the exit is the
 	# way it came in.
 	wolf.setup(spawn_at, Rect2(Vector2(-cell * 2.0, -cell * 2.0),
-		Vector2(grid_w + cell * 6.0, grid_h + cell * 4.0)), entry, world)
+		Vector2(grid_w + cell * 6.0, grid_h + cell * 4.0)), entry, world, villain)
 	wolves.append(wolf)
 	EventBus.wolf_spawned.emit(wolf)
 	return wolf
@@ -251,6 +387,152 @@ func _advance_wolf(wolf: Wolf, _delta: float) -> void:
 		_take_deer(wolf, target)
 		return
 	_begin_fight(wolf, target)
+
+# ---------------- The villain's own fight (NECROMANCER_SPEC section 3) -------
+
+## **Engage close, cast far**, run once a frame.
+##
+## Two radii doing two different jobs, and both halves are load-bearing:
+##
+## - **Opening** a fight needs `VILLAIN_ENGAGE_PX` (26px). Walking in is
+##   attacking. There is no attack button, no target cursor, no auto-seek: the
+##   input model stays "WASD drives him, the world reacts".
+## - **Running** one happens at his Arcane profile reach, five cells, read off
+##   `combat_profile()` rather than a constant here -- so the escort closes to
+##   melee while he casts over their shoulders, produced by C2's profile table
+##   with no bespoke code.
+##
+## **Why not simply auto-engage at five cells?** Section 3 answers it: he would
+## snipe every wolf that wandered past, "he never auto-seeks" would be a lie,
+## and stealth-by-default would stop being the fiction's resting state. Starting
+## a fight has to cost the walk into biting distance; only *running* one rewards
+## positioning.
+##
+## **He is never rooted.** No `in_combat` on him -- his membership is the
+## `Engagement` this function adds him to and removes him from, and the player
+## can drive him out of it at any moment without asking.
+func _advance_villain() -> void:
+	if villain == null or not villain.is_alive():
+		_announce_villain_engagement("")
+		return
+	var current: Engagement = _villain_engagement()
+	if current != null:
+		# Walking out is disengaging. Measured against the attacker he is
+		# actually fighting, so falling back *behind* an escort keeps him in the
+		# fight while walking away from it ends it.
+		var foe = current.attacker
+		if foe == null or not is_instance_valid(foe) or not foe.is_alive():
+			return   # the engagement's own resolution will clean this up
+		if villain.position.distance_to(foe.position) > _villain_reach_px():
+			current.remove_defender(villain)
+			_announce_villain_engagement("", "out of reach")
+			return
+		_announce_villain_engagement(foe.combat_name())
+		return
+
+	_announce_villain_engagement("", "the fight ended")
+
+	# Not fighting. Inside his own band nothing starts -- the aura is a rule
+	# about the ground he is standing on, and it protects both ways: nothing
+	# hunts him there, and closing on something there opens nothing either.
+	if aura_protects_villain():
+		return
+	for foe in _hostiles():
+		if villain.position.distance_to(foe.position) <= VILLAIN_ENGAGE_PX:
+			# `engage()` joins an existing fight if the foe is already in one --
+			# the same pile-in rule three rallied skeletons follow, which is what
+			# makes "fighting while escorted is one fight" true for free.
+			engage(foe, villain)
+			_announce_villain_engagement(foe.combat_name())
+			return
+
+## Announces **the transition**, not the cause.
+##
+## The first version emitted `villain_engaged` only on the walk-in path, which
+## silently missed every fight he did not start -- and section 4's retaliation
+## is precisely the case where he is engaged without touching a key. Since the
+## wolf's own policy runs before this in `_process`, a wolf that closes on him
+## opens the fight first and the walk-in branch is never reached.
+##
+## So the signal is driven off the membership changing, whoever changed it. One
+## place, both directions, no way for the HUD to miss half of them.
+var _villain_foe: String = ""
+
+func _announce_villain_engagement(foe_name: String, reason: String = "") -> void:
+	if foe_name == _villain_foe:
+		return
+	var was: String = _villain_foe
+	_villain_foe = foe_name
+	if was != "":
+		EventBus.villain_disengaged.emit(villain, was,
+			reason if reason != "" else "the fight ended")
+	if foe_name != "":
+		EventBus.villain_engaged.emit(villain, foe_name)
+
+## Everything on the map that would fight him. Wolves and site guardians today;
+## anything with the Combatant contract and a hostile policy later.
+func _hostiles() -> Array:
+	var out: Array = []
+	for w in wolves:
+		if is_instance_valid(w) and w.is_alive() and w.state != Wolf.State.LEAVING:
+			out.append(w)
+	if world_sites:
+		out.append_array(world_sites.live_guardians())
+	return out
+
+## Five cells, from the C2 profile table. **Not a constant in this file** -- his
+## reach is a property of being Arcane, and a second copy here would be the
+## first thing to drift if a relic ever changed his profile.
+func _villain_reach_px() -> float:
+	return float(villain.combat_profile()["reach_px"])
+
+func _villain_engagement() -> Engagement:
+	for e in _engagements:
+		if e.defenders.has(villain):
+			return e
+	return null
+
+## Read by the inspection panel through `Necromancer.foe_provider`, which is a
+## Callable precisely so that this stays the only place that knows.
+func villain_foe_name() -> String:
+	var e: Engagement = _villain_engagement()
+	if e == null or e.attacker == null or not is_instance_valid(e.attacker):
+		return ""
+	return e.attacker.combat_name()
+
+func villain_is_engaged() -> bool:
+	return _villain_engagement() != null
+
+# ---------------- Regeneration (amendment 2026-08-29, ruling 1) --------------
+
+## A slow trickle afield, greatly increased at home, **suppressed entirely while
+## anything is fighting him** -- and driven by the same position test as the
+## aura, which is the whole of the implementation the amendment asks for.
+##
+## The constraint that sets the rate is not "how fast should healing be" but
+## "waiting must cost daylight the player feels": a den fight must not be
+## resettable by circling the clearing. See `VILLAIN_REGEN_FIELD_SECONDS`.
+##
+## A delta accumulator, so it scales with `Engine.time_scale` like every other
+## clock in the project (CLAUDE.md).
+func _tick_villain_regen(delta: float) -> void:
+	if villain == null or not villain.is_alive() or villain.hp >= villain.max_hp():
+		_regen_timer = 0.0
+		return
+	if villain_is_engaged():
+		# Not "slowed while fighting" -- stopped. Healing through an exchange
+		# would blunt every threshold section 6 exists to announce.
+		_regen_timer = 0.0
+		return
+	var seconds: float = VILLAIN_REGEN_FIELD_SECONDS
+	if villain.is_in_lair_band():
+		seconds /= maxf(1.0, VILLAIN_REGEN_LAIR_MULTIPLIER)
+	_regen_timer += delta
+	while _regen_timer >= seconds and villain.hp < villain.max_hp():
+		_regen_timer -= seconds
+		_show_hp_change(villain, villain.heal(1), "heal")
+
+var _regen_timer: float = 0.0
 
 # ---------------- Site guardians (LOOT_SITES_SPEC section 3b / 9) ------------
 
@@ -323,6 +605,17 @@ func _prey_candidates() -> Array:
 		for n in resource_field.nodes:
 			if n.node_type == "deer" and not n.is_depleted():
 				out.append(n)
+	# **Outside the band he is prey** (NECROMANCER_SPEC section 4). The line the
+	# old comment block said was missing -- "he is not in `_prey_candidates()` at
+	# all" -- is this one. A dusk wolf, a den pack and a site guardian now all
+	# hunt him like anyone else, and danger-from-choices holds because he had to
+	# walk there.
+	#
+	# `villain` is the **reference handed to this system**, never a lookup and
+	# never a singleton (ROGUELITE_REWORK section 11): a second villain's wolves
+	# would be hunting a different man.
+	if villain != null and villain.is_alive() and not aura_protects_villain():
+		out.append(villain)
 	return out
 
 ## Excludes anyone standing in the Necromancer's shadow (rule 4) and any recruit
@@ -336,6 +629,12 @@ func _is_valid_target(t) -> bool:
 		return not t.is_depleted()
 	if not t.is_alive():
 		return false
+	# **The villain is not a Laborer** and has no `is_injured` -- he has no
+	# injured state at all, deliberately (section 6: he does not flee, the player
+	# decides). What takes him off the menu is stepping back inside his own band,
+	# which the shadow test below already answers.
+	if t is Necromancer:
+		return not aura_protects_villain()
 	if t.is_injured:
 		return false
 	if _near_necromancer(t.position):
@@ -345,14 +644,17 @@ func _is_valid_target(t) -> bool:
 func _is_deer(t) -> bool:
 	return t is ResourceNode and t.node_type == "deer"
 
+## Standing in his shadow -- and only while the shadow exists, which is now a
+## place rather than a switch. Outside the band this is false for everyone,
+## including him, which is exactly how he becomes prey.
 func _near_necromancer(pos: Vector2) -> bool:
-	if not LAIR_AURA_PROTECTS_VILLAIN or villain == null:
+	if not aura_protects_villain():
 		return false
 	return pos.distance_to(villain.position) <= Wolf.NECROMANCER_FEAR_RADIUS_PX
 
 ## Rule 4, as behaviour rather than a hard wall: a wolf that drifts too close to
 ## the Necromancer turns around. Flavor-logged the first time, then debounced.
-## No-ops entirely once the lair aura is switched off -- see the flag.
+## No-ops entirely once he steps outside his own band -- see `aura_protects_villain()`.
 func _check_necromancer_fear(wolf: Wolf) -> void:
 	if not _near_necromancer(wolf.position):
 		return

@@ -33,5 +33,6 @@ Newest at the bottom; the order below is the order the passes happened in.
 | [2026-08-terrain-tiles.md](2026-08-terrain-tiles.md) | Seven sheets, and roads that know their corners — the seven-sheet atlas, connection tiles with flip/transpose, cliff ridge and walkable ice (P1) |
 | [2026-08-generated-world.md](2026-08-generated-world.md) | The world stops being drawn and starts being generated — the nine-step pipeline, forests and their clearings, a river with doors, roads by A* (P1 final) |
 | [2026-08-loot-sites.md](2026-08-loot-sites.md) | The world becomes worth walking into — fifteen lootable sites, channelled looting and the grave choice sheet, loot tables/relics/gold, remainder charges, wolf dens and the dusk gate, deeds vs notice, Dark Essence finished moving to field-only (R2a) · **plus the 2026-08-30 playtest fixes**: the silently-refused Collect, and raising a corpse you can actually see |
+| [2026-08-villain-combat.md](2026-08-villain-combat.md) | His own two hands — engage close / cast far with no attack button, the lair aura deleted as a flag and reborn as geography, out-of-combat regen, death that costs the haul, the den breadcrumb (R2b) |
 
 New session write-ups go here as `YYYY-MM-topic.md`, never back into `CLAUDE.md`.

@@ -132,6 +132,14 @@ var exit_point: Vector2
 ## a wolf spawned in a test with no map still prowls in a straight line.
 var world: WorldMap = null
 
+## The villain it is (or is not) afraid of. A **reference handed in at spawn**,
+## like `world` and for the same reason -- never a lookup, never a singleton, so
+## a second villain's wolves are afraid of a different man (ROGUELITE_REWORK
+## section 11). Read only by the inspection payload, to say which side of the
+## lair band he is currently standing on; the fear *behaviour* stays
+## `CombatSystem`'s, where all the other policy is.
+var villain = null
+
 var _target = null          ## a Laborer or a deer ResourceNode
 var _roam_target: Vector2
 ## Counts down HUNT_DELAY_SECONDS from spawn. See the constant.
@@ -167,11 +175,12 @@ func _ready() -> void:
 	set_process(true)
 
 func setup(spawn_pos: Vector2, p_roam_rect: Rect2, p_exit_point: Vector2,
-		p_world: WorldMap = null) -> void:
+		p_world: WorldMap = null, p_villain = null) -> void:
 	position = spawn_pos
 	roam_rect = p_roam_rect
 	exit_point = p_exit_point
 	world = p_world
+	villain = p_villain
 	_roam_target = Roaming.random_point_in(roam_rect, world)
 
 func _process(delta: float) -> void:
@@ -330,11 +339,16 @@ func get_inspect_data() -> Dictionary:
 	]
 	if is_fed:
 		rows.append({"label": "", "value": "It has eaten. It will not hunt again tonight.", "muted": true})
-	# Reads the flag rather than restating the rule: the lair aura is an open
-	# tunable (CombatSystem.LAIR_AURA_PROTECTS_VILLAIN) and the panel must not go
-	# on promising protection after it's switched off.
-	if CombatSystem.LAIR_AURA_PROTECTS_VILLAIN:
-		rows.append({"label": "", "value": "It will not go near the Necromancer.", "muted": true})
+	# **Reads the position, not a flag.** The lair aura became geography
+	# (NECROMANCER_SPEC section 5): the promise holds inside the band and nowhere
+	# else, so the panel has to say which of the two is true right now. A panel
+	# still promising protection out in the wilderness would be the single most
+	# expensive lie this game could tell.
+	if villain != null:
+		rows.append({"label": "", "muted": true,
+			"value": "It will not go near the Necromancer while he is in his own valley."
+				if villain.is_in_lair_band()
+				else "Out here, nothing keeps it off the Necromancer."})
 	return {
 		"title": "Wolf",
 		"subtitle": "Wildlife — hostile",
