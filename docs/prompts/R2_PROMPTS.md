@@ -824,7 +824,13 @@ UI, and NO FOG INTERACTION AT ALL.
    walkable terrain, in Band 1 or 2, free of guardians and occupants,
    undiscovered, and hold at least one unclaimed charge. If nothing
    qualifies, THE RAVEN SAYS NOTHING THAT DAY. Never relax a condition to
-   produce content -- a silent day is a correct day.
+   produce content -- a silent day is a correct day. Per the spec's
+   2026-08-29 amendment (BINDING): silence is DELIVERED, not omitted --
+   on a silent day the portrait flickers and the log carries a line in
+   the register of "the bird found nothing; the near country is picked
+   clean." No ping, no marker, no reward, no fog change; the silent-day
+   harness path asserts the signal fires and nothing else does. Do NOT
+   couple silence to events or any other reward -- that dial is R3's.
 
 3. The abandoned_camp exception is the interesting one: occupancy rolls at
    activation, so the Raven can honestly know a camp is empty when the

@@ -23,6 +23,26 @@ catalog, §3 telegraphing), `WORLD_MAP_PLAN.md` (§8 fog and scouting — *as am
 
 ---
 
+> **Amendment, 2026-08-29 — spec review (designer). One ruling: silence made legible.**
+> Where this block disagrees with the body below, this block governs; prompt R2e builds it.
+>
+> **A silent day is still a correct day — but it is DELIVERED, not omitted.** The honesty
+> invariant stands untouched: no ping is ever invented, no condition ever relaxed. What
+> changes is that on a silent day the Raven still shows itself — a brief portrait flicker and
+> a log line in the register of "the bird found nothing; the near country is picked clean."
+> Silence is a progress signal (it means no eligible minor site remains undiscovered in Band
+> 1–2) and the player deserves to receive it as information rather than absence. `raven_silent`
+> already fires; this ruling gives it a face. The cap of 3 outstanding pings is confirmed
+> as-is.
+>
+> *Recorded for R3 (not the bird's business):* if dawns feel empty in playtests, the lever is
+> the event system's dawn cadence — good arrivals (a wandering recruit at the gate, a traveler
+> with news) belong to events, and coupling them to the Raven's silence would turn dawn into a
+> guaranteed gift box and erase the silence signal. Tune that dial in R3's world-reaction
+> pass, never here.
+
+---
+
 ## 1. Design goals
 
 1. **V1 is a passive ping system, and nothing else.** No token, no bird on the map, no directives,
