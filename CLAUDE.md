@@ -139,6 +139,9 @@ assets/official|placeholder|vendor/      see Graphics rules
 
 ## Gotchas (one line each; details in docs/history/)
 
+- **F3 = dev site overlay** (`scripts/ui/DebugSiteOverlay.gd`): labels every active site through
+  the fog, plus minimap dots. Debug builds only (`OS.is_debug_build()`), default off, read-only —
+  it must never reveal, write fog, or set a discovery flag, or it perjures the Raven.
 - The lair aura is a POSITION, not a flag: `CombatSystem.aura_protects_villain()` reads
   `Necromancer.is_in_lair_band()`. One test, three consumers (aura, prey membership, regen rate).
 - A global signal carrying a villain needs an owner check: `villain_died` fires for every villain,

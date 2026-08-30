@@ -65,6 +65,10 @@ var minimap_hint: Label
 ## and the R2 exit check needs the same thing. Default on.
 var minimap_column: VBoxContainer
 
+## Dev-only labelled markers over every active site, toggled with F3. Never
+## reachable in an exported build -- see `_toggle_site_overlay()`.
+var debug_site_overlay: DebugSiteOverlay
+
 ## Scratch buffer for _fog_sources(), reused every frame -- see there.
 var _fog_source_buf: Array = []
 
@@ -475,6 +479,15 @@ func _build_world_map() -> void:
 	world_sites.day_provider = func(): return day_night.day_number if day_night else 1
 	world_sites.build(world_map)
 
+	# **Dev-only site overlay (F3).** A child of `settlement` so it shares the
+	# coordinate space the sites stand in, added after them and drawing above the
+	# fog by z-index. Hidden until asked for, read-only over `world_sites`, and
+	# unreachable in an exported build -- the key is behind `OS.is_debug_build()`.
+	debug_site_overlay = DebugSiteOverlay.new()
+	debug_site_overlay.name = "DebugSiteOverlay"
+	settlement.add_child(debug_site_overlay)
+	debug_site_overlay.setup(world_sites)
+
 	fog = FogOfWar.new()
 	fog.name = "FogOfWar"
 	settlement.add_child(fog)
@@ -732,6 +745,10 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	# clicks now, and must not let them fall through to the world behind it.
 	minimap.setup(world_map, fog, villain, camera)
 	minimap.units_source = func(): return worker_system.all_units() if worker_system else []
+	# Dev-only site dots. The overlay returns an empty Array while it is hidden,
+	# so the minimap's normal path is unchanged until F3 is pressed.
+	minimap.debug_markers_source = func():
+		return debug_site_overlay.minimap_points() if debug_site_overlay else []
 	minimap.camera_requested.connect(_on_minimap_camera_requested)
 	minimap.move_requested.connect(_on_right_tap)
 	minimap_column.add_child(minimap)
@@ -977,6 +994,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 
+	# F3 toggles the dev site overlay. **`OS.is_debug_build()` is the whole
+	# safety**: in an exported build this branch is dead, the overlay stays
+	# hidden forever, and the key does nothing.
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode == KEY_F3 and OS.is_debug_build():
+		_toggle_site_overlay()
+		get_viewport().set_input_as_handled()
+		return
+
 	# M hides the minimap. Below the placement blocks with everything else, and
 	# `echo`-guarded so holding the key does not strobe the log.
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
@@ -1205,6 +1231,26 @@ func _open_site_sheet(site: WorldSite) -> void:
 			inspector.refresh())
 	if not opened:
 		_alert("Answer what is already in front of you first.", "warn")
+
+## **F3 — the dev site overlay.** A playtesting aid and not a game feature: it
+## labels every active site through the fog so a tester can reach the dens and
+## the Band-4 sites without wandering.
+##
+## It changes nothing. No reveal, no fog write, no discovery flag — looking at a
+## marker must never count as having found a site, because the Raven's pings
+## (`RAVEN_SPEC.md`) and any later discovery gating would read exactly that.
+## The overlay is read-only over `WorldSites` and the harness asserts the fog is
+## byte-identical across a toggle.
+##
+## The log line is deliberately prefixed DEBUG so a bug report screenshot shows
+## the tester had it on.
+func _toggle_site_overlay() -> void:
+	if debug_site_overlay == null:
+		return
+	var on: bool = debug_site_overlay.toggle()
+	if minimap:
+		minimap.queue_redraw()
+	_log("[color=#e8e040]DEBUG: site overlay %s[/color]" % ("on" if on else "off"), "events")
 
 ## **M — hide the minimap.** The one thing the P2 human check needed and did not
 ## have: "Throne to village by ground alone" cannot be tested with a map on

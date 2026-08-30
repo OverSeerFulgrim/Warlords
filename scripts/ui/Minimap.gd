@@ -69,6 +69,19 @@ var camera: GameCamera = null
 ## one (ROGUELITE_REWORK section 11).
 var units_source: Callable = Callable()
 
+## **Debug only, and off unless F3 is on.** Returns engine-space points to mark
+## with a flat yellow dot — the dev site overlay (`DebugSiteOverlay.gd`), which
+## returns an empty Array whenever it is hidden.
+##
+## This is the one deliberate exception to the "no live contents" rule in this
+## file's header, and it is not really an exception at all: it is unreachable in
+## an exported build (the F3 handler is behind `OS.is_debug_build()`), it is off
+## by default, and a tester who switched it on knows the fog is not telling them
+## the truth any more. Left unset, this draws nothing and costs one `is_valid()`.
+var debug_markers_source: Callable = Callable()
+
+const DEBUG_MARKER_COLOR := Color(1.0, 0.95, 0.25, 0.9)
+
 var _terrain_texture: ImageTexture
 
 func setup(p_world: WorldMap, p_fog: FogOfWar, p_villain: Necromancer, p_camera: GameCamera) -> void:
@@ -122,9 +135,20 @@ func _draw() -> void:
 	# Friendly dots go *under* the villain marker: he is the one you look for,
 	# and a worker standing on him must not hide him.
 	_draw_friendly_units()
+	_draw_debug_markers()
 	if villain:
 		draw_circle(_to_map(villain.position), 2.5, VILLAIN_COLOR)
 	draw_rect(Rect2(Vector2.ZERO, size), BORDER_COLOR, false, 1.0)
+
+## Dev site overlay dots. Empty unless F3 is on in a debug build -- see
+## `debug_markers_source`. Deliberately drawn WITHOUT the fog check the friendly
+## dots use: seeing sites through unexplored ground is the entire purpose, and
+## it is exactly why this can never be a shipped feature.
+func _draw_debug_markers() -> void:
+	if not debug_markers_source.is_valid():
+		return
+	for point in debug_markers_source.call():
+		draw_circle(_to_map(point), 1.8, DEBUG_MARKER_COLOR)
 
 ## Your own units, and only where the fog already admits they are there.
 func _draw_friendly_units() -> void:

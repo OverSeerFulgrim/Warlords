@@ -37,9 +37,69 @@ func _ready() -> void:
 	_frame_cost(fog, villain)
 	_minimap_dots(main)
 	_input_wiring(main, world)
+	await _debug_overlay_changes_nothing(main, fog)
 
 	print("\n%d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)
+
+# ---------------- The dev site overlay is read-only ---------------------------
+
+## F3's overlay draws sites through the fog, which is exactly the kind of aid
+## that turns into a bug the day it quietly marks something discovered. The
+## rule is that it changes **nothing**, and the fog is the sharpest place to
+## assert it: a byte-identical image across a full toggle cycle means no cell
+## was lit, remembered, or touched.
+##
+## The second half matters as much as the first. No site carries a `discovered`
+## flag today — the overlay has nothing to set — and this asserts that absence
+## on purpose, so that whoever adds one (the Raven's pings are the obvious
+## caller) finds out here that the debug overlay is a place it must not be set.
+func _debug_overlay_changes_nothing(main, fog: FogOfWar) -> void:
+	var overlay: DebugSiteOverlay = main.debug_site_overlay
+	_check("the overlay exists and starts OFF", overlay != null and not overlay.is_on())
+	if overlay == null:
+		return
+
+	var before: PackedByteArray = fog.fog_texture().get_image().get_data()
+	var sites: Array = main.world_sites.lootable_sites()
+	var state_before: Array = _site_state(sites)
+
+	_check("F3 turns it on", overlay.toggle())
+	_check("...and it now offers minimap points", overlay.minimap_points().size() == sites.size(),
+		"%d of %d" % [overlay.minimap_points().size(), sites.size()])
+	# Let the engine actually draw it -- the draw is the thing under test, and
+	# calling `_draw()` by hand is refused outside the draw notification.
+	overlay.queue_redraw()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check("F3 again turns it off", not overlay.toggle())
+	_check("...and it offers none while hidden", overlay.minimap_points().is_empty())
+
+	var after: PackedByteArray = fog.fog_texture().get_image().get_data()
+	_check("the fog is BYTE-IDENTICAL across the toggle", before == after,
+		"%d bytes differ" % _byte_diff(before, after))
+	_check("no site's state moved", _site_state(sites) == state_before)
+	_check("...and no site carries a discovered flag for it to have set",
+		not ("discovered" in sites[0]) if not sites.is_empty() else true)
+
+## Everything about a site the overlay could plausibly disturb, as a comparable
+## snapshot. Loot state rather than position, because position is the one thing
+## a marker legitimately reads.
+func _site_state(sites: Array) -> Array:
+	var out: Array = []
+	for s in sites:
+		out.append([s.charges_left, s.is_spent(), s.is_guarded(), s.graves_disturbed,
+			s.remainder.duplicate(), s.pulls_taken])
+	return out
+
+func _byte_diff(a: PackedByteArray, b: PackedByteArray) -> int:
+	if a.size() != b.size():
+		return absi(a.size() - b.size())
+	var n: int = 0
+	for i in range(a.size()):
+		if a[i] != b[i]:
+			n += 1
+	return n
 
 # ---------------- The villain's own numbers are untouched --------------------
 
