@@ -45,6 +45,12 @@ var landmarks: Dictionary = {}
 ## one: this stays a container with no idea what a clock is.
 var day_provider: Callable = Callable()
 
+## Where loot goes when a site pays out: `SortieSystem.take_into_party`. Held
+## here rather than assigned site-by-site so that a site created at *runtime* --
+## a dropped cache -- inherits it too, which the first version of this got wrong.
+## Unset, sites fall back to the villain's own hands.
+var party_filler: Callable = Callable()
+
 func build(p_world: WorldMap) -> bool:
 	world = p_world
 	if not FileAccess.file_exists(DATA_PATH):
@@ -72,6 +78,7 @@ func _add_site(entry: Dictionary) -> void:
 	site.day_provider = func(): return int(day_provider.call()) if day_provider.is_valid() else 1
 	site.guardian_spawner = _post_guardians
 	site.dead_riser = _raise_dead
+	site.party_filler = party_filler
 	site.setup(entry, at, float(entry.get("size", 56.0)))
 	sites.append(site)
 	if bool(entry.get("landmark", false)):
@@ -136,6 +143,61 @@ func _post_guardians(site: WorldSite, kind: String, count: int) -> void:
 		guardians.append(g)
 		site.guardians.append(g)
 	site.cleared = false
+
+# ---------------- Dropped caches (SORTIE_SPEC amendment ruling 2) -------------
+
+## A cache left in open country, holding exactly what was dropped in it.
+##
+## **Full reuse of the site machinery**, which is what the ruling asks for and
+## also why it is this short: a cache is a site with `charges: 0` and a
+## remainder. `actions_for()` already offers "Collect what you left" for a
+## remainder and nothing else for zero charges; `is_spent()` already flips to
+## the looted sprite when the last of it is taken. There is no cache *type* in
+## code beyond the label.
+##
+## **Outside the density budget** (the 10-15 active sites): those are authored
+## in `world_sites.json` and counted from the file, so a cache the player
+## created cannot inflate it. **Never Raven-eligible** -- see
+## `WorldSite.is_raven_eligible()`.
+func spawn_dropped_cache(at: Vector2, suffix: String, sprite: String,
+		looted_sprite: String, size_px: float) -> WorldSite:
+	var band: int = 2
+	if world:
+		band = int(world.band_at(at).get("band", 2))
+	var site := WorldSite.new()
+	site.name = "DroppedCache_%s" % suffix
+	site.day_provider = func(): return int(day_provider.call()) if day_provider.is_valid() else 1
+	site.party_filler = party_filler
+	site.guardian_spawner = _post_guardians
+	site.dead_riser = _raise_dead
+	site.setup({
+		"id": "dropped_%s" % suffix,
+		"name": "A Dropped Cache",
+		"subtitle": "Yours, left where you put it",
+		"sprite": sprite,
+		"description": "Everything you could not carry, in a heap where you set it down. Nothing has found it yet.",
+		"details": [],
+		"lootable": {
+			"type": "dropped_cache",
+			"band": band,
+			# Zero charges: it has no table and nothing to roll. Its whole
+			# content is the remainder the drop puts in it.
+			"charges": 0,
+			"loot_table": "",
+			"choices": "",
+			"looted_sprite": looted_sprite,
+			"guardian": null,
+			"notice": {"threat": 0},
+			"pool": "dropped",
+			"active_count": 0,
+		},
+	}, at, size_px)
+	add_child(site)
+	sites.append(site)
+	return site
+
+func dropped_caches() -> Array:
+	return sites.filter(func(s: WorldSite): return s.loot_type == "dropped_cache")
 
 # ---------------- Raised dead -------------------------------------------------
 

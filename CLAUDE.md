@@ -11,12 +11,14 @@ that system). Session write-ups append to `docs/history/`, NEVER here.
 
 ## Current phase
 
-Roguelite rework, **R2 in progress — R2a and R2b done, R2c next** (`docs/design/ROGUELITE_REWORK.md` §13
+Roguelite rework, **R2 in progress — R2a, R2b and R2c done, R2d next** (`docs/design/ROGUELITE_REWORK.md` §13
 is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
 placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
 raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`). R2b gave him his own
 fight — engage close / cast far, the lair aura as geography, out-of-combat regen, and a death that
-costs the haul (`docs/history/2026-08-villain-combat.md`).
+costs the haul (`docs/history/2026-08-villain-combat.md`). R2c closed the loop — the haul banks at
+the Throne (not the band edge), relics wake on deposit, and a dropped load leaves a cache
+(`docs/history/2026-08-sortie-deposit.md`).
 R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
@@ -84,7 +86,8 @@ scripts/autoload/          GameState, EventBus, BuildingCatalog, RaceCatalog, Lo
                            JSON catalogs; LootCatalog also owns THE loot roll)
 scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                            MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
-scripts/villain/           Necromancer (data), VillainController (WASD+camera follow)
+scripts/villain/           Necromancer (data), VillainController (WASD+camera follow),
+                           SortieSystem (party capacity, the deposit, dropping, death)
 scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), UndeadCommand, RallyPoint
 scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles + ONE
                            MultiMeshInstance2D canopy),
@@ -129,6 +132,11 @@ assets/official|placeholder|vendor/      see Graphics rules
   at 26px / cast to 5 cells / disengage by walking, retaliation, bounded kiting, regen halting
   under engagement, death clearing the haul before any later handler, and the 1,000-fight bands
   (one wolf: a costly win; a three-wolf pack alone: never)
+- `tools/verify_sortie.tscn` — 66 assertions: party capacity (6 alone, 14 with two skeletons) and
+  the villain-first filling order, overflow leaving an exact remainder, the automatic deposit
+  emptying villain AND escort in one frame, **the band edge banking nothing**, the two drop paths,
+  a dropped cache behaving as an ordinary site, relics waking only on deposit, and death clearing
+  the haul before any later handler
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

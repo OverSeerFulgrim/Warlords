@@ -37,12 +37,20 @@ var food: int = 5
 ## Wealth axis reads hoarded gold) and R5 (stash value). Carrying a dead-end
 ## resource for one milestone is acceptable; shipping loot without the loot is
 ## not.
-##
-## `arms` is deliberately NOT here. It is the amendment ruling 2 loot kind and
-## it lives in `Necromancer.carried` only -- LOOT_SITES_SPEC section 9 says
-## GameState gains gold and "nothing else", and arms has no home in the
-## settlement economy until COMBAT_SPEC section 9's gear v1.
 var gold: int = 0
+
+## **The seventh, and a deliberate deviation worth flagging.** LOOT_SITES_SPEC
+## §9 says GameState gains gold and "nothing else" -- but that line predates the
+## same document's 2026-08-29 amendment (ruling 2), which introduced `arms` as a
+## carryable loot kind. A kind he can carry but not bank would make every
+## deposit containing weapons print "unknown kind" and silently drop them, which
+## is worse than the dead end the ruling actually asked for.
+##
+## So it banks, and it does nothing: no building spends it, no recipe reads it.
+## Its sink arrives with COMBAT_SPEC §9's gear v1, exactly as ruling 2 says. The
+## HUD shows it only once you have some, so a permanently-zero counter is not
+## sitting on the strip for a milestone.
+var arms: int = 0
 
 # --- Reputation / Threat ---
 var reputation: int = 0
@@ -103,6 +111,8 @@ func add_resource(kind: String, amount: int) -> void:
 			food += amount
 		"gold":
 			gold += amount
+		"arms":
+			arms += amount
 		_:
 			push_warning("GameState.add_resource: unknown kind '%s'" % kind)
 			return
@@ -124,6 +134,8 @@ func can_afford(kind: String, amount: int) -> bool:
 			return food >= amount
 		"gold":
 			return gold >= amount
+		"arms":
+			return arms >= amount
 		_:
 			return false
 
@@ -160,6 +172,10 @@ func spend_resource(kind: String, amount: int) -> bool:
 			if gold < amount:
 				return false
 			gold -= amount
+		"arms":
+			if arms < amount:
+				return false
+			arms -= amount
 		_:
 			push_warning("GameState.spend_resource: unknown kind '%s'" % kind)
 			return false
@@ -238,6 +254,7 @@ func reset() -> void:
 	stone = 5
 	food = 5
 	gold = 0
+	arms = 0
 	reputation = 0
 	threat = 0
 	threat_tier = ThreatTier.LOW

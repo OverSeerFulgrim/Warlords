@@ -28,6 +28,11 @@ const NECROMANCER_SPRITE := "res://assets/official/characters/Necromancer_Portra
 ## line can carry.
 const COMPASS := ["E", "SE", "S", "SW", "W", "NW", "N", "NE"]
 
+## How much daylight is left before the dusk warning starts. Two minutes of a
+## thirty-minute day -- long enough to still get home from most of the map, and
+## a tunable (SORTIE_SPEC §10: "how loud the dusk warning is, and at what hour").
+const DUSK_WARNING_SECONDS: float = 120.0
+
 # ---------------- Owned Controls ----------------
 var top_panel: PanelContainer  # kept so menus below can size themselves off its actual height
 var lbl_resources_left: Label
@@ -37,6 +42,9 @@ var time_scale_btn: Button
 var necro_badge: Button
 ## His hit points, beside the badge. Red below 30%. See refresh_villain_hp().
 var villain_hp_label: Label
+## "The light is going" -- only while he is out with the sun low. See
+## _refresh_dusk_warning().
+var dusk_warning_label: Label
 ## Camera-follow readout, under the badge. See refresh_follow_state().
 var follow_state_label: Label
 ## Where am I / how deep am I / which way is home. See refresh_orientation().
@@ -49,6 +57,8 @@ var _world_map: WorldMap
 var _villain: Necromancer
 var _villain_controller: VillainController
 var _travel_log: TravelLog
+## The return leg, for the carry readout. Null-safe: no system, no readout.
+var _sortie_system: SortieSystem
 var _minimap: Minimap
 
 ## Builds the strip into `hud_root`. Call order inside here is load-bearing in
@@ -73,6 +83,12 @@ func build(hud_root: Control, panel_style: StyleBoxFlat, settlement: SettlementG
 ## redraw; until it arrives that nudge is simply skipped.
 func set_minimap(m: Minimap) -> void:
 	_minimap = m
+
+## Same arrangement as the minimap: the return leg is built in `_build_systems`
+## but this strip is built before it is handed over, so Main.gd passes it once
+## it exists. Until then the carry readout is simply skipped.
+func set_sortie_system(s: SortieSystem) -> void:
+	_sortie_system = s
 
 ## The readouts that change on their own. Everything here is a HUD-only
 ## consumer, so it lives with the HUD rather than in Main.gd's wiring. Mixed
@@ -178,6 +194,15 @@ func _build_necro_badge(hud_root: Control) -> void:
 	necro_badge.pressed.connect(func(): badge_pressed.emit())
 	hud_root.add_child(necro_badge)
 
+	# Under the orientation line, and hidden until the sun is low.
+	dusk_warning_label = Label.new()
+	dusk_warning_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	dusk_warning_label.position = Vector2(54, 78)
+	dusk_warning_label.add_theme_font_size_override("font_size", 11)
+	dusk_warning_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.35))
+	dusk_warning_label.visible = false
+	hud_root.add_child(dusk_warning_label)
+
 	# **His hit points, beside the badge.** He is the run (R4), and until now the
 	# only place his health appeared was inside the inspection panel -- which is
 	# closed exactly when it matters, because closing it is how you get back to
@@ -260,7 +285,50 @@ func refresh_orientation() -> void:
 		text += "   ·   Lair %d cells %s" % [cells_home, COMPASS[octant]]
 	if _travel_log and _travel_log.elapsed() >= 0.0:
 		text += "   ·   Away %s" % TravelLog._fmt(_travel_log.elapsed())
+	# **Carry state beside the Away timer** (SORTIE_SPEC §7). The panel has it
+	# too, but the panel is closed exactly when it matters -- closing it is how
+	# you get back to driving him -- and "he was full" is the thing a player must
+	# never learn from a site refusing to pay out.
+	if _sortie_system:
+		text += "   ·   Carrying %s" % _sortie_system.carry_label()
 	orientation_label.text = text
+	_refresh_dusk_warning()
+	if _minimap:
+		_minimap.queue_redraw()
+
+## **The player should never discover they were overloaded at nightfall by dying
+## of it** (SORTIE_SPEC §7). One line, only while he is out in the world with
+## the light going: inside the lair band he is home and the warning would be
+## noise.
+##
+## Reads the day cycle's own clock rather than a second timer, so it inherits
+## the debug time scale like everything else.
+func _refresh_dusk_warning() -> void:
+	if dusk_warning_label == null:
+		return
+	var warn: bool = false
+	var left: float = 0.0
+	if _day_night and _villain and not _villain.is_in_lair_band():
+		if _day_night.is_day:
+			left = DayNightCycle.DAY_SECONDS - _day_night.elapsed_in_phase
+			warn = left <= DUSK_WARNING_SECONDS
+		else:
+			warn = true   # already dark, and he is still out there
+	dusk_warning_label.visible = warn
+	if not warn:
+		return
+	if _day_night.is_day:
+		dusk_warning_label.text = "The light is going — %s of it left, and you are %s from home." % [
+			TravelLog._fmt(left), _cells_home_text()]
+	else:
+		dusk_warning_label.text = "It is dark, and you are %s from home." % _cells_home_text()
+
+func _cells_home_text() -> String:
+	if _world_map == null or _villain == null:
+		return "a way"
+	var lair: Vector2 = _world_map.cell_centre_px(
+		_world_map.lair_origin + Vector2i(SettlementGrid.GRID_WIDTH / 2, SettlementGrid.GRID_HEIGHT / 2))
+	return "%d cells" % roundi(lair.distance_to(_villain.position) / float(WorldMap.CELL_SIZE))
 	if _minimap:
 		_minimap.queue_redraw()
 
@@ -286,9 +354,13 @@ func refresh_stats() -> void:
 	# It sits with the other mundane resources rather than beside Dark Essence,
 	# because to the player it is one more number that goes up when he comes
 	# home -- that both of them are field-only is a design rule, not a layout.
-	lbl_resources_left.text = "Wood: %d   Stone: %d   Bones: %d   Food: %d   Gold: %d" % [
-		GameState.wood, GameState.stone, GameState.bones, GameState.food, GameState.gold
-	]
+	var left: String = "Wood: %d   Stone: %d   Bones: %d   Food: %d   Gold: %d" % [
+		GameState.wood, GameState.stone, GameState.bones, GameState.food, GameState.gold]
+	# Arms only once he has some: it is a dead end until COMBAT_SPEC §9's gear v1
+	# (LOOT_SITES ruling 2), and a permanently-zero counter earns no strip space.
+	if GameState.arms > 0:
+		left += "   Arms: %d" % GameState.arms
+	lbl_resources_left.text = left
 	if lbl_dark_essence:
 		lbl_dark_essence.text = str(GameState.dark_essence)
 	var clock_str := "%s   " % _day_night.phase_label() if _day_night else ""

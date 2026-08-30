@@ -43,6 +43,11 @@ signal close_requested
 signal site_action_requested(site, action_id)
 ## Open this site's choice sheet (the four-way grave model, LOOT_SITES_SPEC 4).
 signal site_sheet_requested(site)
+## Put part of the haul down. Requested rather than performed for the usual
+## reason: where it lands depends on what he is standing at, and `SortieSystem`
+## is the only thing that knows.
+signal drop_requested(kind: String, amount: int)
+signal drop_relic_requested(relic_id: String)
 
 # ---------------- References handed in by Main.gd ----------------
 var _undead_command: UndeadCommand
@@ -52,13 +57,19 @@ var _villain_controller: VillainController
 ## -- sites answer to whoever walked up (LOOT_SITES_SPEC section 3), and a
 ## second villain's panel would simply be handed a different one.
 var _villain: Necromancer
+## The return leg, for the Drop rows and the party-carry line.
+var _sortie_system: SortieSystem
+var _world_sites: WorldSites
 
 func setup(undead_command: UndeadCommand, inspector: InspectionPanel,
-		villain_controller: VillainController, villain: Necromancer = null) -> void:
+		villain_controller: VillainController, villain: Necromancer = null,
+		sortie_system: SortieSystem = null, world_sites: WorldSites = null) -> void:
 	_undead_command = undead_command
 	_inspector = inspector
 	_villain_controller = villain_controller
 	_villain = villain
+	_sortie_system = sortie_system
+	_world_sites = world_sites
 
 ## A lootable site's action block. Bound to the site rather than reading one off
 ## a member, so two sites can never disagree about which one the panel is
@@ -104,6 +115,42 @@ func site_actions(box: VBoxContainer, site: WorldSite) -> void:
 		var reason: String = String(action.get("reason", ""))
 		if b.disabled and reason != "":
 			_note(box, reason)
+
+## **Full hands are a state you can be in, not a wall you hit** (SORTIE_SPEC §1).
+## Arriving at a crypt with no room has to produce a choice, so every carried
+## kind and every carried relic gets a row that puts it down.
+##
+## The panel says where it will land *before* the click, because the two
+## outcomes are genuinely different: at a site the load goes back into that
+## site's remainder; anywhere else it becomes a cache standing in open country,
+## which is a walk back and, from R3, a scavenger's opportunity.
+func _drop_rows(box: VBoxContainer) -> void:
+	if _sortie_system == null or _villain == null:
+		return
+	if _villain.carried.is_empty() and _villain.relics_carried.is_empty():
+		return
+	box.add_child(HSeparator.new())
+	var here: WorldSite = _world_sites.lootable_in_reach(_villain) if _world_sites else null
+	_note(box, "Party carry: %s" % _sortie_system.carry_label())
+	_note(box, "Dropping here returns it to %s." % here.display_name if here != null
+		else "Dropping here leaves a cache on the ground. It stays until you come back for it.")
+
+	for kind in _villain.carried.keys():
+		var amount: int = int(_villain.carried[kind])
+		var b := Button.new()
+		b.text = "Drop %d %s" % [amount, String(kind).capitalize().replace("_", " ")]
+		var k: String = kind    # explicit re-bind for the closure
+		b.pressed.connect(func(): drop_requested.emit(k, amount))
+		box.add_child(b)
+
+	for relic_id in _villain.relics_carried:
+		var r: Dictionary = LootCatalog.relic(relic_id)
+		var b := Button.new()
+		b.text = "Drop %s" % r.get("name", relic_id)
+		b.tooltip_text = "It does nothing until it is banked -- and nothing once it is on the ground."
+		var id: String = relic_id
+		b.pressed.connect(func(): drop_relic_requested.emit(id))
+		box.add_child(b)
 
 func _note(box: VBoxContainer, text: String) -> void:
 	var label := Label.new()
@@ -172,6 +219,8 @@ func necromancer_actions(box: VBoxContainer) -> void:
 	more.text = "Further spells — coming soon"
 	more.disabled = true
 	box.add_child(more)
+
+	_drop_rows(box)
 
 	box.add_child(HSeparator.new())
 	# The camera escape hatch, given a button as well as a key. The key (F) is

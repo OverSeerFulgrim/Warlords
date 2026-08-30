@@ -149,46 +149,29 @@ var _necro_fear_cooldown: float = 0.0
 func _ready() -> void:
 	EventBus.dusk_started.connect(_on_dusk)
 	EventBus.dawn_started.connect(_on_dawn)
-	# **Connected first, on purpose.** SORTIE_SPEC section 6 requires the haul to
-	# be cleared "before anything else reads them", and Godot calls handlers in
-	# connection order -- this system is built in `_build_systems()`, well before
-	# `Main._connect_signals()`, so this handler runs before the log line does.
-	# The harness asserts the ordering rather than trusting the build order.
 	EventBus.villain_died.connect(_on_villain_died)
 	set_process(true)
 
-## His zero (NECROMANCER_SPEC section 6, SORTIE_SPEC section 6). The *emission*
+## His zero, **combat's half only** (NECROMANCER_SPEC section 6). The emission
 ## stays on the data object -- `Necromancer.take_damage()` announces it, so that
-## anything able to hurt him announces it, not just this file -- and this is the
-## consequence half.
+## anything able to hurt him announces it, not just this file.
 ##
-## R2: the unbanked haul is lost, he respawns at the Throne at full hp, the log
-## is loud. **The run ending is R4's**, and the escort's own loads are R2d's.
-## This handler is where `SortieSystem` will take over rather than reinvent.
-##
-## Losing the load has to be true from the first commit: shipping a version
-## where death is free teaches exactly the opposite of the lesson the run frame
-## depends on.
+## Clearing the haul and putting him back at the Throne moved to
+## `SortieSystem` in R2c, which is what this handler's own comment said would
+## happen: SORTIE_SPEC section 6 owns the unbanked load, and that system is
+## built first so its handler runs before this one and before Main's log line.
+## What is left here is the part that is genuinely combat's -- taking him out of
+## any fight he was in when he fell.
 func _on_villain_died(v, _cause: String) -> void:
 	# **Only our own.** `villain_died` is a global signal and every villain on
-	# the map emits it; this system belongs to exactly one of them, and
-	# respawning somebody else's villain at *our* Throne is the precise mistake
-	# ROGUELITE_REWORK section 11 exists to prevent.
+	# the map emits it; this system belongs to exactly one of them.
 	#
 	# Not hypothetical: the harness simulates a thousand fights with throwaway
 	# `Necromancer` objects, and without this line the death handler healed them
 	# back to full mid-fight and the win rates it reported were fiction.
 	if v == null or v != villain:
 		return
-	# Cleared before anything else can read it -- including the log line that
-	# would otherwise report a haul he no longer has.
-	v.carried.clear()
-	v.relics_carried.clear()
 	_end_engagements_with_defender(v)
-	var throne_at: Vector2 = _throne_position()
-	if throne_at != Vector2.INF:
-		v.place_at(throne_at)
-	v.heal_full()
 
 func _end_engagements_with_defender(unit) -> void:
 	for e in _engagements.duplicate():

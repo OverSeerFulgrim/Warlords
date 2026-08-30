@@ -50,7 +50,13 @@ func _process(delta: float) -> void:
 	var home: bool = world.lair_band.has_point(world.cell_at(villain.position))
 	if home:
 		if not _was_home and _elapsed > 0.0:
-			_log("Home. Round trip %s." % _fmt(_elapsed))
+			# **Names what he brought back**, read off his hands at the moment he
+			# crosses the band edge. Not what was banked: banking happens at the
+			# Throne, a few cells later (SORTIE_SPEC §3's band-is-not-the-Throne
+			# rule), and the deposit writes its own line when it does. This line
+			# is about the journey, which is what this file measures.
+			var haul: String = villain.carried_label() if villain else "nothing"
+			_log("Home. Round trip %s — carrying %s." % [_fmt(_elapsed), haul])
 			_report("round_trip", _elapsed)
 		_was_home = true
 		_elapsed = -1.0

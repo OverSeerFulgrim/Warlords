@@ -370,6 +370,12 @@ func _sites_are_authored_to_budget() -> void:
 		# Section 8: pool and active_count are specified now, honoured in R4.
 		_check("site '%s' carries the R4 shuffle fields" % s["id"],
 			String(block.get("pool", "")) != "" and int(block.get("active_count", 0)) > 0)
+		# An authored site with no charges offers nothing and is a content
+		# mistake. `WorldSite` no longer clamps this to one -- a dropped cache
+		# legitimately has zero -- so the guard lives here, where "authored"
+		# actually means something.
+		_check("authored site '%s' has at least one charge" % s["id"],
+			int(block.get("charges", 0)) >= 1, "%s" % block.get("charges", "none"))
 
 # ---------------- The four-way sheet ------------------------------------------
 

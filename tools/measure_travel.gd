@@ -152,6 +152,7 @@ func _ready() -> void:
 	var a: Vector2i = _nearest_open(Vector2i(6, 6))
 	var b: Vector2i = _nearest_open(Vector2i(world.width - 7, world.height - 7))
 	_journey("crossing the entire map", a, b)
+	_loaded_return(main, lair)
 
 	if sortie.x < 0:
 		_ring_report(lair, ring)
@@ -164,6 +165,49 @@ func _ready() -> void:
 ## `note`, when given, replaces the verdict column. It is how a row says "this
 ## journey is not one of §3's and here is why", which is different from a row
 ## that simply has no target -- silence there reads as an oversight.
+## **The return leg, measured rather than assumed** (SORTIE_SPEC §10).
+##
+## The claim under test is a negative one: **carry must not silently gate travel
+## time.** There is no encumbrance curve in this project and there is not meant
+## to be -- SORTIE_SPEC §10 names load-slowing-the-carrier as a *designated
+## fallback lever*, to be adopted only by striking that spec's loaded-return
+## assertion openly. So this fills his hands to the brim, walks the village trip
+## home again, and asserts the number did not move.
+##
+## If it ever does move, either somebody added encumbrance without saying so, or
+## the lever was pulled on purpose -- and this row is where that conversation
+## starts instead of a playtest wondering why the walk got long.
+func _loaded_return(main, lair: Vector2i) -> void:
+	var village: Vector2i = _site_cell(main, "manor")
+	if village.x < 0:
+		return
+	var empty_path: Array = _wild.get_id_path(village, lair)
+	if empty_path.is_empty():
+		return
+	var empty_seconds: float = _walk(empty_path)
+
+	# Fill him. `carry_capacity()` rather than a literal, so a relic that widens
+	# his hands is measured at its real width.
+	var before: Dictionary = villain.carried.duplicate()
+	villain.carried.clear()
+	villain.add_carried("bones", villain.carry_capacity())
+	var loaded_seconds: float = _walk(_wild.get_id_path(village, lair))
+	var full: bool = villain.carry_space() == 0
+	villain.carried = before
+
+	var band: Array = TARGETS["lair -> the village"]
+	var verdict: String = "in band (%s-%s)" % [_fmt(band[0]), _fmt(band[1])]
+	if loaded_seconds < band[0]:
+		verdict = "FAST (under %s)" % _fmt(band[0])
+	elif loaded_seconds > band[1]:
+		verdict = "SLOW (over %s)" % _fmt(band[1])
+	if not is_equal_approx(loaded_seconds, empty_seconds):
+		verdict += "  !! CARRY IS GATING TRAVEL -- see SORTIE_SPEC §10"
+	print("%-34s %-11s %-11s %-9s %s" % ["village -> lair, hands full",
+		_fmt(loaded_seconds), _fmt(loaded_seconds), str(empty_path.size()), verdict])
+	if not full:
+		print("    note: could not fill his hands -- the row measured an empty walk")
+
 func _journey(label: String, from: Vector2i, to: Vector2i, note := "") -> void:
 	if to.x < 0:
 		print("%-34s (no destination found)" % label)

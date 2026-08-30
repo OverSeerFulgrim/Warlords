@@ -67,6 +67,10 @@ var minimap_column: VBoxContainer
 
 ## Dev-only labelled markers over every active site, toggled with F3. Never
 ## reachable in an exported build -- see `_toggle_site_overlay()`.
+## The return leg: party capacity, the deposit at the Throne, dropping, and what
+## death does to an unbanked haul. See scripts/villain/SortieSystem.gd.
+var sortie_system: SortieSystem
+
 var debug_site_overlay: DebugSiteOverlay
 
 ## Scratch buffer for _fog_sources(), reused every frame -- see there.
@@ -348,6 +352,27 @@ func _build_systems() -> void:
 	necromancer_token.name = "NecromancerToken"
 	settlement.add_child(necromancer_token)
 
+	# **Built before every other listener**, because SORTIE_SPEC §6 requires the
+	# unbanked haul cleared "before anything else reads them" and Godot calls
+	# handlers in connection order. Everything it needs already exists: the world
+	# map and its sites are built at the top of this function, the settlement
+	# before that. One instance per villain, holding him as a field.
+	sortie_system = SortieSystem.new()
+	sortie_system.name = "SortieSystem"
+	sortie_system.villain = villain
+	sortie_system.settlement = settlement
+	sortie_system.world = world_map
+	sortie_system.world_sites = world_sites
+	add_child(sortie_system)
+	# Loot fills the villain first and his escort second (§2's filling order).
+	# Set on the container, so sites created later -- a dropped cache -- inherit
+	# it; the sites ask through this rather than reaching for the villain's hands.
+	if world_sites:
+		world_sites.party_filler = func(who, kind: String, amount: int):
+			return sortie_system.take_into_party(who, kind, amount)
+		for site in world_sites.sites:
+			site.party_filler = world_sites.party_filler
+
 	bounty_board = BountyBoard.new()
 	bounty_board.name = "BountyBoard"
 	add_child(bounty_board)
@@ -554,6 +579,7 @@ func _build_ui() -> void:
 	_build_placement_hint(hud_root)
 	_build_bottom_shell(hud_root)
 	hud_top_bar.set_minimap(minimap)   # born in the bottom shell, above
+	hud_top_bar.set_sortie_system(sortie_system)
 	_build_inspection_panel(hud_root)
 	_build_event_panel(hud_root)
 
@@ -629,7 +655,8 @@ func _build_inspection_panel(hud_root: Control) -> void:
 	inspector_actions = InspectorActions.new()
 	inspector_actions.name = "InspectorActions"
 	add_child(inspector_actions)
-	inspector_actions.setup(undead_command, inspector, villain_controller, villain)
+	inspector_actions.setup(undead_command, inspector, villain_controller, villain,
+		sortie_system, world_sites)
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -1232,6 +1259,21 @@ func _open_site_sheet(site: WorldSite) -> void:
 	if not opened:
 		_alert("Answer what is already in front of you first.", "warn")
 
+## Puts part of the haul down. Where it lands is `SortieSystem`'s to decide --
+## the site he is standing at, or a cache on the ground.
+func _drop_load(kind: String, amount: int) -> void:
+	if sortie_system == null:
+		return
+	var site: WorldSite = sortie_system.drop(kind, amount)
+	if site:
+		inspector.refresh()
+
+func _drop_relic(relic_id: String) -> void:
+	if sortie_system == null:
+		return
+	if sortie_system.drop_relic(relic_id):
+		inspector.refresh()
+
 ## **F3 — the dev site overlay.** A playtesting aid and not a game feature: it
 ## labels every active site through the fog so a tester can reach the dens and
 ## the Band-4 sites without wandering.
@@ -1427,6 +1469,8 @@ func _connect_signals() -> void:
 	inspector_actions.close_requested.connect(_close_inspector)
 	inspector_actions.site_action_requested.connect(_begin_site_action)
 	inspector_actions.site_sheet_requested.connect(_open_site_sheet)
+	inspector_actions.drop_requested.connect(_drop_load)
+	inspector_actions.drop_relic_requested.connect(_drop_relic)
 	inspector_actions.follow_toggle_requested.connect(func():
 		villain_controller.toggle_follow()
 		hud_top_bar.refresh_follow_state()
@@ -1524,6 +1568,35 @@ func _connect_signals() -> void:
 	)
 	EventBus.site_guardian_engaged.connect(func(v, site):
 		_alert("Something at %s has taken exception." % site.display_name, "warn")
+	)
+
+	# ---- The return leg (SORTIE_SPEC §9) ----
+	# **The moment the haul becomes real.** Loud, because four minutes of walking
+	# just paid out and the deposit is automatic -- there is no button press to
+	# confirm it happened.
+	EventBus.sortie_deposited.connect(func(v, load: Dictionary, relics: Array):
+		if not load.is_empty():
+			_log("[color=#8fd8a0]Banked at the Throne: %s.[/color]" % LootCatalog.describe(load),
+				"events alerts")
+			_alert("Banked: %s" % LootCatalog.describe(load), "good")
+		hud_top_bar.refresh_stats()
+	)
+	EventBus.relic_banked.connect(func(v, relic_id: String):
+		var r: Dictionary = LootCatalog.relic(relic_id)
+		_log("[color=#e0c060]%s is yours, and awake.[/color]" % r.get("name", relic_id),
+			"events alerts characters")
+		_alert("%s — its effect is live." % r.get("name", relic_id), "good")
+	)
+	EventBus.sortie_load_dropped.connect(func(v, kind: String, amount: int, to_site):
+		_log("[color=#c8a45a]Left %s at %s.[/color]"
+			% [LootCatalog.describe({kind: amount}) if LootCatalog.LOOT_KINDS.has(kind)
+				else String(LootCatalog.relic(kind).get("name", kind)), to_site.display_name],
+			"events")
+	)
+	EventBus.sortie_cache_created.connect(func(v, cache):
+		_log("[color=#c8a45a]You set it down in open country. It will be there when you come back.[/color]",
+			"events")
+		_alert("A cache left on the ground.", "info")
 	)
 	EventBus.dusk_started.connect(func(day: int):
 		_log("[color=#8899cc]Dusk falls on day %d.[/color]" % day, "events")

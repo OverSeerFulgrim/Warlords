@@ -141,6 +141,25 @@ signal deed_committed(villain, deed_id: String, axes: Dictionary)
 ## Something posted at a site has decided he is a problem.
 signal site_guardian_engaged(villain, site)
 
+# The return leg (see scripts/villain/SortieSystem.gd, SORTIE_SPEC.md section 9)
+## **The haul became real.** Emitted at the Throne, after `GameState` has taken
+## it -- the banking rule (ROGUELITE_REWORK section 1) at sortie scale. `load`
+## is everything banked this deposit, villain and escort together; `relics` is
+## what woke up.
+signal sortie_deposited(villain, load: Dictionary, relics: Array)
+## He put something down. `to_site` is the site it went to -- the one he was
+## standing at, or the `dropped_cache` that just appeared to hold it. **Never
+## null:** the 2026-08-29 amendment struck destruction, so a drop always has
+## somewhere to land.
+signal sortie_load_dropped(villain, kind: String, amount: int, to_site)
+## A cache appeared in open country because he dropped something there. The
+## other half of the two drop paths, and the hook R3's scavengers want: this is
+## the moment an abandoned haul becomes somebody else's problem to find.
+signal sortie_cache_created(villain, cache)
+## A relic reached the lair and woke up. `relic_found` fires when it is picked
+## up and grants nothing; this is where its effect starts (LOOT_SITES 7).
+signal relic_banked(villain, relic_id: String)
+
 # Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
 ## Cast, moved, or re-ordered. Carries the new order and how many undead answered.
 signal undead_commanded(at: Vector2, order_name: String, bound: int)

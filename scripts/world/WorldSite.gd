@@ -74,6 +74,14 @@ var guardian_spawner: Callable = Callable()
 ## Set by `WorldSites` too, and for the same reason: raising a corpse puts a
 ## body on the map, and the site does not own world-map nodes.
 var dead_riser: Callable = Callable()
+## Where loot goes: `SortieSystem.take_into_party`, which fills the villain
+## first and his escort second (`SORTIE_SPEC.md` section 2's filling order).
+##
+## A Callable rather than a reference, and unset it falls back to the villain's
+## own hands -- so a site works with no sortie system at all, which is how the
+## loot harness exercises it. The escort is R2d's, but the seam is here now so
+## that pass does not have to reopen this file.
+var party_filler: Callable = Callable()
 ## `{"threat": int, "escalates": bool}`. The escalation half of the 2026-08-06
 ## reputation-ownership decision: notice is world state and goes to
 ## `GameState.add_threat()`. The reputation half is the villain's deed ledger.
@@ -181,7 +189,15 @@ func _setup_lootable(block: Dictionary) -> void:
 	lootable = true
 	loot_type = String(block.get("type", ""))
 	band = int(block.get("band", 2))
-	charges_max = maxi(1, int(block.get("charges", 1)))
+	# **Zero is a legal answer**, and it used to be clamped to one. A dropped
+	# cache (SORTIE_SPEC's 2026-08-29 ruling 2) is a site whose entire content is
+	# its remainder: no table, nothing to pull. Forcing a minimum of one gave it
+	# a phantom "Search it" action that would have rolled a table named "".
+	#
+	# Authored sites still must not ship with zero -- that is a content mistake
+	# rather than a shape -- so `verify_loot_tables` asserts it of everything in
+	# `world_sites.json`, which is where the guard belongs.
+	charges_max = maxi(0, int(block.get("charges", 1)))
 	charges_left = charges_max
 	channel_seconds = float(block.get("channel_seconds", 8.0))
 	loot_table = String(block.get("loot_table", ""))
@@ -197,6 +213,14 @@ func _setup_lootable(block: Dictionary) -> void:
 	elif typeof(g) == TYPE_DICTIONARY and not (g as Dictionary).is_empty():
 		guardian_spec = {"kind": String(g.get("kind", "")), "count": maxi(1, int(g.get("count", 1)))}
 	cleared = guardian_spec.is_empty()
+
+## Loot into the party: the villain first, his escort second. **Takes the
+## villain the caller was given** and hands him straight through, so the
+## site-answers-to-whoever-walked-up rule (section 3) survives the indirection.
+func _into_party(villain, kind: String, amount: int) -> int:
+	if party_filler.is_valid():
+		return int(party_filler.call(villain, kind, amount))
+	return villain.add_carried(kind, amount)
 
 func hit_radius() -> float:
 	return pick_radius
@@ -233,6 +257,25 @@ func channel_progress() -> float:
 
 func is_den() -> bool:
 	return loot_type == "wolf_den"
+
+func is_dropped_cache() -> bool:
+	return loot_type == "dropped_cache"
+
+## **Never ping a cache.** `RAVEN_SPEC.md`'s honesty invariant already excludes
+## it -- a cache the player made is discovered by definition, and a bird
+## announcing "I found something" about a pile you left twenty seconds ago is
+## the one thing that would teach players to stop trusting it.
+##
+## Stated as a method now, before the Raven exists, because R2e is where it
+## would be missed and this is the only place the answer is obvious.
+func is_raven_eligible() -> bool:
+	return lootable and not is_dropped_cache()
+
+## Called when something outside this node changes the remainder -- a drop, or
+## R2c's deposit path handing loot back. Keeps the sprite and the panel honest
+## without making the remainder Dictionary private.
+func refresh_after_remainder_change() -> void:
+	_refresh_sprite()
 
 # ---------------- Actions -----------------------------------------------------
 
@@ -429,7 +472,7 @@ func _resolve_loot(villain, fraction: float, deed_id: String, axes: Dictionary,
 	var left := {}
 	for kind in rolled["resources"].keys():
 		var amount: int = int(rolled["resources"][kind])
-		var got: int = villain.add_carried(kind, amount)
+		var got: int = _into_party(villain, kind, amount)
 		if got > 0:
 			taken[kind] = got
 		if amount - got > 0:
@@ -527,7 +570,7 @@ func _take_into_hands(villain, table_id: String, fraction: float) -> void:
 	var taken := {}
 	for kind in rolled["resources"].keys():
 		var amount: int = int(rolled["resources"][kind])
-		var got: int = villain.add_carried(kind, amount)
+		var got: int = _into_party(villain, kind, amount)
 		if got > 0:
 			taken[kind] = got
 		if amount - got > 0:
@@ -590,7 +633,7 @@ func mark_cleared(villain) -> void:
 func _collect_remainder(villain) -> bool:
 	var taken := {}
 	for kind in remainder.keys().duplicate():
-		var got: int = villain.add_carried(kind, int(remainder[kind]))
+		var got: int = _into_party(villain, kind, int(remainder[kind]))
 		if got > 0:
 			taken[kind] = got
 			remainder[kind] = int(remainder[kind]) - got
