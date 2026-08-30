@@ -111,9 +111,10 @@ assets/official|placeholder|vendor/      see Graphics rules
   every looted-state sprite shares its unlooted partner's canvas
 - `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3. **The gate on any map change**
   (TERRAIN_SPEC §9): every row must be back in band, and walk speed is not a knob
-- `tools/verify_terrain.tscn` — 261 assertions: per-file sheet slicing, 112 distinct atlas tiles
+- `tools/verify_terrain.tscn` — 278 assertions: per-file sheet slicing, 112 distinct atlas tiles
   with none all-black, every legend char and all 80 mask entries resolving, the flipped
   alternatives, **and the generated layout** — road network connected to every landmark, no path
+  every active site reachable from the lair within its own interaction reach,
   within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
   region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
   windowed for that gate)
@@ -141,7 +142,8 @@ assets/official|placeholder|vendor/      see Graphics rules
 
 - **F3 = dev site overlay** (`scripts/ui/DebugSiteOverlay.gd`): labels every active site through
   the fog, plus minimap dots. Debug builds only (`OS.is_debug_build()`), default off, read-only —
-  it must never reveal, write fog, or set a discovery flag, or it perjures the Raven.
+  it must never reveal, write fog, or set a discovery flag, or it perjures the Raven. Marks any
+  site it cannot path to UNREACHABLE in red.
 - The lair aura is a POSITION, not a flag: `CombatSystem.aura_protects_villain()` reads
   `Necromancer.is_in_lair_band()`. One test, three consumers (aura, prey membership, regen rate).
 - A global signal carrying a villain needs an owner check: `villain_died` fires for every villain,

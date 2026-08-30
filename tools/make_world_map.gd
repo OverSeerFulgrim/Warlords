@@ -712,23 +712,107 @@ func _carve_clearing(spec: Dictionary, salt: int) -> void:
 		cells.append(cell)
 	if cells.is_empty():
 		return
-	# **Exactly one mouth**: a single lane from the clearing to the corridor.
-	# Zero is a softlock, two is a crossroads -- and a crossroads inside a wood
-	# is just a road, which is the one thing a clearing must not be.
+	# **Exactly one mouth, and it has to be findable.** Zero is a softlock, two
+	# is a crossroads -- and a crossroads inside a wood is just a road, which is
+	# the one thing a clearing must not be.
+	#
+	# **Two cells wide, not one** (2026-08-30). The first version carved a
+	# single-cell lane, which is topologically a mouth and practically a wall:
+	# with the canopy drawn over both sides of it, a playtester walked the
+	# perimeter of the valley den and reported it "literally impossible to
+	# reach". It was reachable -- flood fill proved it, and so did an A* from
+	# the lair -- through one 64px gap in six cells of unbroken pine. A door
+	# nobody can find is not a door.
+	#
+	# Two is still one mouth (the pair is a single connected group of woodland,
+	# so the clearing rule holds) and still inside TERRAIN_SPEC §6b's "1-2 cell
+	# lanes". `verify_terrain` now asserts the width for any clearing holding a
+	# site, so this cannot narrow again unnoticed.
 	var target := Vector2i(centre.x, centre.y)
 	var step := Vector2i(signi(target.x - at.x), signi(target.y - at.y))
 	var walk := at
 	var guard: int = 0
 	while walk != target and guard < 64:
 		guard += 1
+		# Widened perpendicular to the direction of travel, so the lane is two
+		# across however it bends.
+		var widen := Vector2i.ZERO
 		if walk.x != target.x:
 			walk.x += step.x
+			widen = Vector2i(0, 1)
 		elif walk.y != target.y:
 			walk.y += step.y
+			widen = Vector2i(1, 0)
+		if _at(walk.x, walk.y) == "u":
+			break   # reached the corridor; stop, or the clearing gains a second mouth
 		if _at(walk.x, walk.y) == "T":
 			_put(walk.x, walk.y, "u")
-		elif _at(walk.x, walk.y) == "u":
-			break   # reached the corridor; stop, or the clearing gains a second mouth
+			# Only ever beside a cell this walk carved itself. Widening blindly
+			# could punch a second way in, which is the one thing forbidden here.
+			var side: Vector2i = walk + widen
+			if _at(side.x, side.y) == "T":
+				_put(side.x, side.y, "u")
+	_widen_the_mouth(cells)
+
+## Guarantees the lane is **two cells wide where it meets the clearing**, which
+## is the bit a player standing in the trees actually has to spot.
+##
+## Widening perpendicular to the walk gets this right most of the time and
+## missed one of the two dens outright: the partner cell landed one step along
+## the lane rather than against the clearing itself, so the opening was still a
+## single tile. Rather than trust the geometry, this finds the mouth after the
+## fact and opens it.
+##
+## Still exactly one mouth: the cell it opens must touch both the clearing *and*
+## the existing mouth cell, so the two stay a single connected group of
+## woodland. A cell touching the clearing somewhere else would be a second door.
+func _widen_the_mouth(cells: Array) -> void:
+	var dirs := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+	var in_clearing: Dictionary = {}
+	for cell in cells:
+		in_clearing[cell] = true
+
+	# The mouth: woodland cells orthogonally touching the clearing.
+	var mouth: Array = []
+	for cell in cells:
+		for d in dirs:
+			var n: Vector2i = cell + d
+			if not in_clearing.has(n) and _at(n.x, n.y) == "u" and not mouth.has(n):
+				mouth.append(n)
+	if mouth.size() != 1:
+		return   # already wide enough, or sealed -- the harness owns both cases
+
+	# The throat is the pair (lane cell, clearing cell it opens onto). Widening
+	# means sliding that pair one cell sideways and opening both -- padding the
+	# lane alone does not help, because the clearing's own edge is what pinches
+	# it. The southwood den needed exactly this: its lane had no widenable
+	# neighbour at all, because the clearing only reached the lane on one row.
+	var m: Vector2i = mouth[0]
+	var c := Vector2i(-1, -1)
+	for d in dirs:
+		if in_clearing.has(m + d):
+			c = m + d
+			break
+	if c.x < 0:
+		return
+	var along: Vector2i = c - m
+	for d in dirs:
+		if d == along or d == -along:
+			continue   # along the lane, not across it
+		var m2: Vector2i = m + d
+		var c2: Vector2i = c + d
+		# The new lane cell has to be forest or already open, and the new
+		# clearing cell has to be forest or already clearing. Anything else --
+		# rock, water, a road -- and this is not a throat to widen.
+		if not (_at(m2.x, m2.y) in ["T", "u"]):
+			continue
+		if _at(c2.x, c2.y) != "T" and not in_clearing.has(c2):
+			continue
+		if _at(m2.x, m2.y) == "T":
+			_put(m2.x, m2.y, "u")
+		if _at(c2.x, c2.y) == "T":
+			_put(c2.x, c2.y, _patch_pick(c2.x, c2.y, ["g", "s", "S"]))
+		return
 
 # ---------------- 5. Landmarks ------------------------------------------------
 

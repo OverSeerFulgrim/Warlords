@@ -486,7 +486,7 @@ func _build_world_map() -> void:
 	debug_site_overlay = DebugSiteOverlay.new()
 	debug_site_overlay.name = "DebugSiteOverlay"
 	settlement.add_child(debug_site_overlay)
-	debug_site_overlay.setup(world_sites)
+	debug_site_overlay.setup(world_sites, world_map)
 
 	fog = FogOfWar.new()
 	fog.name = "FogOfWar"

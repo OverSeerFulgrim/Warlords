@@ -428,6 +428,16 @@ re-validating travel times across many seeds rather than one.
   inside blocking masses
 - every dense mass is crossable, corridor mouths on a side ≤25 cells apart, and **every clearing
   has exactly one corridor mouth** (§6b) — zero is a softlock, two is a crossroads
+- **every active site has a walkable cell within its own interaction reach that flood-fill-connects
+  to the lair** *(added 2026-08-30)* — the flood fill above proves every walkable *cell* is
+  reachable and the clearing rule proves every *clearing* has a mouth, but neither proved a **site**
+  was standing anywhere the villain could get to; a site on a mountain or one cell outside its own
+  clearing passed both
+- **a clearing holding a site has a mouth ≥2 cells wide** *(added 2026-08-30)* — one cell is
+  topologically a mouth and practically a wall: with the canopy over both sides a playtester walked
+  the perimeter of the valley den and reported it "literally impossible to reach", and every
+  assertion above passed, because it *was* reachable through a single 64px gap. A door nobody can
+  find is not a door. Asserted only where a site is at stake; §6b's 1–2 cell lanes stand elsewhere
 - no cobble or dirt cell inside a clearing or a dense mass (the §6b hard error, asserted)
 - the canopy is **one MultiMeshInstance2D** — instance count within budget (~1.5× the `T`+`u`
   cell count), zero per-tree nodes

@@ -50,6 +50,7 @@ func _ready() -> void:
 	_map_uses_them(world)
 	_speeds_need_no_code(world)
 	_generation(world)
+	_sites_are_reachable(world)
 	_forests(world)
 	_canopy(world)
 	await _performance(main, world)
@@ -466,6 +467,52 @@ func _generation(world: WorldMap) -> void:
 	_check("flood fill from the lair seals off no region (largest pocket <= 8 cells)",
 		worst_pocket <= 8, "a %d-cell region is unreachable" % worst_pocket)
 
+## **SITE REACHABILITY** (added 2026-08-30, after a playtester reported a den
+## he could not get into).
+##
+## The suite had a hole between two assertions that each looked complete. The
+## flood fill proves every *walkable cell* is reachable; the clearing rule
+## proves every *clearing* has a mouth. **Neither proves a site is standing
+## somewhere the villain can actually reach**, and a site placed on a mountain,
+## in an unclassified pocket, or one cell outside its own clearing would pass
+## both and ship.
+##
+## So: every active site must have at least one walkable cell **within its own
+## interaction reach** that flood-fill-connects to the lair. Reach rather than
+## "the site's cell", because that is the rule the game actually enforces --
+## `WorldSite.in_reach()` is what decides whether the panel offers anything, and
+## a site you can stand next to but not interact with is just as broken.
+func _sites_are_reachable(world: WorldMap) -> void:
+	var lair := Vector2i(world.lair_origin.x + 5, world.lair_origin.y + 4)
+	var start: Vector2i = _nearest(world, lair, func(c: Vector2i): return world.is_walkable_cell(c))
+	var reached: Dictionary = _flood(world, start, func(c: Vector2i): return world.is_walkable_cell(c))
+	for site in _lootable_sites():
+		var cell: Vector2i = site["cell"]
+		# The same reach the runtime uses: `pick_radius`, which is
+		# max(18, size * 0.6). Derived from the site's own authored size rather
+		# than assumed, so a resized site is re-checked at its new reach.
+		var reach: float = maxf(18.0, float(site["size"]) * 0.6)
+		var span: int = int(ceil(reach / float(WorldMap.CELL_SIZE))) + 1
+		var centre: Vector2 = world.cell_centre_px(cell)
+		var walkable: int = 0
+		var connected: int = 0
+		for dy in range(-span, span + 1):
+			for dx in range(-span, span + 1):
+				var c: Vector2i = cell + Vector2i(dx, dy)
+				if c.x < 0 or c.y < 0 or c.x >= world.width or c.y >= world.height:
+					continue
+				if centre.distance_to(world.cell_centre_px(c)) > reach:
+					continue
+				if not world.is_walkable_cell(c):
+					continue
+				walkable += 1
+				if reached.has(c.y * world.width + c.x):
+					connected += 1
+		_check("site '%s' can be stood at and reached from the lair" % site["id"],
+			connected > 0,
+			"%d walkable cells in reach, %d connected -- %s" % [walkable, connected,
+				"SEALED" if walkable > 0 else "nothing walkable in reach"])
+
 ## **THE ROAD PROMISE** (designer ruling, 2026-08-27 P2 human check): *a road
 ## always has something at its end, even minor loot.*
 ##
@@ -527,6 +574,7 @@ func _lootable_sites() -> Array:
 			"type": String(block.get("type", "")),
 			"band": int(block.get("band", 2)),
 			"cell": Vector2i(int(c[0]), int(c[1])),
+			"size": float(entry.get("size", 56.0)),
 			"signposted": bool(entry.get("signposted", false)),
 			# "At least one loot action at generation time": a charge to spend,
 			# and either a table to roll or a sheet to answer.
@@ -593,10 +641,37 @@ func _forests(world: WorldMap) -> void:
 	print("    note: %d interior clearings" % clearings.size())
 	_check("the masses hold at least one clearing between them",
 		not clearings.is_empty(), "none found -- R2a's dens have nowhere to go")
+	# Which clearings actually hold something worth walking to. A clearing with
+	# no site in it can have whatever mouth it likes; one with a den in it has to
+	# be enterable by a person who cannot see the tile grid.
+	var site_cells: Dictionary = {}
+	for site in _lootable_sites():
+		var sc: Vector2i = site["cell"]
+		site_cells[sc.y * world.width + sc.x] = site["id"]
+
 	for c in clearings:
 		_check("the clearing at %s has exactly one corridor mouth" % str(c["at"]),
 			int(c["mouths"]) == 1, "%d mouths" % int(c["mouths"]))
 		_check("and nothing paved inside it", not bool(c["paved"]), "a road reaches in")
+		# **A mouth a player can find** (2026-08-30). One cell is topologically a
+		# mouth and practically a wall: with the canopy drawn over both sides,
+		# a playtester walked the perimeter of the valley den and reported it
+		# "literally impossible to reach". It was reachable -- flood fill and an
+		# A* from the lair both said so -- through a single 64px gap in six cells
+		# of unbroken pine, which is why every existing assertion passed.
+		#
+		# Asserted only for clearings that hold a site, because that is where the
+		# cost of an unfindable door is paid, and TERRAIN_SPEC §6b allows 1-2
+		# cell lanes generally.
+		var holds: String = ""
+		for key in c["cells"].keys():
+			if site_cells.has(key):
+				holds = String(site_cells[key])
+		if holds != "":
+			_check("the clearing holding '%s' has a mouth wide enough to find" % holds,
+				int(c["mouth_cells"]) >= 2,
+				"%d cell mouth -- one cell of gap under canopy reads as solid forest"
+					% int(c["mouth_cells"]))
 
 ## Section 6b: the canopy is ONE MultiMeshInstance2D, within its instance budget,
 ## with zero per-tree nodes.
@@ -693,7 +768,8 @@ func _clearings(world: WorldMap) -> Array:
 						ringed = false
 			if not ringed or touching.is_empty():
 				continue
-			out.append({"at": here, "mouths": _components_of(world, touching), "paved": paved})
+			out.append({"at": here, "mouths": _components_of(world, touching), "paved": paved,
+				"mouth_cells": touching.size(), "cells": comp})
 	return out
 
 func _is_plain_ground(world: WorldMap, cell: Vector2i) -> bool:

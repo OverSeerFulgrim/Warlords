@@ -82,6 +82,14 @@ func _debug_overlay_changes_nothing(main, fog: FogOfWar) -> void:
 	_check("...and no site carries a discovered flag for it to have set",
 		not ("discovered" in sites[0]) if not sites.is_empty() else true)
 
+	# The overlay's own reachability check, which is the live half of
+	# `verify_terrain`'s bake-time assertion. Both must agree, and today both
+	# say every site is reachable -- so this asserts the agreement rather than
+	# just that the code runs.
+	overlay._recompute_reachability()
+	_check("the overlay finds every placed site reachable, as verify_terrain does",
+		overlay._unreachable.is_empty(), "flagged: %s" % str(overlay._unreachable.keys()))
+
 ## Everything about a site the overlay could plausibly disturb, as a comparable
 ## snapshot. Loot state rather than position, because position is the one thing
 ## a marker legitimately reads.
