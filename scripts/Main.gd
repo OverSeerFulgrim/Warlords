@@ -440,6 +440,8 @@ func _build_systems() -> void:
 	undead_command.settlement = settlement
 	undead_command.worker_system = worker_system
 	undead_command.combat_system = combat_system
+	undead_command.world = world_map
+	undead_command.villain = villain
 	add_child(undead_command)
 
 func _build_camera() -> void:
@@ -1259,6 +1261,31 @@ func _open_site_sheet(site: WorldSite) -> void:
 	if not opened:
 		_alert("Answer what is already in front of you first.", "warn")
 
+## **Command Undead: Escort**, and its way back out.
+##
+## No placement mode and no new branch in the input arbitration — the target is
+## the man casting it, which is exactly why escort is a button on his panel
+## rather than a fourth click-to-target mode. Re-anchoring drops the point where
+## he stands, so the dead hold that ground instead of walking with him.
+func _toggle_escort() -> void:
+	if undead_command == null or villain == null:
+		return
+	if undead_command.is_active() and undead_command.rally_point.is_escorting():
+		undead_command.anchor_to_ground(villain.position)
+		_log("[color=#9fb6c8]The point settles into the ground. The dead hold it.[/color]",
+			"characters events")
+	else:
+		var bound: int = undead_command.cast_escort(villain)
+		_log("[color=#8fd8b0]The dead fall in behind him — %d of them.[/color]" % bound,
+			"characters events")
+	inspector.refresh()
+
+func _set_escort_stance(stance: int) -> void:
+	if undead_command == null:
+		return
+	undead_command.set_stance(stance)
+	inspector.refresh()
+
 ## Puts part of the haul down. Where it lands is `SortieSystem`'s to decide --
 ## the site he is standing at, or a cache on the ground.
 func _drop_load(kind: String, amount: int) -> void:
@@ -1471,6 +1498,8 @@ func _connect_signals() -> void:
 	inspector_actions.site_sheet_requested.connect(_open_site_sheet)
 	inspector_actions.drop_requested.connect(_drop_load)
 	inspector_actions.drop_relic_requested.connect(_drop_relic)
+	inspector_actions.escort_toggle_requested.connect(_toggle_escort)
+	inspector_actions.escort_stance_requested.connect(_set_escort_stance)
 	inspector_actions.follow_toggle_requested.connect(func():
 		villain_controller.toggle_follow()
 		hud_top_bar.refresh_follow_state()
@@ -1568,6 +1597,25 @@ func _connect_signals() -> void:
 	)
 	EventBus.site_guardian_engaged.connect(func(v, site):
 		_alert("Something at %s has taken exception." % site.display_name, "warn")
+	)
+
+	# ---- The escort (ESCORT_SPEC §9) ----
+	# **Cover state is announced, not silent** (§7): it is the one thing the dead
+	# do that the player did not ask for, so it gets a line both ways.
+	EventBus.escort_covering.connect(func(v, covering: bool):
+		if covering:
+			_log("[color=#8fd8b0][b]The dead close ranks.[/b][/color]", "characters alerts events")
+			_alert("The dead close ranks around him.", "warn")
+		else:
+			_log("[color=#9fb6c8]They stand down.[/color]", "characters events")
+	)
+	EventBus.escort_stance_changed.connect(func(v, stance_name: String):
+		_log("[color=#a898c8]The escort goes %s.[/color]" % stance_name.to_lower(),
+			"characters events")
+	)
+	EventBus.escort_member_lost.connect(func(v, unit, cause: String):
+		_log("[color=orange]One of the escort is down to a %s — and whatever it was carrying with it.[/color]"
+			% cause, "characters alerts events")
 	)
 
 	# ---- The return leg (SORTIE_SPEC §9) ----

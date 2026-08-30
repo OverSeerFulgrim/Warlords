@@ -48,6 +48,11 @@ signal site_sheet_requested(site)
 ## is the only thing that knows.
 signal drop_requested(kind: String, amount: int)
 signal drop_relic_requested(relic_id: String)
+## Cast Command Undead in Escort mode, or re-anchor it to the ground. Requested
+## rather than performed: only Main.gd knows where "the ground" is.
+signal escort_toggle_requested
+## Whole-escort policy (ESCORT_SPEC amendment 2026-08-29). Not a unit order.
+signal escort_stance_requested(stance: int)
 
 # ---------------- References handed in by Main.gd ----------------
 var _undead_command: UndeadCommand
@@ -115,6 +120,26 @@ func site_actions(box: VBoxContainer, site: WorldSite) -> void:
 		var reason: String = String(action.get("reason", ""))
 		if b.disabled and reason != "":
 			_note(box, reason)
+
+## The stance toggle: **a policy on the spell, never an order to a unit.** Two
+## buttons, whole-escort, no per-skeleton anything — which is what keeps it on
+## the right side of the pillar even though it changes what the dead do.
+##
+## The current stance is on the panel and on the rally marker's own payload
+## (§7's legibility rule), and toggling writes a log line, because "why did they
+## start that fight" must always be answerable.
+func _stance_rows(box: VBoxContainer) -> void:
+	var current: int = _undead_command.rally_point.stance
+	_note(box, "Stance: %s — %s" % [RallyPoint.stance_name(current),
+		RallyPoint.STANCE_BLURB.get(current, "")])
+	for stance in [RallyPoint.Stance.DEFENSIVE, RallyPoint.Stance.AGGRESSIVE]:
+		var s: int = stance    # explicit re-bind for the closure
+		var b := Button.new()
+		b.text = RallyPoint.stance_name(s)
+		b.tooltip_text = String(RallyPoint.STANCE_BLURB.get(s, ""))
+		b.disabled = s == current
+		b.pressed.connect(func(): escort_stance_requested.emit(s))
+		box.add_child(b)
 
 ## **Full hands are a state you can be in, not a wall you hit** (SORTIE_SPEC §1).
 ## Arriving at a crypt with no room has to produce a choice, so every carried
@@ -205,6 +230,22 @@ func necromancer_actions(box: VBoxContainer) -> void:
 	cast.pressed.connect(func(): rally_placement_requested.emit())
 	box.add_child(cast)
 
+	# **Escort: the same spell, anchored to him.** No targeting mode and no
+	# placement branch in Main's input arbitration, because the target is the man
+	# casting it -- which is the whole reason this is one button rather than a
+	# second mode.
+	var escort := Button.new()
+	var escorting: bool = _undead_command.is_active() and _undead_command.rally_point.is_escorting()
+	escort.text = "Command Undead — dismiss the escort" if escorting \
+		else "Command Undead: Escort"
+	escort.tooltip_text = "The dead walk with you. They keep station, take what comes near you, and close ranks if you fall low." \
+		if not escorting else "Plant the point where you stand and let them hold it instead."
+	escort.pressed.connect(func(): escort_toggle_requested.emit())
+	box.add_child(escort)
+
+	if escorting:
+		_stance_rows(box)
+
 	if _undead_command.is_active():
 		var dismiss := Button.new()
 		dismiss.text = "Dismiss the rally point"
@@ -237,6 +278,8 @@ func necromancer_actions(box: VBoxContainer) -> void:
 ## inspectable object is deliberately data-only. See InspectionPanel's header.
 func rally_actions(box: VBoxContainer) -> void:
 	var current: int = _undead_command.rally_point.order if _undead_command.is_active() else -1
+	# Escort is deliberately NOT here: it is cast on him, from his own panel, and
+	# a point already anchored to a man has no ground to be re-ordered on.
 	for order in [RallyPoint.Order.DEFEND, RallyPoint.Order.PATROL, RallyPoint.Order.ATTACK]:
 		var o: int = order  # explicit re-bind for the closure
 		var b := Button.new()

@@ -160,6 +160,18 @@ signal sortie_cache_created(villain, cache)
 ## up and grants nothing; this is where its effect starts (LOOT_SITES 7).
 signal relic_banked(villain, relic_id: String)
 
+# The escort (see scripts/combat/UndeadCommand.gd, ESCORT_SPEC.md section 9)
+## Command Undead was cast in Escort mode. `count` is how many answered.
+signal escort_bound(villain, count: int)
+## One of them is gone, and its load with it. The ordinary combat path kills
+## them; this is the escort-shaped announcement on top of `worker_destroyed`.
+signal escort_member_lost(villain, unit, cause: String)
+## **The one behaviour the player did not ask for.** True when the dead close
+## ranks below his flee threshold, false when they stand down again.
+signal escort_covering(villain, covering: bool)
+## Whole-escort policy, never a unit order (amendment 2026-08-29).
+signal escort_stance_changed(villain, stance_name: String)
+
 # Command Undead (the Necromancer's first spell -- see UndeadCommand.gd)
 ## Cast, moved, or re-ordered. Carries the new order and how many undead answered.
 signal undead_commanded(at: Vector2, order_name: String, bound: int)

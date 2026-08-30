@@ -11,14 +11,15 @@ that system). Session write-ups append to `docs/history/`, NEVER here.
 
 ## Current phase
 
-Roguelite rework, **R2 in progress — R2a, R2b and R2c done, R2d next** (`docs/design/ROGUELITE_REWORK.md` §13
+Roguelite rework, **R2 in progress — R2a-R2d done, R2e (the Raven) next** (`docs/design/ROGUELITE_REWORK.md` §13
 is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
 placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
 raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`). R2b gave him his own
 fight — engage close / cast far, the lair aura as geography, out-of-combat regen, and a death that
 costs the haul (`docs/history/2026-08-villain-combat.md`). R2c closed the loop — the haul banks at
 the Throne (not the band edge), relics wake on deposit, and a dropped load leaves a cache
-(`docs/history/2026-08-sortie-deposit.md`).
+(`docs/history/2026-08-sortie-deposit.md`). R2d gave him an escort with no unit orders — one enum
+member and one field on the rally point (`docs/history/2026-08-escort.md`).
 R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
@@ -55,6 +56,9 @@ autoload/global).
   **His casting is proximity-engaged, not ordered** (NECROMANCER_SPEC §3): walking within 26px
   of a hostile opens a fight, walking past his 5-cell Arcane reach ends it, there is no attack
   button, and he is never rooted — his engagement membership lives in `CombatSystem`.
+  **The escort is that same spell anchored to a man** (ESCORT_SPEC §3): `RallyPoint.follow` plus
+  one enum member, all the dead and never a chosen subset, and a whole-escort stance that is a
+  policy on the spell rather than an order to a unit.
 - The Necromancer is NOT a Laborer and not in any labor pool — keep the exclusion structural.
 - Timers must be delta-accumulators or SceneTreeTimers so `Engine.time_scale` (debug 1x/10x/60x)
   scales everything together. Never `Time.get_ticks_msec()` for gameplay.
@@ -137,6 +141,10 @@ assets/official|placeholder|vendor/      see Graphics rules
   emptying villain AND escort in one frame, **the band edge banking nothing**, the two drop paths,
   a dropped cache behaving as an ordinary site, relics waking only on deposit, and death clearing
   the haul before any later handler
+- `tools/verify_escort.tscn` — 54 assertions: binding covers undead and ONLY undead, bound escorts
+  leave the labour pool and return on dismiss, the point tracks him through a terrain slide, a
+  skeleton raised at a grave joins with no explicit add, both stances, the interpose firing in
+  both, and guardian targeting going through `hostiles()` rather than `wolves`
 - `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
   workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
   roster or stat change)

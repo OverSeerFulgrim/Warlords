@@ -109,10 +109,19 @@ var hp: int = 1
 ## step -- but the capacity is real and the inspection panel reads it.
 var carried: Dictionary = {}
 
-## Who is walking with him. Empty for the whole of R1: the escort arrives in R2
-## with the sortie loop, built on the Command Undead order model rather than
-## per-unit orders (ROGUELITE_REWORK section 5). It exists now so that every
-## system reading "the villain" already sees the field it will eventually need.
+## Who is walking with him.
+##
+## **A cache, not the source of truth** (ESCORT_SPEC section 8). Membership is
+## derived every frame from "undead and rallied and the rally point follows
+## him", and `UndeadCommand` writes the answer here so the panel and
+## `SortieSystem` can read it without recounting the roster. Nothing should ever
+## append to this by hand -- the next frame would overwrite it, which is exactly
+## the property that makes a skeleton raised at a grave join with no explicit
+## add.
+##
+## No escort *logic* lives on him either. He is data; the order model is the
+## spell's (ROGUELITE_REWORK section 5: followers and escorts are never
+## individually commanded).
 var escort: Array = []
 
 ## Relics in his hands, by id. A **separate list from `carried`** because

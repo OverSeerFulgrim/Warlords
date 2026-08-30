@@ -28,6 +28,24 @@ enum Order {
 	DEFEND,   ## hold the spot; engage what comes within a tight radius
 	PATROL,   ## walk a beat around it; engage what they meet
 	ATTACK,   ## seek the nearest hostile in a wide radius and go to it
+	ESCORT,   ## the point follows the villain; keep station on him
+}
+
+## **The escort stance** (ESCORT_SPEC amendment 2026-08-29). A policy on the
+## spell, never an order to a unit: whole-escort always, no per-skeleton
+## setting, no selection UI -- section 1.1 and 1.2 survive intact.
+##
+## Without it a party can never walk PAST a den or a guardian without starting
+## the fight, which becomes fatal once R3 puts patrols and adventurers on the
+## map. **Default DEFENSIVE**, which makes the party consistent with the
+## villain's own engage model: nothing the player owns starts a fight unless
+## they chose it.
+##
+## Cover-the-retreat overrides stance in both directions -- instinct is not
+## policy.
+enum Stance {
+	DEFENSIVE,  ## engage only once the party has been struck
+	AGGRESSIVE, ## engage anything hostile inside the radius
 }
 
 ## How far the dead will stray from the point, per order. Defend is deliberately
@@ -36,10 +54,29 @@ enum Order {
 const DEFEND_RADIUS_PX: float = 1.2 * float(SettlementGrid.CELL_SIZE)
 const PATROL_RADIUS_PX: float = 3.0 * float(SettlementGrid.CELL_SIZE)
 const ATTACK_RADIUS_PX: float = 7.0 * float(SettlementGrid.CELL_SIZE)
+## Between DEFEND's 1.2 and PATROL's 3.0: tight enough that the party reads as
+## a group at world zoom, loose enough that they do not conga-line through a
+## mountain pass. The single number that decides whether a party looks like one.
+const ESCORT_RADIUS_PX: float = 2.5 * float(SettlementGrid.CELL_SIZE)
 
 const MARKER_RADIUS: float = 13.0
 
 var order: int = Order.DEFEND
+var stance: int = Stance.DEFENSIVE
+
+## **The entire escort mechanism.** When set, `_process` copies this object's
+## position into the point's own, every frame.
+##
+## Everything downstream -- `UndeadCommand._advance_bound()`, the arrive
+## epsilon, `_hostile_for()`'s measure-from-the-point rule, the radius ring this
+## node draws -- then works unchanged, because none of it ever assumed the point
+## was still. That is why the escort is one field and one enum member rather
+## than a second follow-the-villain system living beside the first.
+##
+## Typed `Object` rather than `Necromancer` so the anchor is not villain-shaped
+## by construction: anything with a `position` can be followed, and a spec that
+## wanted the dead to follow a cart would need no change here.
+var follow: Object = null
 
 ## Set by UndeadCommand each frame so the panel and the marker can show it
 ## without either of them recounting the roster.
@@ -49,7 +86,11 @@ func _ready() -> void:
 	z_index = 3  # above the ground and buildings, below units
 	set_process(true)
 
+## **Where the escort happens.** One copy, every frame, and the rest of the
+## system follows because nothing in it assumed the point was still.
 func _process(_delta: float) -> void:
+	if follow != null and is_instance_valid(follow):
+		position = follow.position
 	queue_redraw()  # the pulse, and the colour changes with the order
 
 ## Drawn rather than sprited: it is a magical marker, not an object, and a
@@ -77,6 +118,10 @@ func order_colour() -> Color:
 			return Color(0.95, 0.40, 0.35)
 		Order.PATROL:
 			return Color(0.85, 0.75, 0.35)
+		Order.ESCORT:
+			# A fourth, distinct from the other three: cold green, which reads as
+			# "his" rather than as a place.
+			return Color(0.55, 0.90, 0.70)
 		_:
 			return Color(0.55, 0.75, 0.95)
 
@@ -86,6 +131,8 @@ func radius_for_order() -> float:
 			return ATTACK_RADIUS_PX
 		Order.PATROL:
 			return PATROL_RADIUS_PX
+		Order.ESCORT:
+			return ESCORT_RADIUS_PX
 		_:
 			return DEFEND_RADIUS_PX
 
@@ -95,6 +142,8 @@ static func order_name(o: int) -> String:
 			return "Attack"
 		Order.PATROL:
 			return "Patrol"
+		Order.ESCORT:
+			return "Escort"
 		_:
 			return "Defend"
 
@@ -102,7 +151,19 @@ const ORDER_BLURB := {
 	Order.DEFEND: "Hold this ground. They will not chase anything past the ring.",
 	Order.PATROL: "Walk a circuit. They will take whatever they run into on the way.",
 	Order.ATTACK: "Hunt. They will cross the whole ring to reach the nearest living thing that isn't yours.",
+	Order.ESCORT: "Walk with him. The ring goes where he goes, and they will not chase anything past it.",
 }
+
+static func stance_name(s: int) -> String:
+	return "Aggressive" if s == Stance.AGGRESSIVE else "Defensive"
+
+const STANCE_BLURB := {
+	Stance.DEFENSIVE: "They strike back, and only back. Nothing starts a fight you did not.",
+	Stance.AGGRESSIVE: "They take anything hostile inside the ring, whether it noticed you or not.",
+}
+
+func is_escorting() -> bool:
+	return order == Order.ESCORT and follow != null and is_instance_valid(follow)
 
 # ---------------- Inspection (see InspectionPanel.gd) ----------------
 
@@ -116,9 +177,23 @@ func get_inspect_data() -> Dictionary:
 			{"label": "", "value": ORDER_BLURB.get(order, ""), "muted": true},
 			{"label": "Bound", "value": "%d undead" % bound_count},
 			{"label": "Range", "value": "%.1f cells" % (radius_for_order() / float(SettlementGrid.CELL_SIZE))},
+		] + _escort_rows() + [
 			{"label": "", "value": "Bound undead do not gather. The dead can dig or they can fight, not both.", "muted": true},
 		],
 	}
+
+## The two rows that only mean anything while the point is anchored to a man.
+## Legibility is section 7's whole job here: the player must be able to answer
+## *why did they do that* without reading source, and "the ring is on him" plus
+## "they only strike back" is the entire answer.
+func _escort_rows() -> Array:
+	if not is_escorting():
+		return []
+	return [
+		{"label": "Anchored to", "value": "The Necromancer — the ring goes where he goes"},
+		{"label": "Stance", "value": stance_name(stance), "color": order_colour()},
+		{"label": "", "value": STANCE_BLURB.get(stance, ""), "muted": true},
+	]
 
 func hit_radius() -> float:
 	return MARKER_RADIUS + 6.0

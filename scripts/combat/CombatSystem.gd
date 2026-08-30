@@ -427,7 +427,7 @@ func _advance_villain() -> void:
 	# hunts him there, and closing on something there opens nothing either.
 	if aura_protects_villain():
 		return
-	for foe in _hostiles():
+	for foe in hostiles():
 		if villain.position.distance_to(foe.position) <= VILLAIN_ENGAGE_PX:
 			# `engage()` joins an existing fight if the foe is already in one --
 			# the same pile-in rule three rallied skeletons follow, which is what
@@ -459,9 +459,16 @@ func _announce_villain_engagement(foe_name: String, reason: String = "") -> void
 	if foe_name != "":
 		EventBus.villain_engaged.emit(villain, foe_name)
 
-## Everything on the map that would fight him. Wolves and site guardians today;
-## anything with the Combatant contract and a hostile policy later.
-func _hostiles() -> Array:
+## **Everything on the map that would fight him or his.** Wolves and site
+## guardians today; anything with the Combatant contract and a hostile policy
+## later.
+##
+## Public since R2d, and that is the whole of ESCORT_SPEC section 4's "one real
+## refactor": `UndeadCommand._hostile_for()` used to iterate `wolves` directly,
+## so a bound skeleton standing in front of a site guardian could not see it.
+## One list, asked for by name, so nothing downstream hard-codes a creature type
+## again.
+func hostiles() -> Array:
 	var out: Array = []
 	for w in wolves:
 		if is_instance_valid(w) and w.is_alive() and w.state != Wolf.State.LEAVING:
@@ -887,7 +894,22 @@ func _end_engagements_with(attacker) -> void:
 func _resolve_defeat(unit, attacker) -> void:
 	_leave_combat(unit)
 	if unit is Worker:
+		# **No bespoke escort death path** (ESCORT_SPEC section 6). A bound
+		# escort dies exactly as any worker does; this is only the
+		# escort-shaped announcement on top, so the log can say the loss was a
+		# long way from home and took a load with it. Emitted before the removal
+		# so `rallied` still means something to whoever is listening.
+		if unit.rallied and villain != null and villain.escort.has(unit):
+			EventBus.escort_member_lost.emit(villain, unit, attacker.combat_name())
 		unit.abandon_trip()
+		# **Its load dies with it** (ESCORT_SPEC section 6, SORTIE_SPEC section
+		# 6). `abandon_trip()` releases the node claim but deliberately leaves
+		# the carried amount alone -- `_bind_all()` zeroes it separately for
+		# exactly that reason -- so a dead escort would otherwise be discarded
+		# still holding your gold. No ground pile either way; this only makes
+		# "it is gone" true of the object rather than merely true of the roster.
+		unit.carrying_amount = 0
+		unit.carrying_kind = ""
 		worker_system.remove_worker(unit)
 		EventBus.worker_destroyed.emit(unit, attacker.combat_name())
 		return
