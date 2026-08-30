@@ -161,6 +161,9 @@ a permanently-zero counter is not sitting on the strip for a milestone.
 **Flagged as a deliberate deviation** rather than buried — it is a spec line contradicted by a
 later ruling in the same spec, and the alternative was shipping a visible bug.
 
+> **Approved 2026-08-30** (designer). §9's row now carries a dated one-line correction pointing at
+> ruling 2, rather than the section being rewritten around it.
+
 ---
 
 ## 8. Legibility (§7)

@@ -39,12 +39,13 @@ var food: int = 5
 ## not.
 var gold: int = 0
 
-## **The seventh, and a deliberate deviation worth flagging.** LOOT_SITES_SPEC
-## §9 says GameState gains gold and "nothing else" -- but that line predates the
-## same document's 2026-08-29 amendment (ruling 2), which introduced `arms` as a
+## **The seventh** (designer-approved 2026-08-30). LOOT_SITES_SPEC §9 used to say
+## GameState gains gold and "nothing else" -- a line that predated the same
+## document's 2026-08-29 amendment (ruling 2), which introduced `arms` as a
 ## carryable loot kind. A kind he can carry but not bank would make every
 ## deposit containing weapons print "unknown kind" and silently drop them, which
-## is worse than the dead end the ruling actually asked for.
+## is worse than the dead end the ruling actually asked for. §9 now carries a
+## dated correction saying so.
 ##
 ## So it banks, and it does nothing: no building spends it, no recipe reads it.
 ## Its sink arrives with COMBAT_SPEC §9's gear v1, exactly as ruling 2 says. The
