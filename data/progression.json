@@ -1,0 +1,46 @@
+{
+	"_comment": "Meta-progression, R5-lite (ROGUELITE_REWORK section 9, ruled 2026-09-26: death ends the run; a run-end screen shows run stats, XP and character level; waking at the Throne is an unlock). XP is BANKED THE INSTANT IT IS EARNED -- a death two hours in still counts. Levels are computed from total XP at read time, never stored. Unlocks widen the option pool and never raise numbers (LIVING_WORLD ruling 1); second_wake is the one designer-sanctioned bend, the way carried relics are ROGUELITE section 10's. Every number here is a playtest hypothesis.",
+
+	"deed_xp": {
+		"_comment": "Keyed by the deed ids Necromancer.record_deed() writes. Anything not listed pays `default`.",
+		"default": 5,
+		"loot_the_site": 10,
+		"raise_the_dead": 15,
+		"rob_the_dead": 10,
+		"return_the_belongings": 10,
+		"destroy_the_evidence": 5,
+		"rob_a_shrine": 10,
+		"honour_a_shrine": 10,
+		"desecrate_a_shrine": 10,
+		"cleared_a_site": 40,
+		"cleared_a_den": 50
+	},
+
+	"event_xp": {
+		"_comment": "Battles won and things brought home. `banked_unit` is per unit of loot deposited at the Throne from a sortie; `relic_banked` is per relic.",
+		"wolf_killed": 10,
+		"building_placed": 5,
+		"banked_unit": 1,
+		"relic_banked": 25
+	},
+
+	"run_end_xp": {
+		"_comment": "Paid once, when the run ends, however it ends. `per_day` is per full game day survived.",
+		"per_day": 20,
+		"victory": 200
+	},
+
+	"level_thresholds": [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000, 5000, 6200, 7600, 9200, 11000],
+
+	"unlocks": [
+		{
+			"id": "second_wake",
+			"name": "Second Wake",
+			"level": 5,
+			"uses_per_run": 1,
+			"description": "Once per run, death still costs everything he carries -- but he wakes at the Throne instead of the run ending."
+		}
+	],
+
+	"chronicle_keep": 50
+}

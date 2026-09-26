@@ -27,10 +27,16 @@ var world: WorldMap = null
 var sites: Array = []      # Array[WorldSite]
 var patrols: Array = []    # Array[Patrol]
 var guardians: Array = []  # Array[SiteGuardian]
-## Bodies pulled out of graves and left standing there (`RaisedDead`). Views
-## over `Necromancer.raised_dead` entries -- the ledger is the data, these are
-## how the player can tell it happened. R2d takes them into the escort.
-var raised: Array = []     # Array[RaisedDead]
+## Skeletons pulled out of graves, as the Workers they became. The ledger entry
+## on the villain is still the record; this is the roster side, kept so a
+## harness (and anything later) can ask "what came out of the ground here".
+var raised: Array = []     # Array[Laborer]
+
+## Turns a raised corpse into a unit: `func(at: Vector2, villain, site) ->
+## Laborer`. Main hands in `WorkerSystem.raise_skeleton_at` with no cost. Unset,
+## a raise records the ledger entry and puts nothing on the map -- which is the
+## bug the 2026-09-26 review found, so Main always sets it.
+var raise_handler: Callable = Callable()
 
 ## The `kind -> statline` table `guardian.kind` selects from (section 8).
 var guardian_kinds: Dictionary = {}
@@ -203,11 +209,16 @@ func dropped_caches() -> Array:
 
 ## Puts a body on the map for each ledger entry the villain just made.
 ##
-## One node per entry, offset slightly around the grave so two raised from the
-## same plot do not stack into one silhouette. They are inert: not in the labour
-## pool, not in `CombatSystem`'s target lists, not commandable yet. **Visible**,
-## which is the entire point -- LOOT_SITES_SPEC §4's dormancy is about orders,
-## not about existence, and reading it as ledger-only made the act invisible.
+## One skeleton per entry, offset slightly around the grave so two raised from
+## the same plot do not stack into one silhouette.
+##
+## **A real unit from its first frame** (ruling C, 2026-09-26). The first two
+## versions of this put an inert `RaisedDead` view at the graveside and wrote
+## "R2d binds them into the escort" -- R2d never did, and the review caught the
+## corpse standing there for the rest of the run. Now the entry is live on
+## arrival: the skeleton joins the roster, so an active escort binds it the next
+## frame and otherwise it walks home to work. `dormant` stays in the entry as a
+## record, set false.
 func _raise_dead(site: WorldSite, villain, entries: Array) -> void:
 	for i in range(entries.size()):
 		var angle: float = TAU * float(raised.size() + i) / 5.0
@@ -215,13 +226,16 @@ func _raise_dead(site: WorldSite, villain, entries: Array) -> void:
 			* float(SettlementGrid.CELL_SIZE) * 0.7
 		if world:
 			at = world.nearest_walkable(at)
-		var body := RaisedDead.new()
-		body.name = "Raised_%s_%d" % [site.site_id, raised.size()]
-		# setup() before add_child(), same reason the guardians do it: _ready()
-		# builds the sprite out of what setup() writes.
-		body.setup(villain, entries[i], at, site.display_name)
-		add_child(body)
-		raised.append(body)
+		if not raise_handler.is_valid():
+			push_warning("WorldSites: no raise_handler -- the corpse at %s stays in the ground." % site.site_id)
+			continue
+		var unit = raise_handler.call(at, villain, site)
+		if unit == null:
+			continue
+		entries[i]["dormant"] = false
+		entries[i]["unit"] = unit
+		raised.append(unit)
+		EventBus.skeleton_raised.emit(villain, unit, "grave")
 
 ## Removes a guardian that died or left, and clears its site when it was the
 ## last one standing. `villain` is the one who did it -- passed in, never looked
@@ -324,9 +338,6 @@ func pick_at(world_pos: Vector2) -> Node2D:
 	for g in guardians:
 		if is_instance_valid(g) and world_pos.distance_to(g.position) <= g.hit_radius():
 			return g
-	for r in raised:
-		if is_instance_valid(r) and world_pos.distance_to(r.position) <= r.hit_radius():
-			return r
 	var best: WorldSite = null
 	var best_dist: float = INF
 	for s in sites:

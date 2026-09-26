@@ -246,3 +246,17 @@ R1 shipped to spec. During the post-R1 doc reconciliation, two decisions were ma
 1. **Reputation ownership — confirmed per-villain.** The five axes (§7) live on the villain object, never in an autoload; today's single `GameState.reputation` int is legacy and is replaced, not extended, in R3. **Threat stays global** — it is world/escalation state, legitimately `GameState`'s. R2's bridge: site *notice* feeds `GameState.add_threat()` (escalation half) while axis consequences are recorded on the villain's deeds ledger (reputation half, `LOOT_SITES_SPEC.md` §6). R3 reads notoriety from the ledger, never from `GameState`. `CLAUDE.md`'s source-of-truth line was corrected to match.
 2. **Bounty parties are on-map units.** The off-map/abstracted follower-travel path was deleted in R1 (commit `3023372`: "travel happens on the world map now, in view"). Era III bounty parties therefore travel the 144×144 map as visible units — larger build scope than the old abstraction, accepted for the sake of one travel model everywhere. §3 and §6 were amended; the Raven-as-bounty-observer deferral in §6 may not survive as a feature now that parties are watchable directly.
 3. **Corrections for the record:** Dark Essence field-only was a design *goal*, not an existing convention (§8; cleanup scheduled in `LOOT_SITES_SPEC.md` §5). Walk speed 1.0 was an R1 *tuning outcome*, not a pre-existing value (§4). The map spec is `WORLD_MAP_PLAN.md`; the `.docx` is the archived original (header, §4).
+
+---
+
+## 17. Amendments, 2026-09-26 (designer rulings after the fresh-eyes review)
+
+1. **Death ends the run from now on**, ahead of the rest of R4. A run-end screen shows the run's
+   stats, the XP it earned, and the villain's level and progress. Built as R4-lite plus the XP half
+   of R5 (`scripts/run/`, `data/progression.json`); flee, shuffle and the Lair hub are still R4/R5.
+2. **Waking at the Throne after death is an unlock** ("Second Wake": level 5, once per run) — the
+   second designer-sanctioned bend of §2's no-power rule, beside carried relics (§10).
+3. **Raise Dead is the starting spell.** A corpse raised from a grave is free; without one, Raise
+   Dead costs bones and works wherever he stands. §2's "Throne + starting skeletons" becomes
+   **Throne only**, as `LIVING_WORLD_SPEC.md` §13 required.
+4. **The timed recruit event is switched off** (§7 already declared it dead; the code now agrees).

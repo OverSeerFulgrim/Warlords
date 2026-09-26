@@ -71,6 +71,12 @@ var minimap_column: VBoxContainer
 ## death does to an unbanked haul. See scripts/villain/SortieSystem.gd.
 var sortie_system: SortieSystem
 
+## The run as a thing that ends (2026-09-26 ruling): death ends it unless a
+## Second Wake is left, XP banks as it is earned, and the run-end screen shows
+## the result. See scripts/run/RunLifecycle.gd.
+var run_lifecycle: RunLifecycle
+var run_summary: RunSummary
+
 var debug_site_overlay: DebugSiteOverlay
 
 ## Scratch buffer for _fog_sources(), reused every frame -- see there.
@@ -444,6 +450,31 @@ func _build_systems() -> void:
 	undead_command.villain = villain
 	add_child(undead_command)
 
+	# A corpse raised from a grave becomes a real skeleton, for free (ruling C,
+	# 2026-09-26). Set on the container so a cache spawned later inherits it,
+	# same as the party filler.
+	if world_sites:
+		world_sites.raise_handler = func(at: Vector2, _who, _site):
+			return worker_system.raise_skeleton_at(at, worker_system.next_skeleton_name())
+
+	_build_run_lifecycle()
+
+## **Last**, so its `villain_died` handler runs after SortieSystem's (the haul)
+## and CombatSystem's (out of every fight) -- it only decides what happens next.
+##
+## The profile is only written to disk when this scene is the one the game is
+## running. The harnesses instantiate Main as a child of their own scene and
+## kill the villain on purpose; that must never touch the player's XP.
+func _build_run_lifecycle() -> void:
+	var persistent: bool = is_inside_tree() and get_tree().current_scene == self
+	run_lifecycle = RunLifecycle.new()
+	run_lifecycle.name = "RunLifecycle"
+	run_lifecycle.villain = villain
+	run_lifecycle.sortie_system = sortie_system
+	run_lifecycle.day_night = day_night
+	run_lifecycle.profile = MetaProfile.open(MetaProfile.DEFAULT_PATH if persistent else "")
+	add_child(run_lifecycle)
+
 func _build_camera() -> void:
 	camera = GameCamera.new()
 	camera.name = "GameCamera"
@@ -537,10 +568,9 @@ func _seed_starting_state() -> void:
 	# actual target -- see ThreatSystem._resolve_crusade().
 	_place_from_catalog("throne_of_bones", Vector2i(0, 0))
 
-	# One free Skeleton Worker to start, left idle -- the player chooses its
-	# first assignment rather than it silently already gathering something,
-	# since this is a brand-new mechanic worth surfacing deliberately.
-	worker_system.add_worker(Worker.new("Skeleton Worker #1"))
+	# **No starting skeleton** (LIVING_WORLD ruling 9, 2026-09-26). The dead
+	# come from graves -- free -- or from Raise Dead paid in bones, and the
+	# starting bones are enough for either choice on minute one.
 
 ## Places a catalog building directly (no cost check, no player-driven
 ## click-to-place) -- used only for game-start seeding. Player construction
@@ -584,6 +614,13 @@ func _build_ui() -> void:
 	hud_top_bar.set_sortie_system(sortie_system)
 	_build_inspection_panel(hud_root)
 	_build_event_panel(hud_root)
+
+	# The run-end screen. Its own CanvasLayer above everything, and alive while
+	# the tree is paused -- the run has ended underneath it.
+	run_summary = RunSummary.new()
+	run_summary.name = "RunSummary"
+	add_child(run_summary)
+	run_summary.new_run_requested.connect(_begin_new_run)
 
 	hud_top_bar.refresh_stats()
 	build_menu.populate()
@@ -659,6 +696,7 @@ func _build_inspection_panel(hud_root: Control) -> void:
 	add_child(inspector_actions)
 	inspector_actions.setup(undead_command, inspector, villain_controller, villain,
 		sortie_system, world_sites)
+	inspector_actions.progress_line_provider = _progress_line
 
 ## The bottom command bar itself, plus the Town/History/Research "folder"
 ## tabs attached directly above it -- positioned above the command column
@@ -1039,6 +1077,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
+	# R casts Raise Dead at his feet (paid in bones). Same handler as the
+	# buttons; a text field with focus never sees it because this is the
+	# *unhandled* pass.
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+		_recruit_worker()
+		get_viewport().set_input_as_handled()
+		return
+
 	# Esc closes the inspector. Deliberately *below* the two placement blocks
 	# above, which both return early: while you're placing or demolishing,
 	# Esc cancels that mode, and the inspector is not what Esc is for.
@@ -1123,7 +1169,7 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	# thing you meant to click, and it is the thing about to bite you.
 	if world_sites:
 		var hit_character = world_sites.pick_at(world_pos)
-		if hit_character is Patrol or hit_character is SiteGuardian or hit_character is RaisedDead:
+		if hit_character is Patrol or hit_character is SiteGuardian:
 			_inspect(hit_character)
 			return true
 
@@ -1198,8 +1244,22 @@ func _menu_open_y() -> float:
 # run, arbitrating the rally placement mode against the build and demolish
 # modes, and paying for a house (which writes to the history log).
 
+## Surrender ends the run through the lifecycle -- XP already earned is kept,
+## the chronicle gets its line, and the run-end screen offers the new run.
 func _surrender_and_restart() -> void:
 	_close_inspector()
+	if run_lifecycle and not run_lifecycle.ended:
+		run_lifecycle.abandon()
+		return
+	_begin_new_run()
+
+## The run-end screen's one button. **Resets the clock as well as the state**:
+## `Engine.time_scale` is engine-global and survives a scene reload, so a run
+## ended at the debug 60x used to start the next one at 60x under a HUD that
+## said 1x (review 2026-09-26).
+func _begin_new_run() -> void:
+	get_tree().paused = false
+	Engine.time_scale = 1.0
 	GameState.reset()
 	get_tree().reload_current_scene()
 
@@ -1228,7 +1288,7 @@ func _begin_site_action(site: WorldSite, action_id: String) -> void:
 	inspector.refresh()
 	if ok:
 		return
-	if action_id == "collect" and villain.carry_space() <= 0:
+	if action_id == "collect" and SortieSystem.party_space_of(villain) <= 0:
 		_alert("His hands are full — %d/%d. Nothing more will fit."
 			% [villain.carried_total(), villain.carry_capacity()], "warn")
 	else:
@@ -1398,13 +1458,27 @@ func _fund_house(follower) -> void:
 
 # ---------------- Worker recruitment ----------------
 
+## **Raise Dead, paid in bones** (ruling C, 2026-09-26): a skeleton climbs out
+## of the ground at his feet, wherever he stands. The free version is the grave
+## sheet's "Raise the corpse". The historical name stays so every button that
+## already emits `recruit_worker_pressed` casts the spell.
 func _recruit_worker() -> void:
-	var n := worker_system.workers.size() + 1
-	var w := worker_system.recruit_worker("Skeleton Worker #%d" % n)
-	if w == null:
-		_log("[color=orange]Not enough Bones to recruit a worker (need %d).[/color]" % WorkerSystem.RECRUIT_COST.get("bones", 0), "alerts")
+	if villain == null or not villain.is_alive():
 		return
-	_log("[color=lightgreen]%s has risen to serve.[/color]" % w.worker_name, "characters")
+	var at: Vector2 = villain.position + Vector2(18.0, 10.0)
+	if world_map:
+		at = world_map.nearest_walkable(at)
+	var w := worker_system.raise_skeleton_at(at, worker_system.next_skeleton_name(),
+		WorkerSystem.RECRUIT_COST)
+	if w == null:
+		_log("[color=orange]Raise Dead needs %d Bones in the stockpile. Graves give the dead for free.[/color]"
+			% int(WorkerSystem.RECRUIT_COST.get("bones", 0)), "alerts")
+		_alert("Not enough Bones to Raise Dead.", "warn")
+		return
+	EventBus.skeleton_raised.emit(villain, w, "bones")
+	_log("[color=lightgreen]He speaks, and the ground gives up %s.[/color]" % w.worker_name, "characters")
+	if inspector.is_open():
+		inspector.refresh()
 	# No explicit token sync here -- WorkerSystem.add_worker() already emitted
 	# worker_count_changed, which _connect_signals() wires to
 	# TokenLayer.sync_worker_tokens(). The priority rows don't care how many workers
@@ -1698,23 +1772,42 @@ func _connect_signals() -> void:
 			% bones, "events alerts")
 		_alert("Wolf killed — %d bones on the ground." % bones, "good")
 	)
-	# The villain going down. **Nothing ends here yet** -- run start/end is
-	# rework stage R4, and building half a run lifecycle now would mean unpicking
-	# it then. What this does is make the moment impossible to miss while R1-R3
-	# are being built, which is exactly what it's for.
+	# The villain going down. **Owner-checked**: `villain_died` fires for every
+	# villain, and the combat harness kills a thousand throwaway ones (CLAUDE.md's
+	# gotcha; this handler was the one that forgot, review 2026-09-26). What
+	# happens next is RunLifecycle's -- this only says it out loud.
 	EventBus.villain_died.connect(func(v, cause: String):
-		_log("[color=red][b]THE NECROMANCER HAS FALLEN — the run would end here.[/b][/color] (%s)"
-			% cause, "events alerts characters")
+		if v != villain:
+			return
+		_log("[color=red][b]THE NECROMANCER HAS FALLEN.[/b][/color] (%s)" % cause,
+			"events alerts characters")
 		_alert("THE NECROMANCER HAS FALLEN.", "bad")
-		# By the time this runs, CombatSystem's handler has already cleared the
-		# haul and put him back at the Throne (SORTIE_SPEC §6) -- it connects in
-		# _build_systems, well before this does, and the harness asserts that
-		# ordering rather than trusting it.
-		_log("[color=#c8a45a]Everything he was carrying is lost where he fell. He wakes at the Throne.[/color]",
+		_log("[color=#c8a45a]Everything he was carrying is lost where he fell.[/color]",
 			"events characters")
-		push_warning("Villain down (%s, class '%s') — the run lifecycle is R4, so play continues."
-			% [v.combat_name(), v.class_id])
 		hud_top_bar.refresh_villain_hp()
+	)
+	EventBus.villain_woke.connect(func(v, left: int):
+		if v != villain:
+			return
+		_log("[color=#b8a0e0]...and the Second Wake drags him back to the Throne. (%s)[/color]"
+			% ("no more this run" if left <= 0 else "%d left" % left), "events characters")
+		hud_top_bar.refresh_villain_hp()
+	)
+	EventBus.villain_levelled.connect(func(v, lvl: int, unlocks: Array):
+		if v != villain:
+			return
+		_log("[color=gold]He grows in power — level %d.[/color]" % lvl, "events characters")
+		_alert("Level %d." % lvl, "good")
+		for u in unlocks:
+			_log("[color=gold]Unlocked: %s — %s[/color]" % [String(u.get("name", "")),
+				String(u.get("description", ""))], "events characters")
+	)
+	EventBus.run_ended.connect(func(v, summary: Dictionary):
+		if v != villain:
+			return
+		_close_inspector()
+		_log("[color=#c8a45a]%s[/color]" % String(summary.get("epitaph", "")), "events alerts")
+		run_summary.show_summary(summary)
 	)
 	# Journey milestones. Logged rather than alerted: pacing information is
 	# something you read afterwards, not something that should interrupt a walk.
@@ -1828,6 +1921,22 @@ func _on_mission_resolved(m: Dictionary, _party: Array, outcome: String) -> void
 ## "characters", or a space-separated combination) so the History tab's
 ## filter chips can narrow the list down -- see _entry_matches_filters().
 ## Defaults to "events" for call sites that don't specify one.
+## "Level 3 — 120 / 200 XP · next: Second Wake at level 5", for his panel.
+func _progress_line() -> String:
+	if run_lifecycle == null or villain == null:
+		return ""
+	var p: MetaProfile = run_lifecycle.profile
+	var total: int = p.xp(villain.class_id)
+	var prog: Array = MetaProfile.level_progress(total)
+	var text: String = "Level %d — %s" % [p.level(villain.class_id),
+		("%d / %d XP" % [prog[0], prog[1]]) if int(prog[1]) > 0 else "max level"]
+	var next: Dictionary = p.next_unlock(villain.class_id)
+	if not next.is_empty():
+		text += "  ·  next: %s at level %d" % [String(next.get("name", "")), int(next.get("level", 0))]
+	if run_lifecycle.wakes_left > 0:
+		text += "  ·  Second Wake ready"
+	return text
+
 func _log(msg: String, category: String = "events") -> void:
 	print(msg)
 	if not history_log_list:

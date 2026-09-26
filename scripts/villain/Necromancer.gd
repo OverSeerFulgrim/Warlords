@@ -469,16 +469,39 @@ func carried_label() -> String:
 ## `LootCatalog.roll()` so relics stay unique per run **without the catalog
 ## holding run state** -- it is an autoload, and a second villain would draw
 ## from the same tables with his own set.
+##
+## **Includes every relic a table has ever handed him this run**, wherever it is
+## now. Carried-plus-banked alone let a relic dropped into a cache, or left in a
+## site's remainder, roll a second time -- and the second copy could then never
+## be picked up, because `add_relic` refused the duplicate (review 2026-09-26).
 func drawn_relic_ids() -> Array:
-	var out: Array = relics_carried.duplicate()
-	out.append_array(relics_banked)
+	var out: Array = relics_rolled.duplicate()
+	for id in relics_carried:
+		if not out.has(id):
+			out.append(id)
+	for id in relics_banked:
+		if not out.has(id):
+			out.append(id)
 	return out
+
+## Everything `LootCatalog.roll()` has produced for him this run, in hand, banked,
+## dropped, left behind or lost. Written by the site that rolled it.
+var relics_rolled: Array = []
+
+func note_relics_rolled(ids: Array) -> void:
+	for id in ids:
+		if not relics_rolled.has(id):
+			relics_rolled.append(id)
 
 ## Takes a relic if there is a slot for it. Returns false when there is not, and
 ## the caller leaves it at the site as a remainder charge -- the same rule
 ## `add_carried()` follows, for the same reason (`SORTIE_SPEC.md` section 4).
+##
+## Refuses a relic he is already holding or has banked -- not one that was merely
+## rolled before, because a rolled relic lying in a cache is exactly the one he
+## is walking back to collect.
 func add_relic(id: String) -> bool:
-	if id == "" or drawn_relic_ids().has(id):
+	if id == "" or relics_carried.has(id) or relics_banked.has(id):
 		return false
 	if carry_space() <= 0:
 		return false
@@ -552,11 +575,10 @@ func record_deed(deed_id: String, axes: Dictionary, day: int) -> void:
 ## The four-way sheet's "raise the corpse". Appends the ledger entries and
 ## **returns them**, so the caller can put a body on the map over each one.
 ##
-## Section 4's "dormant until the escort lands, then retroactively live" is
-## about what it can be *ordered* to do, not about whether it exists. R2a read
-## it as ledger-only and the playtest raised a corpse to no visible effect at
-## all; `RaisedDead` is the view over these entries, and R2d binds them into the
-## escort by walking this same Array.
+## The entries are the record; `WorldSites._raise_dead` turns each one into a
+## real skeleton on the roster the same frame (ruling C, 2026-09-26) and marks
+## it live. The earlier "R2d binds them by walking this Array" never happened --
+## see the 2026-09-26 review.
 func raise_corpse_at(at: Vector2, count: int = 1) -> Array:
 	var made: Array = []
 	for i in range(maxi(1, count)):
@@ -775,8 +797,8 @@ func get_inspect_data() -> Dictionary:
 	rows.append({"label": "Escort", "value": "None — he walks alone" if escort.is_empty()
 		else "%d following" % escort_count()})
 	if not raised_dead.is_empty():
-		rows.append({"label": "Raised", "value": "%d, waiting — they follow when you can lead them"
-			% raised_dead.size(), "muted": true})
+		rows.append({"label": "Raised", "value": "%d from graves this run" % raised_dead.size(),
+			"muted": true})
 	if not deeds.is_empty():
 		rows.append({"label": "Deeds", "value": "%d this run" % deeds.size(), "muted": true})
 	rows.append({"label": "", "value": "He does not gather, and never counts toward your workforce.", "muted": true})

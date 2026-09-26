@@ -354,6 +354,11 @@ func _death_clears_before_anything_else_reads() -> void:
 	_check("he is carrying something worth losing",
 		v.carried_total() == 5, "%d" % v.carried_total())
 
+	# Death ends the run since 2026-09-26; a Second Wake is what gets him up.
+	# Granted here so the respawn half is still tested and the run survives for
+	# the tests after this one (the ending is verify_run_lifecycle's).
+	_main.run_lifecycle.wakes_left = 1
+
 	# Connected now, so it runs AFTER CombatSystem's (connected at _ready).
 	var seen: Array = []
 	var conn := func(who, _cause: String):
@@ -368,7 +373,7 @@ func _death_clears_before_anything_else_reads() -> void:
 	_check("...and by the time a later handler looks, the haul is already gone",
 		Dictionary(seen[0]["carried"]).is_empty() and int(seen[0]["relics"]) == 0,
 		str(seen[0]))
-	_check("he respawns at full hp", v.hp == v.max_hp(), "%d" % v.hp)
+	_check("a Second Wake gets him up at full hp", v.hp == v.max_hp(), "%d" % v.hp)
 	var throne: Building = _main.settlement.get_main_building()
 	if throne:
 		var half: float = CELL * 0.5

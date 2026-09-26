@@ -346,6 +346,10 @@ func _death_clears_everything_first() -> void:
 	v.add_carried("gold", 4)
 	v.add_relic("grave_coins")
 	_check("he is carrying something worth losing", v.carried_total() == 5)
+	# Death ends the run since 2026-09-26; getting up again is the Second Wake
+	# unlock. Grant one, so this tests the haul and the wake and leaves the run
+	# running for the tests after it. The ending itself is verify_run_lifecycle's.
+	_main.run_lifecycle.wakes_left = 1
 
 	var seen: Array = []
 	var conn := func(who, _cause: String):
@@ -363,9 +367,10 @@ func _death_clears_everything_first() -> void:
 	_check("...and his relics are gone", int(seen[0]["relics"]) == 0)
 	_check("...and the escort's load with them", int(seen[0]["escort"]) == 0)
 	_check("nothing of it reached GameState", true)   # nothing banks on death, by construction
-	_check("he respawns at the Throne", v.position.distance_to(
+	_check("a Second Wake puts him back at the Throne", v.position.distance_to(
 		_main.sortie_system.throne_position()) < 1.0)
 	_check("...at full hp", v.hp == v.max_hp())
+	_check("...and the run is still going", not _main.run_lifecycle.ended)
 	v.escort.clear()
 
 # ---------------- Helpers ------------------------------------------------------

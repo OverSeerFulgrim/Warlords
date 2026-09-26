@@ -24,7 +24,11 @@ R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
 economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat,
-Command Undead) is built and verified. Win/lose is still the old placeholder; run lifecycle is R4.
+Command Undead) is built and verified. **Death ends the run** (2026-09-26): `scripts/run/`
+holds RunLifecycle (endings, XP banked per deed, Second Wake unlock) and MetaProfile
+(`user://meta_profile.json`, written only when Main is the running scene); Raise Dead is his
+first spell and there is no free starting skeleton (`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`).
+The win condition is still the legacy placeholder.
 Climate: deliberately not implemented. One villain class (Undead Empire) for now — but **no system
 may assume exactly one villain on the map** (per-villain state on the villain object, never in an
 autoload/global).
@@ -136,12 +140,12 @@ assets/official|placeholder|vendor/      see Graphics rules
   at 26px / cast to 5 cells / disengage by walking, retaliation, bounded kiting, regen halting
   under engagement, death clearing the haul before any later handler, and the 1,000-fight bands
   (one wolf: a costly win; a three-wolf pack alone: never)
-- `tools/verify_sortie.tscn` — 66 assertions: party capacity (6 alone, 14 with two skeletons) and
+- `tools/verify_sortie.tscn` — 67 assertions: party capacity (6 alone, 14 with two skeletons) and
   the villain-first filling order, overflow leaving an exact remainder, the automatic deposit
   emptying villain AND escort in one frame, **the band edge banking nothing**, the two drop paths,
   a dropped cache behaving as an ordinary site, relics waking only on deposit, and death clearing
   the haul before any later handler
-- `tools/verify_escort.tscn` — 54 assertions: binding covers undead and ONLY undead, bound escorts
+- `tools/verify_escort.tscn` — 58 assertions: binding covers undead and ONLY undead, bound escorts
   leave the labour pool and return on dismiss, the point tracks him through a terrain slide, a
   skeleton raised at a grave joins with no explicit add, both stances, the interpose firing in
   both, and guardian targeting going through `hostiles()` rather than `wolves`
@@ -150,6 +154,12 @@ assets/official|placeholder|vendor/      see Graphics rules
   roster or stat change)
 - `tools/verify_combat_feedback.tscn` — 31 assertions: one emit per landed swing both ways,
   the 32-float cap, no leak over 1000 exchanges, and Combat/Engagement still signal-free
+- `tools/verify_raise_dead.tscn` — 26 assertions: no free skeleton, Raise Dead for bones at his
+  feet, a grave's corpse as a free live Worker (through `_resolve_choice`, never `add_worker`),
+  dismissed loads banking, relic uniqueness through caches, Collect counting the escort
+- `tools/verify_run_lifecycle.tscn` — 43 assertions: the level curve, profile round trip, harness
+  profiles never persisted, XP per deed, owner checks, Second Wake, death ending the run (deferred
+  a frame), the run-end screen, and the new run's 1x clock
 - `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly
   units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs

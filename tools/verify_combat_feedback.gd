@@ -26,6 +26,9 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var main = load("res://scenes/Main.tscn").instantiate()
 	get_tree().root.add_child(main)
+	# Fixture: there is no free starting skeleton since 2026-09-26 (LIVING_WORLD
+	# ruling 9), and this harness needs one on the roster.
+	main.worker_system.add_worker(Worker.new("Skeleton Worker #1"))
 	await get_tree().process_frame
 	await get_tree().process_frame
 

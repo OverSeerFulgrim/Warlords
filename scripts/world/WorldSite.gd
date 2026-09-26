@@ -297,7 +297,15 @@ func actions_for(villain) -> Array:
 		# most likely moment to press this is the moment it cannot work, and
 		# offering it lit was a silent no-op on click (playtest, 2026-08-30).
 		# The reason travels with the row; the panel renders it.
-		var space: int = villain.carry_space() if villain else 0
+		# Resources can go to the escort's arms (the filling order); a relic
+		# only ever goes into *his* hands. Checking his hands alone greyed the
+		# button out while two empty skeletons stood beside him (review
+		# 2026-09-26).
+		var can: bool = false
+		if villain:
+			can = (not remainder.is_empty() and SortieSystem.party_space_of(villain) > 0) \
+				or (not relic_remainder.is_empty() and villain.carry_space() > 0)
+		var space: int = 1 if can else 0
 		out.append({
 			"id": "collect", "label": "Collect what you left",
 			"blurb": "Still here: %s." % _remainder_label(),
@@ -468,6 +476,8 @@ func _day() -> int:
 func _resolve_loot(villain, fraction: float, deed_id: String, axes: Dictionary,
 		notice_mult: float) -> void:
 	var rolled: Dictionary = LootCatalog.roll(loot_table, villain.drawn_relic_ids(), fraction)
+	if villain.has_method("note_relics_rolled"):
+		villain.note_relics_rolled(rolled["relics"])
 	var taken := {}
 	var left := {}
 	for kind in rolled["resources"].keys():
@@ -527,7 +537,7 @@ func _resolve_choice(villain, choice: Dictionary) -> void:
 		# invisible (playtest, 2026-08-30).
 		if dead_riser.is_valid():
 			dead_riser.call(self, villain, risen)
-		EventBus.travel_noted.emit("%s — it climbs out and stands there, waiting." % display_name, 0.0)
+		EventBus.travel_noted.emit("%s — it climbs out of the grave and answers to him." % display_name, 0.0)
 	if bool(effects.get("consume_valuables", false)):
 		# Mercy forecloses profit, permanently: the valuables are gone, and the
 		# grave is finished on the spot.
@@ -567,6 +577,8 @@ func _grave_finished() -> bool:
 
 func _take_into_hands(villain, table_id: String, fraction: float) -> void:
 	var rolled: Dictionary = LootCatalog.roll(table_id, villain.drawn_relic_ids(), fraction)
+	if villain.has_method("note_relics_rolled"):
+		villain.note_relics_rolled(rolled["relics"])
 	var taken := {}
 	for kind in rolled["resources"].keys():
 		var amount: int = int(rolled["resources"][kind])

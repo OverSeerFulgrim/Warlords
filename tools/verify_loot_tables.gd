@@ -581,11 +581,12 @@ func _raising_a_corpse_is_visible() -> void:
 	_check("...a live node, at the graveside", is_instance_valid(body)
 		and body.position.distance_to(site.position) < float(SettlementGrid.CELL_SIZE) * 1.5,
 		"%.0f px away" % body.position.distance_to(site.position))
-	_check("...that draws over the villain's own ledger entry, not a copy of it",
-		body.entry == v.raised_dead[v.raised_dead.size() - 1])
-	_check("...is dormant, because there is no escort to bind it to yet",
-		body.is_dormant())
-	_check("...and is clickable", sites.pick_at(body.position) == body)
+	var entry: Dictionary = v.raised_dead[v.raised_dead.size() - 1]
+	_check("...that the villain's own ledger entry points at", entry.get("unit") == body)
+	_check("...live from its first frame, not dormant (ruling C, 2026-09-26)",
+		not bool(entry.get("dormant", true)))
+	_check("...and a real skeleton on the roster", body is Worker
+		and _main.worker_system.workers.has(body))
 
 	_check("the corpse charge is taken -- it cannot be raised twice",
 		not _ids(site.sheet_choices(v)).has("raise"), str(_ids(site.sheet_choices(v))))

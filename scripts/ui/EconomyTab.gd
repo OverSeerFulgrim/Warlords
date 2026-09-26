@@ -45,7 +45,10 @@ func build(cmd_town: VBoxContainer, worker_system: WorkerSystem, resource_field:
 	economy_row.add_child(economy_actions)
 
 	var recruit := Button.new()
-	recruit.text = "Recruit Worker (5 Bones)"
+	# Raise Dead, cast at his feet (ruling C, 2026-09-26) -- the same spell as
+	# his panel's button and the R key.
+	recruit.text = "Raise Dead (%d Bones)  [R]" % int(WorkerSystem.RECRUIT_COST.get("bones", 0))
+	recruit.tooltip_text = "A skeleton claws its way out of the ground where the Necromancer stands. Graves give one free."
 	recruit.pressed.connect(func(): recruit_worker_pressed.emit())
 	economy_actions.add_child(recruit)
 	# Forge Equipment, Train Followers and Dispatch Mission are hard-locked

@@ -22,9 +22,11 @@ extends Node
 ## - Follow toggling has to refresh the HUD strip too; routing it through
 ##   Main.gd keeps this module from reaching into another one.
 
-## The Keep's Recruit Worker button. Same handler the Economy tab's button uses.
+## Raise Dead, paid in bones, at his feet (ruling C, 2026-09-26). Same handler
+## the Economy tab's button and the R key use. The name is historical.
 signal recruit_worker_pressed
-## The Keep's Surrender button -- closes the inspector and reloads the run.
+## The Keep's Surrender button -- ends the run (RunLifecycle.abandon) and
+## brings up the run-end screen.
 signal surrender_requested
 ## Command Undead / Move the rally point: asks Main.gd to enter rally placement
 ## mode, which first has to cancel any build or demolish mode in force.
@@ -65,6 +67,9 @@ var _villain: Necromancer
 ## The return leg, for the Drop rows and the party-carry line.
 var _sortie_system: SortieSystem
 var _world_sites: WorldSites
+## "Level 3 — 120 / 200 XP" for the top of his panel. A Callable handed in by
+## Main, because the profile is the run's and this module only builds buttons.
+var progress_line_provider: Callable = Callable()
 
 func setup(undead_command: UndeadCommand, inspector: InspectionPanel,
 		villain_controller: VillainController, villain: Necromancer = null,
@@ -198,11 +203,8 @@ func actions_for_building(building: Building) -> Callable:
 
 ## The old Keep menu, now the Throne's action block.
 func keep_actions(box: VBoxContainer) -> void:
-	var recruit := Button.new()
-	recruit.text = "Recruit Worker (5 Bones)"
-	recruit.pressed.connect(func(): recruit_worker_pressed.emit())
-	box.add_child(recruit)
-
+	# No recruit button here any more: the dead are raised by *him*, where he
+	# stands (his panel, the Economy tab, or R) -- ruling C, 2026-09-26.
 	# Not a real feature yet -- a visible placeholder so clicking the Keep
 	# already shows where building upgrades will eventually live, per the
 	# "possibly get upgrades down the road" design note, rather than that
@@ -216,7 +218,7 @@ func keep_actions(box: VBoxContainer) -> void:
 	var surrender := Button.new()
 	surrender.text = "Surrender"
 	surrender.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
-	surrender.tooltip_text = "Abandon this run and start over."
+	surrender.tooltip_text = "Abandon this run. XP earned so far is kept; the run-end screen lets you start again."
 	surrender.pressed.connect(func(): surrender_requested.emit())
 	box.add_child(surrender)
 
@@ -224,6 +226,25 @@ func keep_actions(box: VBoxContainer) -> void:
 ## still the "visible promise" treatment (a real disabled Button, so the shape
 ## of the future feature is legible).
 func necromancer_actions(box: VBoxContainer) -> void:
+	if progress_line_provider.is_valid():
+		var line := Label.new()
+		line.text = String(progress_line_provider.call())
+		line.add_theme_font_size_override("font_size", 11)
+		line.modulate = Color(0.85, 0.78, 1.0)
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		line.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
+		box.add_child(line)
+
+	# **Raise Dead -- his first spell** (ruling C, 2026-09-26). A corpse in a
+	# grave is raised for free from the grave's own sheet; this is the version
+	# that needs no corpse and costs bones instead, cast wherever he stands.
+	var raise := Button.new()
+	raise.text = "Raise Dead (%d Bones)  [R]" % int(WorkerSystem.RECRUIT_COST.get("bones", 0))
+	raise.tooltip_text = "A skeleton claws its way out of the ground at his feet. Graves give you one free -- open a grave and choose Raise the corpse."
+	raise.disabled = not GameState.can_afford_cost(WorkerSystem.RECRUIT_COST)
+	raise.pressed.connect(func(): recruit_worker_pressed.emit())
+	box.add_child(raise)
+
 	var cast := Button.new()
 	cast.text = "Command Undead" if not _undead_command.is_active() else "Command Undead — move rally point"
 	cast.tooltip_text = "Plant a rally point. Every skeleton marches to it and stops gathering."
@@ -255,11 +276,6 @@ func necromancer_actions(box: VBoxContainer) -> void:
 			_inspector.refresh()
 		)
 		box.add_child(dismiss)
-
-	var more := Button.new()
-	more.text = "Further spells — coming soon"
-	more.disabled = true
-	box.add_child(more)
 
 	_drop_rows(box)
 

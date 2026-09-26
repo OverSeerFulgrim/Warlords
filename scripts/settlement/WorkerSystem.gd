@@ -24,8 +24,8 @@ class_name WorkerSystem
 ##     Skeleton's Woodcutting 3 takes ~6.7s per log where a human peasant's 5
 ##     takes exactly 4s -- deliberately matching the old flat tick, so the
 ##     overall pacing of the early game survives the rewrite.
-##   - **Carry capacity = Might** decides trip length. A Might-4 skeleton
-##     hauls 4 units and walks back; a future Ogre would haul 9.
+##   - **Carry capacity = Endurance** decides trip length. An End-4 skeleton
+##     hauls 4 units and walks back; an End-8 Ogre would haul 8.
 ##
 ## The one carry-capacity exception is a deer: `yield_per_action` 8 in one
 ## kill, hauled home whole (see ResourceNode.make_deer's comment for why).
@@ -35,6 +35,9 @@ class_name WorkerSystem
 ## cycle-button UI, and GAME_OUTLINE Stage 1 explicitly calls for a ranked
 ## list with thresholds instead.
 
+## What Raise Dead costs when there is no corpse to hand -- paid from the banked
+## stockpile, cast wherever he stands (ruling C, 2026-09-26). A corpse raised
+## from a grave is free; that is the grave's whole point.
 const RECRUIT_COST := {"bones": 5}
 
 ## How close (px) counts as "arrived". Generous enough that a worker never
@@ -164,6 +167,14 @@ func _advance_laborer(w: Laborer, delta: float) -> void:
 ## -- the keep for Workers and Barracks residents, their own doorstep once a
 ## recruit's house is funded.
 func _tick_idle(w: Laborer, delta: float) -> void:
+	# **Bank before anything else.** An idle unit can be holding a load it did
+	# not gather on a trip -- an escort skeleton dismissed with a relic-run's gold
+	# in its arms. Sending it out to gather would overwrite `carrying_kind` and
+	# turn 4 gold into 4+N wood (review 2026-09-26); walking it home banks the
+	# load through the ordinary deposit, which is the banking rule applied as-is.
+	if w.carrying_amount > 0:
+		w.stage = Laborer.TripStage.WALK_HOME
+		return
 	var node := _pick_target_for(w)
 	if node:
 		w.target_node = node
@@ -365,8 +376,9 @@ func _rethink_all() -> void:
 
 # ---------------- Roster ----------------
 
-## Adds a Worker directly, no cost -- used for the free starting laborer.
-## Player-recruited workers go through recruit_worker() instead.
+## Adds a Worker directly at home, no cost. Harness fixtures use it; the game
+## raises its dead through raise_skeleton_at() (there is no free starting
+## skeleton since 2026-09-26 -- LIVING_WORLD ruling 9).
 func add_worker(worker: Worker) -> void:
 	worker.position = home_position
 	worker.idle_target = home_position
@@ -384,18 +396,39 @@ func remove_worker(worker: Worker) -> void:
 	workers.erase(worker)
 	EventBus.worker_count_changed.emit(workers.size())
 
-## Player-facing recruitment: costs RECRUIT_COST, returns null (and spends
-## nothing) if unaffordable.
-func recruit_worker(worker_name: String) -> Worker:
-	if not GameState.can_afford_cost(RECRUIT_COST):
-		return null
-	for kind in RECRUIT_COST.keys():
-		if not GameState.spend_resource(kind, RECRUIT_COST[kind]):
-			push_warning("WorkerSystem: spend_resource('%s') failed after can_afford_cost passed." % kind)
+## A skeleton climbs out of the ground at `at` and joins the roster.
+##
+## **The one way the dead arrive** (ruling C, 2026-09-26): a corpse raised from
+## a grave passes an empty `cost`; Raise Dead without a corpse passes
+## RECRUIT_COST. Returns null, spending nothing, when the cost can't be paid.
+##
+## It is an ordinary Worker from its first frame -- in the labour pool, walking
+## home to work -- which is what makes it join an active escort with no extra
+## code: `UndeadCommand` re-binds every undead on the roster each frame. The
+## 2026-09-26 review found that this used to be a promise the code never kept:
+## raised corpses were inert views that nothing ever turned into units.
+func raise_skeleton_at(at: Vector2, worker_name: String, cost: Dictionary = {}) -> Worker:
+	if not cost.is_empty():
+		if not GameState.can_afford_cost(cost):
 			return null
+		for kind in cost.keys():
+			if not GameState.spend_resource(kind, int(cost[kind])):
+				push_warning("WorkerSystem: spend_resource('%s') failed after can_afford_cost passed." % kind)
+				return null
 	var w := Worker.new(worker_name)
 	add_worker(w)
+	w.position = at
+	w.idle_target = at
 	return w
+
+## Next free "Skeleton Worker #n" name.
+func next_skeleton_name() -> String:
+	return "Skeleton Worker #%d" % (workers.size() + 1)
+
+## Raise Dead at home, for RECRUIT_COST. Kept for callers that predate
+## raise_skeleton_at().
+func recruit_worker(worker_name: String) -> Worker:
+	return raise_skeleton_at(home_position, worker_name, RECRUIT_COST)
 
 func idle_workers() -> Array:
 	return workers.filter(func(w): return w.stage == Laborer.TripStage.IDLE)

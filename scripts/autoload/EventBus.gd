@@ -111,9 +111,25 @@ signal damage_shown(unit, amount: int, kind: String)
 ## of him -- ROGUELITE_REWORK section 11. Emitted from Necromancer.take_damage()
 ## so that *anything* which can damage him announces it, not just CombatSystem.
 ##
-## Nothing ends the run on this yet: the run lifecycle is rework stage R4. For
-## now Main logs it, loudly, so the moment is impossible to miss in testing.
+## Since 2026-09-26 this **ends the run** unless a Second Wake is left:
+## `RunLifecycle` decides, after `SortieSystem` has cleared the haul and
+## `CombatSystem` has taken him out of every fight.
 signal villain_died(villain, cause: String)
+
+# ---- The run (RunLifecycle, 2026-09-26) ----
+## A skeleton came out of the ground for this villain. `source` is "grave" (a
+## corpse raised from a grave, free) or "bones" (Raise Dead paid in bones).
+signal skeleton_raised(villain, unit, source: String)
+## XP banked this instant (ROGUELITE_REWORK section 9). `total` is the class's
+## lifetime XP after it.
+signal xp_gained(villain, amount: int, total: int, reason: String)
+## Crossed a level threshold. `unlocks` is what that level brought, often [].
+signal villain_levelled(villain, level: int, unlocks: Array)
+## Died, and a Second Wake put him back at the Throne instead of ending the run.
+signal villain_woke(villain, wakes_left: int)
+## The run is over. `summary` is RunLifecycle.summary -- the run-end screen's
+## whole payload, so the view needs no references.
+signal run_ended(villain, summary: Dictionary)
 ## A journey milestone -- left the lair band, reached a landmark, came home.
 ## Carries the elapsed game-seconds so the log can show pacing without
 ## recomputing it. See TravelLog.gd: travel time is WORLD_MAP_PLAN §3's exit

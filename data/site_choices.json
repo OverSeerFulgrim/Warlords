@@ -7,7 +7,7 @@
 			{
 				"id": "raise",
 				"label": "Raise the corpse",
-				"blurb": "It walks out of its own grave and falls in behind you.",
+				"blurb": "It climbs out of its own grave, free. It falls in behind you if your escort is up; otherwise it walks home to work.",
 				"requires": ["corpse"],
 				"channel_seconds": 4.0,
 				"channel_tags": ["grave"],

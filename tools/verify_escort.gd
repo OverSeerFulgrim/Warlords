@@ -28,6 +28,9 @@ func _ready() -> void:
 	await get_tree().process_frame
 	_main = load("res://scenes/Main.tscn").instantiate()
 	get_tree().root.add_child(_main)
+	# Fixture: there is no free starting skeleton since 2026-09-26 (LIVING_WORLD
+	# ruling 9), and this harness needs one on the roster.
+	_main.worker_system.add_worker(Worker.new("Skeleton Worker #1"))
 	for i in range(10):
 		await get_tree().process_frame
 
@@ -218,12 +221,34 @@ func _a_raised_skeleton_joins() -> void:
 	await get_tree().process_frame
 	var before: int = v.escort.size()
 
-	# A corpse comes out of the ground beside him. Added to the roster exactly
-	# as the settlement adds one -- nothing here touches the escort.
-	var risen := Worker.new("Risen at a grave")
-	risen.position = v.position + Vector2(20, 0)
-	ws.add_worker(risen)
-	_check("the new skeleton is not bound yet", not risen.rallied)
+	# **Raised through the grave's own sheet**, not added by hand. The first
+	# version of this test did `ws.add_worker(Worker.new(...))` and passed while
+	# the game's real raise produced an inert view that never joined anything
+	# (review 2026-09-26). This goes through `_resolve_choice`, the same call the
+	# channel makes when it completes.
+	var grave: WorldSite = null
+	for s in _main.world_sites.sites:
+		if s.site_id == "derelict_graveyard":
+			grave = s
+	_check("a graveyard to raise from", grave != null)
+	if grave == null:
+		return
+	var raise: Dictionary = {}
+	for c in grave.sheet_choices(v):
+		if String(c.get("id", "")) == "raise":
+			raise = c
+	_check("...offering Raise the corpse", not raise.is_empty())
+	var roster_before: int = ws.workers.size()
+	grave._resolve_choice(v, raise)
+	_check("the corpse is a skeleton on the roster now", ws.workers.size() == roster_before + 1,
+		"%d -> %d" % [roster_before, ws.workers.size()])
+	if ws.workers.size() <= roster_before:
+		return
+	var risen = ws.workers[ws.workers.size() - 1]
+	_check("...standing at the graveside",
+		risen.position.distance_to(grave.position) < float(SettlementGrid.CELL_SIZE) * 1.5)
+	_check("...and the ledger entry is live, not dormant",
+		not bool(v.raised_dead[v.raised_dead.size() - 1].get("dormant", true)))
 
 	uc._process(0.1)
 	_check("one frame later it is bound", risen.rallied)

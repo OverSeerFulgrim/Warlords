@@ -148,8 +148,8 @@ func _raise_through_the_sheet() -> void:
 		_ok("...it is clickable in the world", _main._inspect_at(body.position)
 			and _main.inspector.current_source() == body,
 			str(_main.inspector.current_source()))
-		_ok("...and inspects as what it is",
-			String(body.get_inspect_data()["title"]) == "A Raised Corpse")
+		_ok("...and it is a real skeleton, not scenery (ruling C, 2026-09-26)",
+			body is Worker and _main.worker_system.workers.has(body))
 
 # ---------------- Helpers -----------------------------------------------------
 

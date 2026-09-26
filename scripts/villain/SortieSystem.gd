@@ -94,10 +94,32 @@ func party_space() -> int:
 ## because reusing those fields means the worker deposit path works on it
 ## unchanged.
 func _member_capacity(member) -> int:
-	return maxi(1, member.attribute("endurance")) if member.has_method("attribute") else 0
+	return member_capacity(member)
 
 func _member_space(member) -> int:
-	return maxi(0, _member_capacity(member) - int(member.carrying_amount))
+	return member_space(member)
+
+## Static so a site can ask "is there room anywhere in this party?" about the
+## villain who walked up, without holding a SortieSystem -- the same
+## passed-as-a-parameter rule `take_into_party` follows.
+static func member_capacity(member) -> int:
+	return maxi(1, member.attribute("endurance")) if member.has_method("attribute") else 0
+
+static func member_space(member) -> int:
+	return maxi(0, member_capacity(member) - int(member.carrying_amount))
+
+## His free hands plus every escort member's free arms. Not kind-aware: a member
+## already hauling bones has room for bones only, so this is an upper bound --
+## good enough to decide whether a Collect can do *anything*, which is its one
+## caller's question.
+static func party_space_of(who) -> int:
+	if who == null:
+		return 0
+	var space: int = who.carry_space()
+	if "escort" in who:
+		for member in who.escort:
+			space += member_space(member)
+	return space
 
 ## **Filling order: villain first, escort second, remainder third** (section 2).
 ## Not the reverse -- the villain is who survives, and if the party is going to
@@ -276,13 +298,15 @@ func _spawn_cache() -> WorldSite:
 ## shipping a version where death is free teaches the player the opposite of the
 ## lesson the whole run frame depends on.
 ##
-## R2 has no run lifecycle: he respawns at the Throne at full hp, the log is
-## loud, and R4 owns the rest. Moved here from `CombatSystem` in R2c, which is
-## exactly what that file's comment said would happen.
+## **Only the haul.** Whether he gets up again is `RunLifecycle`'s question
+## (2026-09-26: death ends the run; a Second Wake is an unlock), and it is
+## answered after this handler and CombatSystem's have both run. This used to
+## respawn and heal him here, which is also why CombatSystem's defeat branch
+## for the Necromancer could never see him dead.
 func _on_villain_died(who, _cause: String) -> void:
 	# Only our own. `villain_died` is a global signal and every villain emits
-	# it; respawning somebody else's at *our* Throne is the mistake section 11
-	# exists to prevent, and the harness simulates enough deaths to prove it.
+	# it; clearing somebody else's hands is the mistake section 11 exists to
+	# prevent, and the harness simulates enough deaths to prove it.
 	if who == null or who != villain:
 		return
 	who.carried.clear()
@@ -290,10 +314,6 @@ func _on_villain_died(who, _cause: String) -> void:
 	for member in who.escort:
 		member.carrying_amount = 0
 		member.carrying_kind = ""
-	var at: Vector2 = throne_position()
-	if at != Vector2.INF:
-		who.place_at(at)
-	who.heal_full()
 
 # ---------------- Readouts ----------------------------------------------------
 

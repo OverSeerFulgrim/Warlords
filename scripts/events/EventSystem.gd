@@ -42,7 +42,13 @@ func _ready() -> void:
 ## choices (see _fire_recruit_offer). Fizzling the event entirely would make a
 ## full Barracks look identical to a broken event timer.
 func events_enabled() -> bool:
-	return settlement != null and settlement.has_barracks()
+	return TIMED_RECRUIT_OFFERS and settlement != null and settlement.has_barracks()
+
+## **Off, by ruling (2026-09-26).** ROGUELITE_REWORK section 7: "the timed recruit
+## event is dead" -- followers come because of deeds, never on a timer. The
+## offer machinery (RecruitGenerator, the Barracks gate, the panel) is kept
+## intact for R3 to re-trigger from reputation; only the clock is stopped.
+const TIMED_RECRUIT_OFFERS := false
 
 func _process(delta: float) -> void:
 	if not events_enabled():
