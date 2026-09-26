@@ -499,7 +499,7 @@ func _resolve_loot(villain, fraction: float, deed_id: String, axes: Dictionary,
 	pulls_taken += 1
 	_apply_notice(villain, notice_mult)
 	if deed_id != "":
-		villain.record_deed(deed_id, axes, _day())
+		villain.record_deed(deed_id, axes, _day(), band)
 	_refresh_sprite()
 	EventBus.site_looted.emit(villain, self, taken)
 	_roll_guardian(villain)
@@ -559,7 +559,7 @@ func _resolve_choice(villain, choice: Dictionary) -> void:
 
 	_apply_notice(villain, notice_mult)
 	if deed_id != "":
-		villain.record_deed(deed_id, axes, _day())
+		villain.record_deed(deed_id, axes, _day(), band)
 	EventBus.site_choice_resolved.emit(villain, self, String(choice.get("id", "")))
 
 	if _grave_finished():
@@ -623,11 +623,11 @@ func mark_cleared(villain) -> void:
 		# Section 3b: clearing a den is a **Power deed** ("battles won, monsters
 		# slain") and modest notice -- wolves have no lord, but a silenced
 		# forest gets talked about.
-		villain.record_deed("cleared_a_den", {"power": 1}, _day())
+		villain.record_deed("cleared_a_den", {"power": 1}, _day(), band)
 		_apply_notice(villain, 1.0)
 		EventBus.travel_noted.emit("%s — the pack is finished. That is one den fewer." % display_name, 0.0)
 	else:
-		villain.record_deed("cleared_a_site", {"power": 1}, _day())
+		villain.record_deed("cleared_a_site", {"power": 1}, _day(), band)
 		EventBus.travel_noted.emit("%s — nothing left standing in your way." % display_name, 0.0)
 	_refresh_sprite()
 

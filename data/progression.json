@@ -1,36 +1,48 @@
 {
-	"_comment": "Meta-progression, R5-lite (ROGUELITE_REWORK section 9, ruled 2026-09-26: death ends the run; a run-end screen shows run stats, XP and character level; waking at the Throne is an unlock). XP is BANKED THE INSTANT IT IS EARNED -- a death two hours in still counts. Levels are computed from total XP at read time, never stored. Unlocks widen the option pool and never raise numbers (LIVING_WORLD ruling 1); second_wake is the one designer-sanctioned bend, the way carried relics are ROGUELITE section 10's. Every number here is a playtest hypothesis.",
+	"_comment": "Meta-progression (ROGUELITE_REWORK sections 9 and 17). Every XP number and the level curve come from the formulas below; docs/design/PROGRESSION.md prints the resulting tables and the reasoning. XP is banked the instant it is earned. Levels are computed from total XP, never stored, so changing a number here re-levels every profile. Unlocks widen options and never raise numbers (Second Wake is the one sanctioned bend). All values are playtest hypotheses.",
 
-	"deed_xp": {
-		"_comment": "Keyed by the deed ids Necromancer.record_deed() writes. Anything not listed pays `default`.",
+	"deed_base": {
+		"_comment": "XP for a deed = deed_base[id] x band_multiplier[band of the site it happened at]. Three sizes: 5 for tidying up, 10 for an act, 30 for a fight won. Anything unlisted pays `default`.",
 		"default": 5,
+		"destroy_the_evidence": 5,
 		"loot_the_site": 10,
-		"raise_the_dead": 15,
+		"raise_the_dead": 10,
 		"rob_the_dead": 10,
 		"return_the_belongings": 10,
-		"destroy_the_evidence": 5,
 		"rob_a_shrine": 10,
 		"honour_a_shrine": 10,
 		"desecrate_a_shrine": 10,
-		"cleared_a_site": 40,
-		"cleared_a_den": 50
+		"cleared_a_site": 30,
+		"cleared_a_den": 30
+	},
+
+	"band_multiplier": {
+		"_comment": "Risk pays: the same act is worth band x as much, because distance and danger are the cost (WORLD_MAP_PLAN bands). A deed with no band counts as band 1.",
+		"1": 1,
+		"2": 2,
+		"3": 3,
+		"4": 4
 	},
 
 	"event_xp": {
-		"_comment": "Battles won and things brought home. `banked_unit` is per unit of loot deposited at the Throne from a sortie; `relic_banked` is per relic.",
-		"wolf_killed": 10,
+		"_comment": "Flat, because none of these has a band. `banked_unit` is per unit of sortie loot deposited at the Throne; `relic_banked` per relic.",
+		"wolf_killed": 5,
 		"building_placed": 5,
 		"banked_unit": 1,
-		"relic_banked": 25
+		"relic_banked": 20
 	},
 
 	"run_end_xp": {
-		"_comment": "Paid once, when the run ends, however it ends. `per_day` is per full game day survived.",
-		"per_day": 20,
-		"victory": 200
+		"_comment": "Paid once when the run ends, however it ends. `per_day` is per full game day survived.",
+		"per_day": 25,
+		"victory": 250
 	},
 
-	"level_thresholds": [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200, 4000, 5000, 6200, 7600, 9200, 11000],
+	"level_curve": {
+		"_comment": "Going from level L to L+1 costs step x L XP, so level L needs step x L x (L-1) / 2 in total: 100, 300, 600, 1000, 1500 ... Each level costs one more step than the last.",
+		"step": 100,
+		"max_level": 20
+	},
 
 	"unlocks": [
 		{

@@ -26,7 +26,9 @@ enum ThreatTier { LOW, MEDIUM, HIGH }
 # Starting values are FOUNDATION_SPEC section 10's Stage-0 table -- dark
 # essence starts at 0 because harvest bounties (its only source) are locked.
 var dark_essence: int = 0
-var bones: int = 10
+## 3, below Raise Dead's 5 (ruling 2026-09-26): the first dead must come from a
+## grave, never from the stockpile on minute one.
+var bones: int = 3
 var wood: int = 8
 var stone: int = 5
 var food: int = 5
@@ -250,7 +252,7 @@ func lose_game(reason: String) -> void:
 ## Surrender button and the future game-over restart panel.
 func reset() -> void:
 	dark_essence = 0
-	bones = 10
+	bones = 3
 	wood = 8
 	stone = 5
 	food = 5

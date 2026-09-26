@@ -44,7 +44,8 @@ static func data() -> Dictionary:
 				_data = parsed
 		if _data.is_empty():
 			push_error("MetaProfile: %s missing or not a JSON object." % DATA_PATH)
-			_data = {"level_thresholds": [0], "unlocks": [], "deed_xp": {}, "event_xp": {}, "run_end_xp": {}}
+			_data = {"level_curve": {"step": 100, "max_level": 20}, "unlocks": [], "deed_base": {},
+				"band_multiplier": {}, "event_xp": {}, "run_end_xp": {}}
 	return _data
 
 # ---------------- Load / save -------------------------------------------------
@@ -94,22 +95,40 @@ func add_xp(class_id: String, amount: int) -> int:
 func level(class_id: String) -> int:
 	return MetaProfile.level_for_xp(xp(class_id))
 
+## Total XP needed to *be* level `lvl`: step x L x (L-1) / 2 (docs/design/PROGRESSION.md).
+static func threshold(lvl: int) -> int:
+	var step: int = int(data().get("level_curve", {}).get("step", 100))
+	# L x (L-1) is always even, so the division is exact.
+	@warning_ignore("integer_division")
+	return step * lvl * (lvl - 1) / 2
+
+static func max_level() -> int:
+	return int(data().get("level_curve", {}).get("max_level", 20))
+
 static func level_for_xp(total: int) -> int:
-	var thresholds: Array = data().get("level_thresholds", [0])
 	var lvl: int = 1
-	for i in range(thresholds.size()):
-		if total >= int(thresholds[i]):
-			lvl = i + 1
+	while lvl < max_level() and total >= threshold(lvl + 1):
+		lvl += 1
 	return lvl
 
 ## `[xp into this level, xp this level spans]`; the span is 0 at the cap.
 static func level_progress(total: int) -> Array:
-	var thresholds: Array = data().get("level_thresholds", [0])
 	var lvl: int = level_for_xp(total)
-	var floor_xp: int = int(thresholds[lvl - 1])
-	if lvl >= thresholds.size():
-		return [total - floor_xp, 0]
-	return [total - floor_xp, int(thresholds[lvl]) - floor_xp]
+	if lvl >= max_level():
+		return [total - threshold(lvl), 0]
+	return [total - threshold(lvl), threshold(lvl + 1) - threshold(lvl)]
+
+## XP for one deed: its base size times the band it happened in. Unknown deeds
+## pay `default`; a deed with no band (0) counts as band 1.
+static func deed_xp(deed_id: String, band: int) -> int:
+	var bases: Dictionary = data().get("deed_base", {})
+	var base: int = int(bases.get(deed_id, bases.get("default", 0)))
+	var mults: Dictionary = data().get("band_multiplier", {})
+	var b: int = clampi(band, 1, 4)
+	return base * int(mults.get(str(b), b))
+
+static func event_xp(key: String) -> int:
+	return int(data().get("event_xp", {}).get(key, 0))
 
 # ---------------- Unlocks -----------------------------------------------------
 

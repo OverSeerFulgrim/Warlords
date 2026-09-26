@@ -192,7 +192,11 @@ func _ready() -> void:
 	_frame_camera_on_throne()          # best effort now...
 	_settle_initial_camera_framing()   # ...and again once the HUD has laid out
 	get_viewport().size_changed.connect(_on_viewport_resized)
-	_log("Undead Empire prototype started. Frozen Wastes climate (placeholder).")
+	# The opening, in one line. He starts with no dead and too few bones to
+	# raise one (rulings 2026-09-26), so the first thing the player needs to
+	# know is where the dead are. fresh_grave_hollow is Band 1, about ten cells
+	# northwest of the Throne.
+	_log("[color=#b8a0e0]He has no dead yet, and three bones will not raise one. There are graves in the hollow to the northwest — open one and raise what is inside.[/color]", "events")
 
 # ---------------- Camera framing ----------------
 

@@ -39,8 +39,9 @@ func _no_free_skeleton() -> void:
 	print("-- No free skeleton at the start (LIVING_WORLD ruling 9) --")
 	_check("the roster starts empty", _main.worker_system.workers.is_empty(),
 		"%d workers" % _main.worker_system.workers.size())
-	_check("...and the starting bones pay for Raise Dead",
-		GameState.can_afford_cost(WorkerSystem.RECRUIT_COST), "bones=%d" % GameState.bones)
+	_check("...and the starting bones do NOT pay for Raise Dead -- the first dead come from a grave",
+		not GameState.can_afford_cost(WorkerSystem.RECRUIT_COST) and GameState.bones == 3,
+		"bones=%d" % GameState.bones)
 
 # ---------------- Bones --------------------------------------------------------
 

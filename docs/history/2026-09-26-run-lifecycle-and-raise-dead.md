@@ -8,8 +8,8 @@ the R2 close-out bugs the review found, and one new directory (`scripts/run/`).
 1. **Raise Dead is his starting spell (ruling C).** A corpse in a grave is raised **free**, from the
    grave's own sheet. Without a corpse, Raise Dead costs **5 bones** from the stockpile and works
    wherever he stands (his panel, the Economy tab, or **R**). There is no free starting skeleton
-   (LIVING_WORLD ruling 9); the 10 starting bones buy two raises on minute one if the player wants
-   them instead of walking to a grave.
+   (LIVING_WORLD ruling 9), and he starts with **3 bones** — too few to raise one — so the first dead
+   always come from a grave (follow-up ruling, same day). The opening log line points at the hollow.
 2. **Death ends the run.** A run-end screen shows how it ended, the run's stats, XP earned, level and
    progress to the next level, the next unlock, and the last five chronicle lines. One button: begin
    a new run.
@@ -67,7 +67,7 @@ its own `user://_verify_run_lifecycle_profile.json` and deletes it.
 
 ## Harnesses
 
-New: `tools/verify_raise_dead.tscn` (26) and `tools/verify_run_lifecycle.tscn` (43). Changed:
+New: `tools/verify_raise_dead.tscn` (26) and `tools/verify_run_lifecycle.tscn` (49). Changed:
 `verify_escort` now raises through the grave's `_resolve_choice` instead of `add_worker` (58);
 `verify_sortie` / `verify_villain_combat` grant a Second Wake before their death test so the haul and
 the wake are still tested and the run survives for the tests after (67 / 65); `verify_stats`,
@@ -78,17 +78,25 @@ Scripted playthrough (headless, game-mode, persistent profile): R-key raise → 
 `fresh_grave_hollow`, raise free → escort 2 → clear `wolf_den_valley` (villain down to 2–9 hp across
 two runs) → loot → deposit → dismiss → walk alone into `wolf_den_southwood` → slain → run-end screen
 up, tree paused → "Begin a new run" → 1x, unpaused, 0 workers, 10 bones, XP kept, level 2, chronicle
-1. One sortie is ~90–100 XP; Second Wake (700 XP) lands around the sixth run. Screenshot of the
+1. (Under the first XP table; see the follow-up below for the formulas that replaced it.) Screenshot of the
 screen taken under Xvfb and checked by eye.
 
 ## Needs a human
 
 - The run-end screen and the level line in his panel at your real window size and font.
-- Whether 10 starting bones (two raises on minute one) undercuts "the first dead come from graves".
-  Lower `GameState` starting bones below 5 if the grave should be mandatory.
 - A raised skeleton walks home **in a straight line through terrain**, like every worker. Near the
   lair that never showed; from a far grave it will.
-- XP numbers, the curve, and Second Wake's level — all in `data/progression.json`.
+- XP numbers, the curve, and Second Wake's level — all in `data/progression.json`, explained with
+  printed tables in `docs/design/PROGRESSION.md`.
+
+## Follow-up rulings, same day
+
+- **Starting bones are 3** (`GameState`, both the initial value and `reset()`).
+- **XP comes from formulas, with a table.** A deed pays `base × band` (bases 5 / 10 / 30, band 1–4);
+  wolves, buildings and banked loot are flat; survival pays 25 a day; level *L* needs
+  `100 × L × (L−1) / 2`. The band rides in the deed's ledger entry (`record_deed(..., band)`), so no
+  signal's arity changed. Second Wake stays at level 5, now 1,000 XP — about nine ordinary runs.
+  `docs/design/PROGRESSION.md` holds the formulas and the tables they produce.
 
 ## Not done
 

@@ -157,7 +157,7 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `tools/verify_raise_dead.tscn` — 26 assertions: no free skeleton, Raise Dead for bones at his
   feet, a grave's corpse as a free live Worker (through `_resolve_choice`, never `add_worker`),
   dismissed loads banking, relic uniqueness through caches, Collect counting the escort
-- `tools/verify_run_lifecycle.tscn` — 43 assertions: the level curve, profile round trip, harness
+- `tools/verify_run_lifecycle.tscn` — 49 assertions: the XP and level formulas (docs/design/PROGRESSION.md), profile round trip, harness
   profiles never persisted, XP per deed, owner checks, Second Wake, death ending the run (deferred
   a frame), the run-end screen, and the new run's 1x clock
 - `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly

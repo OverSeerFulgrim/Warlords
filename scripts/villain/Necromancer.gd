@@ -566,10 +566,15 @@ func dawn_heal() -> int:
 ## reads none of it beyond the log line. The entry is stamped with the game day
 ## because R3 may replay the ledger rather than subscribe, and an unordered
 ## ledger is archaeology.
-func record_deed(deed_id: String, axes: Dictionary, day: int) -> void:
+##
+## `band` is the danger band the deed happened in (1-4; 0 when it has none). It
+## rides in the ledger entry rather than the signal, so no handler's arity
+## changes; XP reads it (docs/design/PROGRESSION.md: risk pays).
+func record_deed(deed_id: String, axes: Dictionary, day: int, band: int = 0) -> void:
 	if deed_id == "":
 		return
-	deeds.append({"id": deed_id, "axes": axes.duplicate(), "day": day, "seq": deeds.size()})
+	deeds.append({"id": deed_id, "axes": axes.duplicate(), "day": day, "seq": deeds.size(),
+		"band": band})
 	EventBus.deed_committed.emit(self, deed_id, axes)
 
 ## The four-way sheet's "raise the corpse". Appends the ledger entries and

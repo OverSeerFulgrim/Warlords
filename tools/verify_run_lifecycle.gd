@@ -38,14 +38,24 @@ func _ready() -> void:
 	get_tree().quit(1 if _failed > 0 else 0)
 
 func _the_curve() -> void:
-	print("-- Levels are computed from XP --")
-	var t: Array = MetaProfile.data().get("level_thresholds", [])
-	_check("the table has a curve", t.size() >= 5 and int(t[0]) == 0)
+	print("-- Levels and XP come from the formulas (docs/design/PROGRESSION.md) --")
+	var step: int = int(MetaProfile.data()["level_curve"]["step"])
+	_check("level 1 starts at 0", MetaProfile.threshold(1) == 0)
+	_check("level 2 costs one step", MetaProfile.threshold(2) == step)
+	_check("each level costs one step more than the last",
+		MetaProfile.threshold(4) - MetaProfile.threshold(3) == 3 * step
+		and MetaProfile.threshold(5) - MetaProfile.threshold(4) == 4 * step)
 	_check("0 XP is level 1", MetaProfile.level_for_xp(0) == 1)
-	_check("the first threshold is level 2", MetaProfile.level_for_xp(int(t[1])) == 2)
-	_check("one short of it is still level 1", MetaProfile.level_for_xp(int(t[1]) - 1) == 1)
-	var p: Array = MetaProfile.level_progress(int(t[1]) + 10)
-	_check("progress reads into the level", int(p[0]) == 10 and int(p[1]) == int(t[2]) - int(t[1]), str(p))
+	_check("the level 2 threshold is level 2", MetaProfile.level_for_xp(step) == 2)
+	_check("one short of it is still level 1", MetaProfile.level_for_xp(step - 1) == 1)
+	var p: Array = MetaProfile.level_progress(step + 10)
+	_check("progress reads into the level", int(p[0]) == 10 and int(p[1]) == 2 * step, str(p))
+	_check("the cap holds", MetaProfile.level_for_xp(10000000) == MetaProfile.max_level())
+	var base: int = int(MetaProfile.data()["deed_base"]["cleared_a_den"])
+	_check("a deed pays base x band", MetaProfile.deed_xp("cleared_a_den", 3) == base * 3)
+	_check("...a deed with no band counts as band 1", MetaProfile.deed_xp("cleared_a_den", 0) == base)
+	_check("...an unknown deed pays the default",
+		MetaProfile.deed_xp("no_such_deed", 1) == int(MetaProfile.data()["deed_base"]["default"]))
 	var wake: Dictionary = MetaProfile.unlock_def("second_wake")
 	_check("Second Wake is an unlock with a level", not wake.is_empty() and int(wake.get("level", 0)) > 1)
 
@@ -75,9 +85,10 @@ func _xp_banks_on_deeds() -> void:
 	var rl: RunLifecycle = _main.run_lifecycle
 	var v: Necromancer = _main.villain
 	var before: int = rl.profile.xp(v.class_id)
-	v.record_deed("cleared_a_den", {"power": 1}, 1)
-	var want: int = int(MetaProfile.data()["deed_xp"]["cleared_a_den"])
-	_check("a den is worth its table value", rl.profile.xp(v.class_id) == before + want,
+	v.record_deed("cleared_a_den", {"power": 1}, 1, 2)
+	var want: int = MetaProfile.deed_xp("cleared_a_den", 2)
+	_check("a Band 2 den pays base x 2", rl.profile.xp(v.class_id) == before + want
+		and want == 2 * int(MetaProfile.data()["deed_base"]["cleared_a_den"]),
 		"%d -> %d" % [before, rl.profile.xp(v.class_id)])
 	_check("...and the run counts the deed", int(rl.stats["deeds"].get("cleared_a_den", 0)) == 1)
 	var stranger := Necromancer.new()

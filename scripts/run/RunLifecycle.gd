@@ -113,12 +113,8 @@ func award(amount: int, reason: String) -> void:
 				fresh.append(u)
 		EventBus.villain_levelled.emit(villain, after, fresh)
 
-func _xp_for_deed(deed_id: String) -> int:
-	var table: Dictionary = MetaProfile.data().get("deed_xp", {})
-	return int(table.get(deed_id, table.get("default", 0)))
-
 func _event_xp(key: String) -> int:
-	return int(MetaProfile.data().get("event_xp", {}).get(key, 0))
+	return MetaProfile.event_xp(key)
 
 # ---------------- Listening (owner-checked) -----------------------------------
 
@@ -130,7 +126,12 @@ func _on_deed(v, deed_id: String, _axes: Dictionary) -> void:
 		return
 	var d: Dictionary = stats["deeds"]
 	d[deed_id] = int(d.get(deed_id, 0)) + 1
-	award(_xp_for_deed(deed_id), deed_id)
+	# The band rides in the ledger entry `record_deed` just wrote, not in the
+	# signal -- see Necromancer.record_deed.
+	var band: int = 0
+	if not v.deeds.is_empty() and String(v.deeds[v.deeds.size() - 1].get("id", "")) == deed_id:
+		band = int(v.deeds[v.deeds.size() - 1].get("band", 0))
+	award(MetaProfile.deed_xp(deed_id, band), deed_id)
 
 func _on_engaged(v, foe_name: String) -> void:
 	if _mine(v):

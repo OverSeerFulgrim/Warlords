@@ -25,6 +25,9 @@ wins on what the code actually does; `CLAUDE.md` (repo root) wins on code conven
 `RAVEN_SPEC.md` (honest passive pings) · `NECROMANCER_SPEC.md` (his statline and Arcane combat) ·
 `COMBAT_FEEDBACK_SPEC.md` (red damage numbers).
 
+**Live since 2026-09-26:** `PROGRESSION.md` (XP formulas, the level curve, unlocks, with printed
+tables; the numbers live in `data/progression.json`).
+
 **Design target, not yet prompted:** `LIVING_WORLD_SPEC.md` (2026-09-26 — the guild opening,
 settlement symmetry, faction ecosystems; its §13 lists the amendments it requires elsewhere).
 
