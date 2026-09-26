@@ -433,3 +433,14 @@ chance (default 0 — the quiet is the reward); den notice size.
 **Exit criterion for this slice** (feeds R2's overall exit): a sortie that visits one Band-1 and
 one Band-2 site presents at least three real decisions (route, choice sheet, one-more-pull), fills
 the carry, and produces a TravelLog line per §6 — before the deposit step even exists.
+
+---
+
+## Implementation notes, 2026-09-26 (R2e pass)
+
+- **Camp occupancy is built:** `occupancy: {chance: 0.35, kind: "outlaw", count: 1}` on the camp's
+  `lootable` block, rolled once at activation (§3). The odds were an open tunable; 35% is the pick.
+- **Ruling 1 now covers the camp too**, as it always said it did: gold-first, wood and food as
+  garnish. The harness asserts gold-dominance for it as it does for the cache.
+- **Wolf den gold weight 26 → 30:** the mean sat exactly on Band 2's gold floor and the harness passed
+  or failed on noise. Now ≈2.25 per den.

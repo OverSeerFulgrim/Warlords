@@ -116,6 +116,16 @@ signal damage_shown(unit, amount: int, kind: String)
 ## `CombatSystem` has taken him out of every fight.
 signal villain_died(villain, cause: String)
 
+# ---- The Raven (RAVEN_SPEC, R2e) ----
+## She named a site at dawn. Always honest -- see Raven.gd's header.
+signal raven_pinged(villain, site)
+## The player looked at a ping (the HUD chip centred on it).
+signal raven_ping_seen(villain, site)
+## The pinged site was looted or spent; its marker clears.
+signal raven_ping_claimed(villain, site)
+## Nothing honest to say today. Delivered, not omitted (2026-08-29 ruling).
+signal raven_silent(villain, day: int)
+
 # ---- The run (RunLifecycle, 2026-09-26) ----
 ## A skeleton came out of the ground for this villain. `source` is "grave" (a
 ## corpse raised from a grave, free) or "bones" (Raise Dead paid in bones).

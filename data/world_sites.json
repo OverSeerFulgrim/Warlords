@@ -145,6 +145,7 @@
 			],
 			"lootable": {
 				"type": "fresh_grave",
+				"raven_eligible": true,
 				"band": 1,
 				"charges": 1,
 				"channel_seconds": 4.0,
@@ -168,6 +169,7 @@
 			"details": [],
 			"lootable": {
 				"type": "fresh_grave",
+				"raven_eligible": true,
 				"band": 1,
 				"charges": 1,
 				"channel_seconds": 4.0,
@@ -193,6 +195,7 @@
 			],
 			"lootable": {
 				"type": "small_cache",
+				"raven_eligible": true,
 				"band": 1,
 				"charges": 1,
 				"channel_seconds": 8.0,
@@ -246,6 +249,8 @@
 			],
 			"lootable": {
 				"type": "abandoned_camp",
+				"raven_eligible": true,
+				"occupancy": {"chance": 0.35, "kind": "outlaw", "count": 1, "_comment": "LOOT_SITES_SPEC section 3: rolled once at activation, hidden by the fog until approached. A third of camps are not abandoned; the Raven honestly knows which (RAVEN_SPEC section 2)."},
 				"band": 2,
 				"charges": 1,
 				"channel_seconds": 8.0,

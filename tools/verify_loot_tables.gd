@@ -56,6 +56,10 @@ const AUTHORED_EXCEPTIONS := {
 		"columns": ["mundane", "essence", "gold", "relic"],
 		"why": "amendment ruling 1 -- gold-first, mundane demoted to garnish",
 	},
+	"abandoned_camp": {
+		"columns": ["mundane"],
+		"why": "amendment ruling 1 (applied 2026-09-26) -- gold-first, mundane demoted to garnish",
+	},
 	"wolf_den": {
 		"columns": ["relic"],
 		"why": "section 5 -- the best wolfhide_cloak odds in the game",
@@ -244,13 +248,18 @@ func _measure(id: String) -> Dictionary:
 ## The exceptions are not unchecked -- they are checked against the rule that
 ## authorised them, which is stricter than "it is allowed to be different".
 func _the_authored_exceptions() -> void:
-	print("-- The four authored exceptions, against what authorised them --")
+	print("-- The five authored exceptions, against what authorised them --")
 	var cache: Dictionary = _measure("small_cache")
 	_check("the cache pays more gold than mundane (amendment ruling 1: a cache whose best outcome is wood is a bug)",
 		cache["gold"] > cache["mundane"] * 2.0,
 		"gold %.2f vs mundane %.2f" % [cache["gold"], cache["mundane"]])
 	_check("...and its trinket chance beats the Band-1 rate",
 		cache["relic"] > BANDS[1]["relic"], "%.1f%%" % (cache["relic"] * 100.0))
+
+	var camp: Dictionary = _measure("abandoned_camp")
+	_check("the camp pays more gold than mundane (the same ruling, applied to the camp)",
+		camp["gold"] > camp["mundane"] * 2.0,
+		"gold %.2f vs mundane %.2f" % [camp["gold"], camp["mundane"]])
 
 	var den: float = _named_relic_rate("wolf_den", "wolfhide_cloak")
 	print("    wolfhide_cloak from the den: %.1f%%" % (den * 100.0))
@@ -818,7 +827,13 @@ func _the_channel_is_the_push_your_luck() -> void:
 	_check("a completed channel pays out", not v.carried.is_empty() or not site.relic_remainder.is_empty()
 		or not v.relics_carried.is_empty(), str(v.carried))
 	_check("...and spends the charge", site.charges_left == site.charges_max - 1)
-	_check("...and the cache, being one-shot, is now spent", site.is_spent())
+	# Spent -- unless his hands filled first, in which case what did not fit is a
+	# remainder and the site rightly stays open for it (SORTIE_SPEC section 4).
+	# Two rolls of 2-4 gold can exceed his 6, so asserting bare `is_spent()` only
+	# passed on seeds where the cache rolled low.
+	_check("...and the cache, being one-shot, is now spent (or holds only what he could not carry)",
+		site.is_spent() or (site.has_remainder() and v.carry_space() == 0),
+		"remainder %s, carrying %d/%d" % [str(site.remainder), v.carried_total(), v.carry_capacity()])
 
 # ---------------- Guardians fight (§3b / §9) ----------------------------------
 

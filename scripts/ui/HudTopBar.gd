@@ -20,6 +20,10 @@ signal badge_pressed
 ## Main.gd only has to log it.
 signal debug_speed_changed(scale: float)
 
+## The Raven's chip was clicked (RAVEN_SPEC section 5). Main centres the camera
+## and opens the ping -- this module only draws the chip.
+signal raven_chip_pressed
+
 const ICON_DARK_ESSENCE := "res://assets/official/icons/Icon_Dark_Essence.png"
 const NECROMANCER_SPRITE := "res://assets/official/characters/Necromancer_Portrait.png"
 
@@ -49,6 +53,9 @@ var dusk_warning_label: Label
 var follow_state_label: Label
 ## Where am I / how deep am I / which way is home. See refresh_orientation().
 var orientation_label: Label
+## The Raven's chip: hidden until she has news, a count when she has more than
+## one, a brief flicker on a silent dawn. See set_raven_count().
+var raven_chip: Button
 
 # ---------------- References handed in by Main.gd ----------------
 var _settlement: SettlementGrid
@@ -234,6 +241,42 @@ func _build_necro_badge(hud_root: Control) -> void:
 	orientation_label.add_theme_font_size_override("font_size", 10)
 	orientation_label.modulate = Color(1, 1, 1, 0.72)
 	hud_root.add_child(orientation_label)
+
+	raven_chip = Button.new()
+	raven_chip.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	raven_chip.position = Vector2(10, 96)
+	raven_chip.custom_minimum_size = Vector2(40, 24)
+	raven_chip.add_theme_font_size_override("font_size", 11)
+	raven_chip.add_theme_color_override("font_color", Color(0.78, 0.62, 1.0))
+	raven_chip.tooltip_text = "The Raven. Click to look where she has been."
+	raven_chip.visible = false
+	raven_chip.pressed.connect(func(): raven_chip_pressed.emit())
+	hud_root.add_child(raven_chip)
+
+## "Raven", "Raven ×2", hidden at zero. `unseen` > 0 pulses it.
+func set_raven_count(outstanding: int, unseen: int) -> void:
+	if raven_chip == null:
+		return
+	raven_chip.visible = outstanding > 0
+	raven_chip.text = "Raven" if outstanding <= 1 else "Raven ×%d" % outstanding
+	raven_chip.tooltip_text = ("The Raven has found something. Click to look." if unseen > 0
+		else "The Raven's marks. Click to cycle through them.")
+	if unseen > 0:
+		var tw := raven_chip.create_tween()
+		raven_chip.modulate = Color(1.6, 1.3, 2.0)
+		tw.tween_property(raven_chip, "modulate", Color.WHITE, 0.9)
+
+## A silent dawn, delivered (2026-08-29 ruling): the chip shows itself for a
+## moment with nothing in it, then goes back to whatever it was.
+func flicker_raven_silent(outstanding: int) -> void:
+	if raven_chip == null:
+		return
+	raven_chip.visible = true
+	raven_chip.text = "Raven —"
+	raven_chip.modulate = Color(1, 1, 1, 0.9)
+	var tw := raven_chip.create_tween()
+	tw.tween_property(raven_chip, "modulate", Color(1, 1, 1, 0.25), 2.5)
+	tw.tween_callback(func(): set_raven_count(outstanding, 0))
 
 ## "20 / 20 hp", and **red below 30%** -- the threshold `Combat.FLEE_HP_FRACTION`
 ## already defines for everyone else, read from there rather than restated so the

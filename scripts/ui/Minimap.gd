@@ -82,6 +82,14 @@ var debug_markers_source: Callable = Callable()
 
 const DEBUG_MARKER_COLOR := Color(1.0, 0.95, 0.25, 0.9)
 
+## **The Raven's marks** (RAVEN_SPEC section 5) -- the one *shipped* exception
+## to "no live contents" in this file's header. Drawn above the fog on purpose:
+## a ping is intelligence you were *given* by a bird that is never wrong, not
+## the world leaking through the fog, and it reveals nothing about the ground
+## between you and it. Do not "fix" this by fog-gating it. Engine-space points.
+var raven_markers_source: Callable = Callable()
+const RAVEN_MARKER_COLOR := Color(0.78, 0.58, 1.0)
+
 var _terrain_texture: ImageTexture
 
 func setup(p_world: WorldMap, p_fog: FogOfWar, p_villain: Necromancer, p_camera: GameCamera) -> void:
@@ -136,6 +144,7 @@ func _draw() -> void:
 	# and a worker standing on him must not hide him.
 	_draw_friendly_units()
 	_draw_debug_markers()
+	_draw_raven_markers()
 	if villain:
 		draw_circle(_to_map(villain.position), 2.5, VILLAIN_COLOR)
 	draw_rect(Rect2(Vector2.ZERO, size), BORDER_COLOR, false, 1.0)
@@ -149,6 +158,14 @@ func _draw_debug_markers() -> void:
 		return
 	for point in debug_markers_source.call():
 		draw_circle(_to_map(point), 1.8, DEBUG_MARKER_COLOR)
+
+func _draw_raven_markers() -> void:
+	if not raven_markers_source.is_valid():
+		return
+	for point in raven_markers_source.call():
+		var c: Vector2 = _to_map(point)
+		var d := PackedVector2Array([c + Vector2(0, -3.5), c + Vector2(3.5, 0), c + Vector2(0, 3.5), c + Vector2(-3.5, 0)])
+		draw_colored_polygon(d, RAVEN_MARKER_COLOR)
 
 ## Your own units, and only where the fog already admits they are there.
 func _draw_friendly_units() -> void:

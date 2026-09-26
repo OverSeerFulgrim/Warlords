@@ -1,7 +1,10 @@
 # RAVEN SPEC — The Bird That Never Lies (R2)
 
 **Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
-`LOOT_SITES_SPEC.md` put out of scope. Nothing here is implemented.
+`LOOT_SITES_SPEC.md` put out of scope. **Implemented 2026-09-26 (R2e)** — see
+`docs/history/2026-09-26-raven.md`, including one deliberate reading: "undiscovered" is a per-site
+flag set by his (and his units') sight discs, not the fog state, because the lair band is revealed
+from the start.
 
 > **Correction, load-bearing.** `docs/history/2026-08-world-map-r1.md` said, in its fog-of-war
 > section, that *"the map doc's 8–12 is the Raven's scouting number, rework §6, and that's R2."*

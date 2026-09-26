@@ -11,7 +11,7 @@ that system). Session write-ups append to `docs/history/`, NEVER here.
 
 ## Current phase
 
-Roguelite rework, **R2 in progress — R2a-R2d done, R2e (the Raven) next** (`docs/design/ROGUELITE_REWORK.md` §13
+Roguelite rework, **R2 built — R2a-R2e done, the R2 exit playtest next** (`docs/design/ROGUELITE_REWORK.md` §13
 is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
 placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
 raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`). R2b gave him his own
@@ -19,7 +19,8 @@ fight — engage close / cast far, the lair aura as geography, out-of-combat reg
 costs the haul (`docs/history/2026-08-villain-combat.md`). R2c closed the loop — the haul banks at
 the Throne (not the band edge), relics wake on deposit, and a dropped load leaves a cache
 (`docs/history/2026-08-sortie-deposit.md`). R2d gave him an escort with no unit orders — one enum
-member and one field on the rally point (`docs/history/2026-08-escort.md`).
+member and one field on the rally point (`docs/history/2026-08-escort.md`). R2e gave him the Raven —
+honest dawn pings drawn above the fog, never a reveal, plus camp occupancy (`docs/history/2026-09-26-raven.md`).
 R1 is done: directly-controlled killable Necromancer (WASD,
 camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
 ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
@@ -100,7 +101,7 @@ scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), 
 scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles + ONE
                            MultiMeshInstance2D canopy),
                            FogOfWar (one 144×144 image), DayNightCycle,
-                           WorldSite(s) (loot state on the node), SiteGuardian, Patrol, Wolf,
+                           WorldSite(s) (loot state on the node), Raven/RavenMarker, SiteGuardian, Patrol, Wolf,
                            Roaming, TravelLog
 scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
 data/                      the JSON content (races/buildings/events/missions/recruitment/world_*,
@@ -160,6 +161,9 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `tools/verify_run_lifecycle.tscn` — 49 assertions: the XP and level formulas (docs/design/PROGRESSION.md), profile round trip, harness
   profiles never persisted, XP per deed, owner checks, Second Wake, death ending the run (deferred
   a frame), the run-end screen, and the new run's 1x clock
+- `tools/verify_raven.tscn` — 39 assertions: the five honesty conditions counted separately over
+  1,000 scrambled dawns, camp occupancy, the cap, delivered silence, ~70% cadence, fog byte-identical
+  after 1,000 pings, claiming clears the mark, the chip drops follow
 - `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly
   units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs

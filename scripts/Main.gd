@@ -77,6 +77,13 @@ var sortie_system: SortieSystem
 var run_lifecycle: RunLifecycle
 var run_summary: RunSummary
 
+## The Raven (R2e): honest dawn pings, never a fog reveal. See Raven.gd.
+var raven: Raven
+## Site discovery is checked on this clock rather than every frame -- it is a
+## distance test over fifteen sites, and a quarter-second late is invisible.
+var _discovery_timer: float = 0.0
+const DISCOVERY_INTERVAL: float = 0.25
+
 var debug_site_overlay: DebugSiteOverlay
 
 ## Scratch buffer for _fog_sources(), reused every frame -- see there.
@@ -260,6 +267,12 @@ func _process(delta: float) -> void:
 	# case is one PackedInt32Array compare.
 	if fog and villain:
 		fog.update_for(_fog_sources())
+	# Who has found what, from the same discs that light the fog -- read-only
+	# over the fog itself (RAVEN_SPEC: the bird must never write it).
+	_discovery_timer += delta
+	if _discovery_timer >= DISCOVERY_INTERVAL and world_sites and villain:
+		_discovery_timer = 0.0
+		world_sites.update_discovery(_fog_sources())
 	hud_top_bar.refresh_orientation()
 	economy_tab.refresh_status()
 	_poll_timer += delta
@@ -460,6 +473,16 @@ func _build_systems() -> void:
 	if world_sites:
 		world_sites.raise_handler = func(at: Vector2, _who, _site):
 			return worker_system.raise_skeleton_at(at, worker_system.next_skeleton_name())
+
+	# The Raven. Per villain, fields not lookups (RAVEN_SPEC section 8); markers
+	# live in the settlement's coordinate space, above the fog by z-index.
+	raven = Raven.new()
+	raven.name = "Raven"
+	raven.villain = villain
+	raven.world_sites = world_sites
+	raven.fog = fog
+	raven.marker_parent = settlement
+	add_child(raven)
 
 	_build_run_lifecycle()
 
@@ -820,6 +843,8 @@ func _build_bottom_shell(hud_root: Control) -> void:
 	# so the minimap's normal path is unchanged until F3 is pressed.
 	minimap.debug_markers_source = func():
 		return debug_site_overlay.minimap_points() if debug_site_overlay else []
+	minimap.raven_markers_source = func():
+		return raven.minimap_points() if raven else []
 	minimap.camera_requested.connect(_on_minimap_camera_requested)
 	minimap.move_requested.connect(_on_right_tap)
 	minimap_column.add_child(minimap)
@@ -1120,6 +1145,14 @@ func _inspect_at(world_pos: Vector2) -> bool:
 	# stays on screen as a memory; the wolf standing on it does not answer.
 	# Clicking into fog closes the panel, exactly like clicking bare ground --
 	# it is still a deliberate "show me nothing".
+	# The Raven's marks sit above the fog and answer through it: they are the
+	# one thing on the map you were told about rather than shown.
+	if raven:
+		var mark: Node2D = raven.pick_at(world_pos)
+		if mark:
+			_inspect(mark)
+			return true
+
 	if fog and not fog.is_visible_at(world_pos):
 		_close_inspector()
 		return true
@@ -1790,6 +1823,26 @@ func _connect_signals() -> void:
 			"events characters")
 		hud_top_bar.refresh_villain_hp()
 	)
+	# ---- The Raven (RAVEN_SPEC section 5) ----
+	hud_top_bar.raven_chip_pressed.connect(_on_raven_chip)
+	EventBus.raven_pinged.connect(func(v, site):
+		if v != villain:
+			return
+		_log("[color=#c8a8ff]The Raven comes back at dawn: she has been to %s (Band %d). Honest, as ever — the road is yours.[/color]"
+			% [site.display_name, site.band], "events")
+		_alert("The Raven has found something.", "info")
+		_refresh_raven_views()
+	)
+	EventBus.raven_silent.connect(func(v, _day: int):
+		if v != villain:
+			return
+		_log("[color=#9a8ab8]The bird found nothing. The near country is picked clean.[/color]", "events")
+		hud_top_bar.flicker_raven_silent(raven.outstanding())
+	)
+	EventBus.raven_ping_claimed.connect(func(v, _site):
+		if v == villain:
+			_refresh_raven_views()
+	)
 	EventBus.villain_woke.connect(func(v, left: int):
 		if v != villain:
 			return
@@ -1925,6 +1978,26 @@ func _on_mission_resolved(m: Dictionary, _party: Array, outcome: String) -> void
 ## "characters", or a space-separated combination) so the History tab's
 ## filter chips can narrow the list down -- see _entry_matches_filters().
 ## Defaults to "events" for call sites that don't specify one.
+## The Raven's chip: centre on the newest unseen mark (then cycle), drop
+## villain-follow the way any manual pan does, and open the mark's panel.
+func _on_raven_chip() -> void:
+	if raven == null:
+		return
+	var site = raven.next_for_chip()
+	if site == null:
+		return
+	camera.center_on_manual(site.position)
+	var mark: Node2D = raven.marker_for(site)
+	if mark:
+		_inspect(mark)
+	_refresh_raven_views()
+
+func _refresh_raven_views() -> void:
+	if raven:
+		hud_top_bar.set_raven_count(raven.outstanding(), raven.unseen())
+	if minimap:
+		minimap.queue_redraw()
+
 ## "Level 3 — 120 / 200 XP · next: Second Wake at level 5", for his panel.
 func _progress_line() -> String:
 	if run_lifecycle == null or villain == null:

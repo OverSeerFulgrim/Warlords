@@ -105,6 +105,24 @@ var relic_remainder: Array = []
 var guardians: Array = []
 var cleared: bool = true
 
+## `RAVEN_SPEC.md` section 7: may the Raven ever name this site. Data, so the
+## pool is authored beside the sites; the honesty invariant (section 4) is still
+## enforced in code at ping time -- the flag says *may*, the invariant *must*.
+var raven_eligible: bool = false
+
+## Has the player found it: set the first time the Necromancer or one of his
+## units stands within its own sight radius of the site (the same discs that
+## light the fog -- `WorldSites.update_discovery`). **Not** the fog state: the
+## lair band is revealed from the start, and "the camera could see it" is not
+## "somebody walked up to it".
+var discovered: bool = false
+
+## LOOT_SITES_SPEC section 2/3: `abandoned_camp` "rolls occupancy at activation"
+## -- at build, hidden by the fog until approached. `occupancy` is the authored
+## `{chance, kind, count}`; `occupied` is what the roll said.
+var occupancy: Dictionary = {}
+var occupied: bool = false
+
 ## How many graves have been disturbed here, for the escalating-notice curve.
 var graves_disturbed: int = 0
 var _conceals: int = 0
@@ -207,11 +225,24 @@ func _setup_lootable(block: Dictionary) -> void:
 	pool_id = String(block.get("pool", ""))
 	active_count = int(block.get("active_count", 1))
 	guardian_roll = block.get("guardian_roll", {})
+	guardian_spec = {}
+	occupied = false
 	var g: Variant = block.get("guardian", null)
 	if typeof(g) == TYPE_STRING and String(g) != "":
 		guardian_spec = {"kind": String(g), "count": 1}
 	elif typeof(g) == TYPE_DICTIONARY and not (g as Dictionary).is_empty():
 		guardian_spec = {"kind": String(g.get("kind", "")), "count": maxi(1, int(g.get("count", 1)))}
+	raven_eligible = bool(block.get("raven_eligible", false))
+	occupancy = block.get("occupancy", {})
+	if not occupancy.is_empty() and guardian_spec.is_empty():
+		# **Rolled here, once, at activation** (LOOT_SITES_SPEC section 3) -- never
+		# on approach, which would be the surprise section 1.3 forbids. The
+		# occupants are ordinary guardians, so fighting them, fleeing them and
+		# clearing the site all run through the paths that already exist.
+		occupied = randf() < float(occupancy.get("chance", 0.0))
+		if occupied:
+			guardian_spec = {"kind": String(occupancy.get("kind", "")),
+				"count": maxi(1, int(occupancy.get("count", 1)))}
 	cleared = guardian_spec.is_empty()
 
 ## Loot into the party: the villain first, his escort second. **Takes the
@@ -269,7 +300,7 @@ func is_dropped_cache() -> bool:
 ## Stated as a method now, before the Raven exists, because R2e is where it
 ## would be missed and this is the only place the answer is obvious.
 func is_raven_eligible() -> bool:
-	return lootable and not is_dropped_cache()
+	return lootable and raven_eligible and not is_dropped_cache()
 
 ## Called when something outside this node changes the remainder -- a drop, or
 ## R2c's deposit path handing loot back. Keeps the sprite and the panel honest

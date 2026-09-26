@@ -63,6 +63,7 @@ func _debug_overlay_changes_nothing(main, fog: FogOfWar) -> void:
 	var before: PackedByteArray = fog.fog_texture().get_image().get_data()
 	var sites: Array = main.world_sites.lootable_sites()
 	var state_before: Array = _site_state(sites)
+	var discovered_before: Array = sites.map(func(s): return s.discovered)
 
 	_check("F3 turns it on", overlay.toggle())
 	_check("...and it now offers minimap points", overlay.minimap_points().size() == sites.size(),
@@ -79,8 +80,8 @@ func _debug_overlay_changes_nothing(main, fog: FogOfWar) -> void:
 	_check("the fog is BYTE-IDENTICAL across the toggle", before == after,
 		"%d bytes differ" % _byte_diff(before, after))
 	_check("no site's state moved", _site_state(sites) == state_before)
-	_check("...and no site carries a discovered flag for it to have set",
-		not ("discovered" in sites[0]) if not sites.is_empty() else true)
+	_check("...and no site's discovered flag moved (the Raven reads it since R2e)",
+		sites.map(func(s): return s.discovered) == discovered_before)
 
 	# The overlay's own reachability check, which is the live half of
 	# `verify_terrain`'s bake-time assertion. Both must agree, and today both

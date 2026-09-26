@@ -195,6 +195,13 @@ func _clamp_to_world() -> void:
 ## Solving for the camera position that puts `world_pos` at the visible band's
 ## centre gives the subtraction below. Dividing by zoom converts the
 ## screen-space inset into world units, so the framing survives zooming.
+## Centring the player asked for -- a click on the Raven's chip, say. Counts as
+## a manual pan, so villain-follow drops exactly as it does for an arrow-key pan
+## (RAVEN_SPEC section 8).
+func center_on_manual(world_pos: Vector2) -> void:
+	center_on(world_pos)
+	_note_manual_pan()
+
 func center_on(world_pos: Vector2) -> void:
 	var view: Vector2 = get_viewport_rect().size
 	var visible_centre_y: float = (ui_top_inset + (view.y - ui_bottom_inset)) * 0.5

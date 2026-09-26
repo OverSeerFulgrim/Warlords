@@ -820,6 +820,9 @@ Update CLAUDE.md. Write up docs/history/2026-08-escort.md. Commit.
 
 ## Prompt R2e — The bird that never lies
 
+> **Landed 2026-09-26** (`docs/history/2026-09-26-raven.md`). So have P0, U1, F1, C2, P1, P2 and
+> R2a–R2d, per their history files. What remains is "After R2", below.
+
 ```
 Read CLAUDE.md, ROGUELITE_REWORK.md §6, and the whole of
 docs/design/RAVEN_SPEC.md -- INCLUDING its correction block at the top --

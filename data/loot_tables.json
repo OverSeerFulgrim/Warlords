@@ -41,14 +41,15 @@
 	"abandoned_camp": {
 		"band": 2,
 		"comment": "Amendment ruling 2: the camp is one of the three human sites that can turn up arms, at a small chance -- somebody left in a hurry and did not take everything.",
+		"exception": "Amendment 2026-08-29 ruling 1, applied 2026-09-26: the gold and the trinket ARE the camp, like the cache. Wood and food are garnish at low weight and small amounts, so this table breaks Band 2's mundane band downward and the harness asserts gold-dominance for it instead.",
 		"rolls": 4,
 		"entries": [
-			{"kind": "wood", "min": 1, "max": 3, "weight": 24},
-			{"kind": "food", "min": 1, "max": 3, "weight": 24},
-			{"kind": "gold", "min": 1, "max": 3, "weight": 28},
+			{"kind": "gold", "min": 1, "max": 3, "weight": 44},
 			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 18},
+			{"kind": "wood", "min": 1, "max": 1, "weight": 8},
+			{"kind": "food", "min": 1, "max": 2, "weight": 8},
 			{"kind": "arms", "min": 1, "max": 1, "weight": 8},
-			{"relic_tier": "uncommon", "weight": 5, "unique": true}
+			{"relic_tier": "uncommon", "weight": 4, "unique": true}
 		]
 	},
 
@@ -85,7 +86,7 @@
 			{"kind": "food", "min": 1, "max": 3, "weight": 22},
 			{"relic": "wolfhide_cloak", "weight": 10, "unique": true},
 			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 28},
-			{"kind": "gold", "min": 2, "max": 4, "weight": 26}
+			{"kind": "gold", "min": 2, "max": 4, "weight": 30}
 		]
 	},
 
