@@ -18,7 +18,7 @@ stages, each playable before the next begins:
 |---|---|
 | Stage 1–3 settlement loop — grid, priority-list economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat, Command Undead | **Built and verified** |
 | **R1 — The world exists.** 144×144 fixed world, terrain/blocking/roads, fog of war, directly-controlled killable Necromancer with camera follow, static village, sealed rival ground, travel times in band | **Built and verified** |
-| **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **Fully specced, nothing implemented** |
+| **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **R2a–R2d built and verified** (generated world with forests, sites and dens, his Arcane kit, deposit at the Throne, the escort); **R2e (Raven pings) not built**; the R2 exit playtest has not run |
 | R3 — reputation axes and reputation-gated recruitment | Designed at outline level |
 | R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | Designed at outline level |
 | R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | Designed at outline level |

@@ -9,6 +9,7 @@ wins on what the code actually does; `CLAUDE.md` (repo root) wins on code conven
 | File | What it is |
 |---|---|
 | `CURRENT_STATE.md` | The dated snapshot reconciling everything. Refresh or delete it when it goes stale — it says so itself. |
+| `REVIEW_2026-09-26.md` | Fresh-eyes review of the repo against the docs, 2026-09-26: what is broken, doc drift, LIVING_WORLD L0 readiness, rulings owed. Non-authoritative. |
 | `GAME_IMPROVEMENT_REVIEW.md` | Product-level review lens, **non-authoritative** by its own header. Its R2 review criteria (§14) are the playtest questionnaire. |
 | `prompts/R2_PROMPTS.md` | **The only live prompt set.** The build order: playtest R1 → P0 → F1 → C2 → P1 → P2 → R2a–R2e. Every older prompt set is in `archive/`. |
 
@@ -24,6 +25,9 @@ wins on what the code actually does; `CLAUDE.md` (repo root) wins on code conven
 `RAVEN_SPEC.md` (honest passive pings) · `NECROMANCER_SPEC.md` (his statline and Arcane combat) ·
 `COMBAT_FEEDBACK_SPEC.md` (red damage numbers).
 
+**Design target, not yet prompted:** `LIVING_WORLD_SPEC.md` (2026-09-26 — the guild opening,
+settlement symmetry, faction ecosystems; its §13 lists the amendments it requires elsewhere).
+
 **Re-live after the C2 adoption:** `COMBAT_SPEC.md` — the nine-attribute stat system, profiles,
 damage model; its amendment block is the adoption record. `stat_rework_roster.xlsx` beside it is
 **the authoritative statline source** (races, villain, wolf) until prompt C2 exports it to
@@ -31,8 +35,8 @@ damage model; its amendment block is the adoption record. `stat_rework_roster.xl
 
 **Live with scars:** `FOUNDATION_SPEC.md` (settlement numbers; carry = Endurance since the C2
 adoption) · `TRAITS.md` + `TRAITS_IMPLEMENTATION_PLAN.md` (already written against the new stat
-model; the plan has not been run yet) · `RACES.md` (**stat table dead** — workbook wins; its
-alignment/rarity/housing content is live) · `GAME_OUTLINE.md` (**Stages 4–5 dead** — rework wins;
+model; the plan has not been run yet) · `RACES.md` (stat table re-issued 2026-09-26 from
+`data/races.json` — an export, the workbook wins; alignment/rarity/housing content is live) · `GAME_OUTLINE.md` (**Stages 4–5 dead** — rework wins;
 pillars and the Stage 1–3 loop description are live).
 
 ## art/

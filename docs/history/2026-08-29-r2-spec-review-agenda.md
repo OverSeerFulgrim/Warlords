@@ -1,5 +1,8 @@
 # R2 Spec Review — Designer's Agenda
 
+> Moved from `docs/R2_SPEC_REVIEW_AGENDA.md` on 2026-09-26. Every spec in it was reviewed on
+> 2026-08-29; the items still open are carried in `docs/REVIEW_2026-09-26.md` §7.
+
 *Prepared 2026-08-29. The review is you reading the seven specs (`CURRENT_STATE.md` §4.3); this
 agenda exists so the read is a checklist, not 1,900 cold lines. One sitting per spec is plenty;
 the whole pass is an evening. The R2a thin/full question is already ruled (2026-08-29: R2a stays

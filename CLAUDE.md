@@ -125,7 +125,7 @@ assets/official|placeholder|vendor/      see Graphics rules
   within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
   region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
   windowed for that gate)
-- `tools/verify_loot_tables.tscn` — 500 assertions: every table rolled 10k times against
+- `tools/verify_loot_tables.tscn` — 515 assertions: every table rolled 10k times against
   LOOT_SITES_SPEC §5's bands (four per-column authored exceptions), relics unique, the grave
   sheet's gating, remainder charges, the notice-vs-deeds split, relic effects waking only on
   deposit, Dark Essence unprintable at home, and the dusk gate (1,000 dusks each way)
@@ -150,7 +150,7 @@ assets/official|placeholder|vendor/      see Graphics rules
   roster or stat change)
 - `tools/verify_combat_feedback.tscn` — 31 assertions: one emit per landed swing both ways,
   the 32-float cap, no leak over 1000 exchanges, and Combat/Engagement still signal-free
-- `tools/check_fog_and_minimap.tscn` — 41 assertions: multi-source fog (villain 7 cells, friendly
+- `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly
   units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs
 
