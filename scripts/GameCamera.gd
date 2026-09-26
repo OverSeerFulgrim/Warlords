@@ -84,6 +84,7 @@ var player_has_moved_camera: bool = false
 var manual_pan_ticks: int = 0
 
 func _ready() -> void:
+	Controls.ensure()
 	set_process(true)
 	set_process_unhandled_input(true)
 
@@ -118,16 +119,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_to_world()
 		_note_manual_pan()
 
-## Arrow keys only -- WASD belongs to the Necromancer now (see the class header).
+## The pan_* actions (arrow keys by default, `Controls.gd`) -- WASD belongs to
+## the Necromancer now (see the class header).
 func _process(delta: float) -> void:
 	var move := Vector2.ZERO
-	if Input.is_key_pressed(KEY_LEFT):
+	if Input.is_action_pressed("pan_left"):
 		move.x -= 1
-	if Input.is_key_pressed(KEY_RIGHT):
+	if Input.is_action_pressed("pan_right"):
 		move.x += 1
-	if Input.is_key_pressed(KEY_UP):
+	if Input.is_action_pressed("pan_up"):
 		move.y -= 1
-	if Input.is_key_pressed(KEY_DOWN):
+	if Input.is_action_pressed("pan_down"):
 		move.y += 1
 	if move != Vector2.ZERO:
 		position += move.normalized() * pan_speed * delta * zoom.x

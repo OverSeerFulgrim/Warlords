@@ -72,3 +72,6 @@ Desktop.ini
 ._*
 .Spotlight-V100
 .Trashes
+
+# ---- Export output (export_presets.cfg writes here) ----
+/build/

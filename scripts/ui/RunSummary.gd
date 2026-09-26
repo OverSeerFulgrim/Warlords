@@ -165,6 +165,10 @@ func show_summary(s: Dictionary) -> void:
 	new_run_button.custom_minimum_size = Vector2(0, 34)
 	new_run_button.pressed.connect(func(): new_run_requested.emit())
 	_body.add_child(new_run_button)
+	var quit := Button.new()
+	quit.text = "Quit the game"
+	quit.pressed.connect(func(): get_tree().quit())
+	_body.add_child(quit)
 
 	visible = true
 	new_run_button.grab_focus.call_deferred()

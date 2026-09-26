@@ -164,6 +164,9 @@ assets/official|placeholder|vendor/      see Graphics rules
 - `tools/verify_raven.tscn` — 39 assertions: the five honesty conditions counted separately over
   1,000 scrambled dawns, camp occupancy, the cap, delivered silence, ~70% cadence, fog byte-identical
   after 1,000 pings, claiming clears the mark, the chip drops follow
+- `tools/verify_demo_shell.tscn` — 38 assertions: every key a named action bound by physical key,
+  no raw keycode reads outside `Controls.gd`, pause and Esc-then-pause, Surrender's confirm, the
+  title, and dev tools gated to debug builds
 - `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly
   units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
 - `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs
@@ -178,6 +181,9 @@ assets/official|placeholder|vendor/      see Graphics rules
   `Necromancer.is_in_lair_band()`. One test, three consumers (aura, prey membership, regen rate).
 - A global signal carrying a villain needs an owner check: `villain_died` fires for every villain,
   so a handler must ignore one that is not its own (it healed simulated villains mid-fight).
+- Keys are InputMap actions registered by `Controls.ensure()` (physical keycodes). Never read a raw
+  keycode; add a row to `Controls.ACTIONS` instead. The title shows only when Main is the running
+  scene, so the headless boot check sits paused on it -- that is expected.
 - godot-mcp simulated input NEVER reaches the game (`_unhandled_input`/`Input.is_key_pressed`);
   only `click_button_by_text` works. Real mouse/keyboard QA needs a human.
 - The debug game window may eat its first real click (OS focus) — click once, then test.

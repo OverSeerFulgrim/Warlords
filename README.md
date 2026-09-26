@@ -44,11 +44,17 @@ playtest R1 → P0 (travel harness + doc fixes) → F1 (damage numbers) → C2 (
 1. Install [Godot 4.7](https://godotengine.org/download) (the standard build, not Godot 3 and not
    .NET).
 2. **Import** `project.godot` from this folder.
-3. Press **F5**. `Main.tscn` is the main scene.
+3. Press **F5**. `Main.tscn` is the main scene; the title screen shows over it once per session.
 
-Controls: **WASD** moves the Necromancer, **arrow keys** pan the camera, **F** toggles camera
-follow. Building placement, demolish, rally and inspect are mouse-driven from the HUD. A debug
-time-scale control (1×/10×/60×) is available for watching the economy run.
+Controls (the full list is on the title screen and in the pause menu): **WASD** walks the
+Necromancer (by key position, so it works on AZERTY too), **right-click** walks him there,
+**arrow keys** pan the camera, **F** follows him, **R** casts Raise Dead, **M** hides the minimap,
+**Space / P / Esc** pause. Everything else is mouse-driven from the HUD. Debug builds also have a
+time-scale control (1×/10×/60×) and the **F3** site overlay; exported builds have neither.
+
+**Exporting:** `export_presets.cfg` (gitignored, on disk) has Windows Desktop and Linux presets that
+write to `build/`. Install the 4.7.1 export templates once (Editor → Manage Export Templates), then
+Project → Export, or `godot --headless --path . --export-release "Windows Desktop" build/windows/Warlords.exe`.
 
 Headless checks worth knowing about (see `CLAUDE.md` for the full list):
 

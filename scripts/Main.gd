@@ -76,6 +76,14 @@ var sortie_system: SortieSystem
 ## the result. See scripts/run/RunLifecycle.gd.
 var run_lifecycle: RunLifecycle
 var run_summary: RunSummary
+## Space/P/Esc pause menu and the once-per-session title (review 2026-09-26:
+## no title, no pause). See scripts/ui/PauseMenu.gd and TitleScreen.gd.
+var pause_menu: PauseMenu
+var title_screen: TitleScreen
+## Set the first time the title is shown this session, so "Begin a new run"
+## from the run-end screen goes straight back in. Static: it outlives the scene
+## reload a new run does.
+static var _title_seen: bool = false
 
 ## The Raven (R2e): honest dawn pings, never a fog reveal. See Raven.gd.
 var raven: Raven
@@ -187,6 +195,8 @@ const MAX_ALERTS := 3            # oldest alert pin is dropped once a 4th arrive
 const MAX_HISTORY_ENTRIES := 200 # oldest history-log row is dropped past this cap
 
 func _ready() -> void:
+	Controls.ensure()
+	_strip_dev_bridges()
 	set_process_unhandled_input(true)  # needed for build-menu click-to-place / Esc-cancel / unit selection
 	_build_systems()
 	_build_camera()
@@ -204,6 +214,43 @@ func _ready() -> void:
 	# know is where the dead are. fresh_grave_hollow is Band 1, about ten cells
 	# northwest of the Throne.
 	_log("[color=#b8a0e0]He has no dead yet, and three bones will not raise one. There are graves in the hollow to the northwest — open one and raise what is inside.[/color]", "events")
+	_show_title_once()
+
+## The title, over a paused world, the first time the game runs this session --
+## and only when Main *is* the game (a harness instantiating Main never sees it).
+func _show_title_once() -> void:
+	if _title_seen or not (is_inside_tree() and get_tree().current_scene == self):
+		return
+	_title_seen = true
+	var p: MetaProfile = run_lifecycle.profile
+	var recent: Array = p.recent(villain.class_id, 1)
+	title_screen.show_title({
+		"level": p.level(villain.class_id),
+		"xp": p.xp(villain.class_id),
+		"runs": p.runs(villain.class_id),
+		"last_epitaph": String(recent[0].get("epitaph", "")) if not recent.is_empty() else "",
+	})
+	get_tree().paused = true
+
+## **Release builds carry no dev bridges.** The three godot_mcp autoloads poll
+## user:// every frame and one of them evaluates Expressions from a file
+## (review 2026-09-26, 2.11). They are editor tooling; in an exported build they
+## are freed on the first frame. Debug runs keep them -- the MCP workflow needs
+## them there.
+func _strip_dev_bridges() -> void:
+	if OS.is_debug_build():
+		return
+	for n in ["MCPRuntimeBridge", "MCPInputBridge", "MCPScreenshotBridge"]:
+		var node: Node = get_tree().root.get_node_or_null(n)
+		if node:
+			node.queue_free()
+
+func _open_pause_menu() -> void:
+	if pause_menu == null or pause_menu.is_open():
+		return
+	if (run_summary and run_summary.is_showing()) or (title_screen and title_screen.is_showing()):
+		return
+	pause_menu.open()
 
 # ---------------- Camera framing ----------------
 
@@ -649,6 +696,18 @@ func _build_ui() -> void:
 	add_child(run_summary)
 	run_summary.new_run_requested.connect(_begin_new_run)
 
+	pause_menu = PauseMenu.new()
+	pause_menu.name = "PauseMenu"
+	add_child(pause_menu)
+	pause_menu.abandon_confirmed.connect(func():
+		if run_lifecycle and not run_lifecycle.ended:
+			run_lifecycle.abandon())
+
+	title_screen = TitleScreen.new()
+	title_screen.name = "TitleScreen"
+	add_child(title_screen)
+	title_screen.begin_requested.connect(func(): get_tree().paused = false)
+
 	hud_top_bar.refresh_stats()
 	build_menu.populate()
 	economy_tab.build_priority_rows()
@@ -1054,7 +1113,7 @@ func _add_locked_placeholder(parent: Control, text: String) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if build_menu.is_placing():
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if event.is_action_pressed("cancel"):
 			build_menu.cancel_placement()
 			get_viewport().set_input_as_handled()
 			return
@@ -1066,7 +1125,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if build_menu.is_demolishing():
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if event.is_action_pressed("cancel"):
 			build_menu.toggle_demolish_mode()
 			get_viewport().set_input_as_handled()
 			return
@@ -1081,7 +1140,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# as the two above. Unlike them it isn't cell-locked -- the dead rally on a
 	# spot, not a tile -- so it takes the raw world position.
 	if _rally_placement_mode:
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if event.is_action_pressed("cancel"):
 			_cancel_rally_placement()
 			get_viewport().set_input_as_handled()
 			return
@@ -1093,15 +1152,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	# F3 toggles the dev site overlay. **`OS.is_debug_build()` is the whole
 	# safety**: in an exported build this branch is dead, the overlay stays
 	# hidden forever, and the key does nothing.
-	if event is InputEventKey and event.pressed and not event.echo \
-			and event.keycode == KEY_F3 and OS.is_debug_build():
+	if event.is_action_pressed("debug_overlay", false, false) and OS.is_debug_build():
 		_toggle_site_overlay()
 		get_viewport().set_input_as_handled()
 		return
 
 	# M hides the minimap. Below the placement blocks with everything else, and
 	# `echo`-guarded so holding the key does not strobe the log.
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_M:
+	if event.is_action_pressed("minimap", false, false):
 		_toggle_minimap()
 		get_viewport().set_input_as_handled()
 		return
@@ -1109,18 +1167,29 @@ func _unhandled_input(event: InputEvent) -> void:
 	# R casts Raise Dead at his feet (paid in bones). Same handler as the
 	# buttons; a text field with focus never sees it because this is the
 	# *unhandled* pass.
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_R:
+	if event.is_action_pressed("raise_dead", false, false):
 		_recruit_worker()
+		get_viewport().set_input_as_handled()
+		return
+
+	# Space (or P) pauses. The pause menu takes its own input while open, so this
+	# only ever opens it.
+	if event.is_action_pressed("pause", false, false):
+		_open_pause_menu()
 		get_viewport().set_input_as_handled()
 		return
 
 	# Esc closes the inspector. Deliberately *below* the two placement blocks
 	# above, which both return early: while you're placing or demolishing,
-	# Esc cancels that mode, and the inspector is not what Esc is for.
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+	# Esc cancels that mode, and the inspector is not what Esc is for. With
+	# nothing left to close, Esc pauses -- the convention every PC player
+	# reaches for first.
+	if event.is_action_pressed("cancel"):
 		if inspector.is_open():
 			_close_inspector()
-			get_viewport().set_input_as_handled()
+		else:
+			_open_pause_menu()
+		get_viewport().set_input_as_handled()
 		return
 
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -1286,7 +1355,8 @@ func _menu_open_y() -> float:
 func _surrender_and_restart() -> void:
 	_close_inspector()
 	if run_lifecycle and not run_lifecycle.ended:
-		run_lifecycle.abandon()
+		# Behind a confirm: one misclick used to end the run (review 2.11 list).
+		pause_menu.open_confirm_abandon()
 		return
 	_begin_new_run()
 

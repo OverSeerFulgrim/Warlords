@@ -37,19 +37,13 @@ class_name VillainController
 ## the view -- so the arrow keys are really "look away from him for a moment",
 ## and they drop follow exactly the way a right-drag does.
 
-## Held-key movement. `Input.is_key_pressed` polling rather than
-## `_unhandled_input`, because hold-to-move is a *state* ("is W down right
-## now"), not an event, and rebuilding that state from key-down/key-up events
-## desyncs the first time the window loses focus mid-hold.
-const KEYS_UP := [KEY_W]
-const KEYS_DOWN := [KEY_S]
-const KEYS_LEFT := [KEY_A]
-const KEYS_RIGHT := [KEY_D]
-
-## Snaps the camera back onto him and re-engages follow. F for follow; Space was
-## the other candidate and lost because it is the conventional pause key and
-## this project will eventually want one.
-const FOLLOW_KEY := KEY_F
+## Held-key movement, read as InputMap actions (`Controls.gd`: move_up /
+## move_down / move_left / move_right, WASD by **physical** key by default).
+## Polling rather than `_unhandled_input`, because hold-to-move is a *state*
+## ("is the key down right now"), not an event, and rebuilding that state from
+## key-down/key-up events desyncs the first time the window loses focus
+## mid-hold. The `follow` action (F) snaps the camera back onto him; Space is
+## pause.
 
 # ---------------- Wiring (set by Main, same convention as the other systems) --
 var villain: Necromancer = null
@@ -69,6 +63,7 @@ var following: bool = true
 var _last_pan_ticks: int = 0
 
 func _ready() -> void:
+	Controls.ensure()
 	set_process(true)
 	set_process_unhandled_input(true)
 
@@ -93,13 +88,13 @@ func _movement_input(delta: float) -> Vector2:
 	if _text_field_has_focus():
 		return Vector2.ZERO
 	var dir := Vector2.ZERO
-	if _any_pressed(KEYS_LEFT):
+	if Input.is_action_pressed("move_left"):
 		dir.x -= 1.0
-	if _any_pressed(KEYS_RIGHT):
+	if Input.is_action_pressed("move_right"):
 		dir.x += 1.0
-	if _any_pressed(KEYS_UP):
+	if Input.is_action_pressed("move_up"):
 		dir.y -= 1.0
-	if _any_pressed(KEYS_DOWN):
+	if Input.is_action_pressed("move_down"):
 		dir.y += 1.0
 	if dir != Vector2.ZERO:
 		villain.clear_move_target()
@@ -115,12 +110,6 @@ func order_move_to(world_pos: Vector2) -> void:
 		return
 	villain.set_move_target(world_pos)
 
-func _any_pressed(keys: Array) -> bool:
-	for k in keys:
-		if Input.is_key_pressed(k):
-			return true
-	return false
-
 func _text_field_has_focus() -> bool:
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	# A SpinBox delegates focus to its internal LineEdit, so checking for the
@@ -131,7 +120,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Discrete press, so this one is an event rather than a poll. It reaches
 	# _unhandled_input only when no Control consumed it, which means a focused
 	# SpinBox correctly eats an "f" the player was trying to type.
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode == FOLLOW_KEY:
+	if event.is_action_pressed("follow", false, false):
 		snap_to_villain()
 		get_viewport().set_input_as_handled()
 

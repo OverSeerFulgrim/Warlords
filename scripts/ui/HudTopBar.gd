@@ -175,6 +175,8 @@ func _build_top_bar(hud_root: Control, panel_style: StyleBoxFlat) -> void:
 	time_scale_btn = Button.new()
 	time_scale_btn.tooltip_text = "Debug: cycle game speed (1x / 10x / 60x)"
 	time_scale_btn.pressed.connect(_on_time_scale_pressed)
+	# Debug builds only: game speed is a testing tool, not a player setting.
+	time_scale_btn.visible = OS.is_debug_build()
 	row.add_child(time_scale_btn)
 
 ## Clickable player portrait, top-left under the resource bar. It and the on-map
