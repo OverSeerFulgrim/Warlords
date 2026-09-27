@@ -104,6 +104,8 @@ var village: Village
 ## The Adventurers' Guild and the people who run to it (LIVING_WORLD L2).
 var guild: Guild
 var witnesses: Witnesses
+## The downed and the prisoners (LIVING_WORLD L3).
+var captives: Captives
 ## "Follow this road to the Adventurers' Guild." -- the first run's only hint
 ## (LIVING_WORLD section 3, a placeholder for a tutorial).
 var opening_popup: PanelContainer
@@ -579,6 +581,7 @@ func _build_systems() -> void:
 
 	_build_village()
 	_build_guild()
+	_build_captives()
 
 	_build_run_lifecycle()
 
@@ -599,6 +602,29 @@ func _build_village() -> void:
 		village = null
 		return
 	combat_system.village = village
+
+## **Downed, bound, held** (LIVING_WORLD L3, 2026-09-27). Built after the
+## village and the witnesses, which it reads; the combat system and the village
+## both get it, and a humanoid at 0 hp goes down instead of dying from then on.
+func _build_captives() -> void:
+	captives = Captives.new()
+	captives.name = "Captives"
+	captives.world = world_map
+	captives.world_sites = world_sites
+	captives.village = village
+	captives.villain = villain
+	captives.settlement = settlement
+	captives.worker_system = worker_system
+	captives.witnesses = witnesses
+	captives.day_provider = func(): return day_night.day_number if day_night else 1
+	captives.knows_blueprint = func(id: String) -> bool:
+		return run_lifecycle != null and run_lifecycle.profile.knows_blueprint(id)
+	captives.level_provider = func() -> int:
+		return run_lifecycle.profile.level(villain.class_id) if run_lifecycle else 1
+	settlement.add_child(captives)
+	combat_system.captives = captives
+	if village:
+		village.captives = captives
 
 ## **The Adventurers' Guild** (LIVING_WORLD L2) and **the witnesses** who run to
 ## it. Built after the village, whose stores its delivery jobs read and whose
@@ -1007,6 +1033,10 @@ func _build_hud(hud_root: Control) -> void:
 	action_bar.escort_pressed.connect(_toggle_escort)
 	action_bar.rally_pressed.connect(_enter_rally_placement_mode)
 	action_bar.build_pressed.connect(_toggle_build_tray)
+	action_bar.downed_near = func() -> int:
+		return captives.downed_near(villain).size() if captives else 0
+	action_bar.bind_pressed.connect(func(): _captive_action("bind_all", null))
+	action_bar.finish_pressed.connect(func(): _captive_action("finish_all", null))
 
 	# The last few lines of the log, above the bar, left of centre.
 	log_ticker = LogTicker.new()
@@ -1154,6 +1184,10 @@ func _build_hud(hud_root: Control) -> void:
 
 	# The top corners' buttons.
 	hud_top_bar.home_provider = _near_throne
+	hud_top_bar.held_provider = func() -> Array:
+		return captives.held() if captives else []
+	hud_top_bar.cell_capacity_provider = func() -> int:
+		return captives.cell_capacity() if captives else 0
 	hud_top_bar.level_provider = func() -> int:
 		return run_lifecycle.profile.level(villain.class_id) if run_lifecycle else 1
 	hud_top_bar.stance_pressed.connect(_toggle_stance)
@@ -1334,6 +1368,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			_enter_rally_placement_mode()
 		get_viewport().set_input_as_handled()
 		return
+	# G / X: bind or finish every man down near him (LIVING_WORLD 11.3).
+	if event.is_action_pressed("bind", false, false):
+		_captive_action("bind_all", null)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("finish", false, false):
+		_captive_action("finish_all", null)
+		get_viewport().set_input_as_handled()
+		return
 
 	# R casts Raise Dead at his feet (paid in bones). Same handler as the
 	# buttons; a text field with focus never sees it because this is the
@@ -1438,6 +1481,17 @@ func _inspect_at(world_pos: Vector2) -> bool:
 			if world_pos.distance_to(wolf.position) <= wolf.hit_radius():
 				_inspect(wolf)
 				return true
+
+	# A man down, or a prisoner (L3): drawn where a villager or an outlaw stood,
+	# so asked first -- the thing lying there is what you meant to click.
+	if captives:
+		var hit_c = captives.pick_at(world_pos)
+		if hit_c is Downed:
+			_inspect(hit_c, inspector_actions.downed_actions.bind(hit_c))
+			return true
+		if hit_c is Prisoner:
+			_inspect(hit_c, inspector_actions.prisoner_actions.bind(hit_c))
+			return true
 
 	# The village's people, then its buildings and fields. After his own units
 	# and the wolf, before the rally point: a villager is a character.
@@ -1657,6 +1711,43 @@ func _job_place(job: String) -> String:
 ## **Flee the region** (ROGUELITE_REWORK section 1, 17.7): only from the lair;
 ## the player picks up to 3 things he found this run to carry out.
 ## A button on the guild's board. The guild decides; this only reports.
+## **Downed and prisoners** (LIVING_WORLD L3): what a press on a man down, a
+## prisoner, the Cell, the Altar, G or X means. Logs, then refreshes the panel.
+func _captive_action(action: String, target) -> void:
+	if captives == null or villain == null or not villain.is_alive():
+		return
+	match action:
+		"bind":
+			var p: Prisoner = captives.bind(target, villain)
+			if p == null:
+				_alert("Stand over him to bind him.", "warn")
+		"finish":
+			if not captives.finish(target, villain):
+				_alert("Stand over him to finish him.", "warn")
+		"bind_all":
+			var n: int = captives.bind_all(villain)
+			if n == 0:
+				_alert("Nobody down near him to bind.", "info")
+		"finish_all":
+			var n2: int = captives.finish_all(villain)
+			if n2 == 0:
+				_alert("Nobody down near him to finish.", "info")
+		"search":
+			var r: Dictionary = captives.search(target, villain)
+			if r.is_empty():
+				_alert("He cannot get at that one from here.", "warn")
+		"ghoul":
+			var why: String = captives.ghoul_blocker(villain)
+			if why != "":
+				_alert(why, "warn")
+			elif captives.summon_ghoul(target, villain) == null:
+				_alert("That one is not here to put on the Altar.", "warn")
+	if inspector.is_open():
+		if target is Downed and not captives.downed.has(target):
+			_close_inspector()
+		else:
+			inspector.refresh()
+
 func _guild_action(g, action: String, id: int) -> void:
 	var b: Dictionary = g.bounty(id)
 	if b.is_empty():
@@ -1924,8 +2015,8 @@ func _connect_signals() -> void:
 	inspector_actions.escort_stance_requested.connect(_set_escort_stance)
 	inspector_actions.villain_stance_toggle_requested.connect(_toggle_stance)
 	inspector_actions.guild_action_requested.connect(_guild_action)
-	inspector_actions.ghoul_unlocked = func():
-		return run_lifecycle != null and run_lifecycle.profile.level(villain.class_id) >= 2
+	inspector_actions.captives = captives
+	inspector_actions.captive_action_requested.connect(_captive_action)
 	inspector_actions.follow_toggle_requested.connect(func():
 		villain_controller.toggle_follow()
 		hud_top_bar.refresh_follow_state()
@@ -2184,6 +2275,81 @@ func _connect_signals() -> void:
 		_log("[color=#ff8060]%s raises the alarm. The guards are coming.[/color]" % vil.display_name, "events alerts")
 		_alert("%s raises the alarm." % vil.display_name, "warn")
 	)
+	# ---- Downed, prisoners, the Cell, the Altar (LIVING_WORLD L3) ----
+	EventBus.unit_downed.connect(func(d, _by):
+		_log("[color=#ffb070]%s is down — bleeding out (%d s). Stand over the body: bind (%s) for a prisoner, or finish (%s) for a corpse.[/color]"
+			% [_who(d.display_name, true), int(d.bleed_total), Controls.label_for("bind"), Controls.label_for("finish")], "events")
+	)
+	EventBus.downed_died.connect(func(d, _k, how: String):
+		if how == "bled out":
+			_log("[color=#c09080]%s bled out.[/color]" % _who(d.display_name, true), "events")
+		else:
+			_log("[color=#c09080]He finishes %s. A body, to raise.[/color]" % _who(d.display_name), "events")
+	)
+	EventBus.downed_rescued.connect(func(d, by):
+		_log("[color=#ffb070]%s carried %s home, alive.[/color]"
+			% [String(by.villager_name) if by else "Someone", _who(d.display_name)], "events")
+	)
+	EventBus.prisoner_taken.connect(func(v, p):
+		if v != villain:
+			return
+		var where: String = "Walk them home to the Cell." if captives and captives.cell_capacity() > 0 \
+			else "He has no Cell to hold prisoners yet — searching one may teach him how a Cell is built."
+		_log("[color=#d9ccf2]He binds %s: a prisoner, on a rope behind him. %s[/color]" % [_who(p.display_name), where], "events characters")
+	)
+	EventBus.prisoners_delivered.connect(func(v, count: int, held: int):
+		if v != villain:
+			return
+		_log("[color=#d9ccf2]%d prisoner%s into the Cell (%d held). They eat one food each at dawn and dusk.[/color]"
+			% [count, "" if count == 1 else "s", held], "events")
+	)
+	EventBus.prisoners_no_room.connect(func(v, waiting: int, cap: int):
+		if v != villain:
+			return
+		if cap <= 0:
+			_log("[color=orange]He is home with %d prisoner%s and nowhere to lock them up. They stay on the rope until he builds a Cell.[/color]"
+				% [waiting, "" if waiting == 1 else "s"], "alerts")
+			_alert("No Cell to hold his prisoners.", "warn")
+		else:
+			_log("[color=orange]The Cell is full. %d stay on the rope.[/color]" % waiting, "alerts")
+	)
+	EventBus.prisoner_hungry.connect(func(p):
+		_log("[color=orange]%s went without a meal. One more missed meal will kill them.[/color]" % _who(p.display_name, true), "alerts")
+		_alert("A prisoner is starving.", "warn")
+	)
+	EventBus.prisoner_died.connect(func(p, _how: String):
+		_log("[color=#c09080]%s starved in captivity. A body, now.[/color]" % _who(p.display_name, true), "events alerts")
+	)
+	EventBus.prisoners_freed.connect(func(v, count: int):
+		if v != villain:
+			return
+		_log("[color=#c09080]The rope goes slack: %d prisoner%s walk away.[/color]" % [count, "" if count == 1 else "s"], "events")
+	)
+	EventBus.prisoner_searched.connect(func(v, p, loot: Dictionary, bp: String):
+		if v != villain:
+			return
+		var found: String = LootCatalog.describe(loot) if not loot.is_empty() else "nothing worth taking"
+		_log("[color=#e8d070]He searches %s: %s.%s[/color]" % [_who(p.display_name), found,
+			"" if bp == "" else " And he knows how something is built."], "events")
+	)
+	EventBus.ghoul_summoned.connect(func(v, p, unit):
+		if v != villain:
+			return
+		_log("[color=#c8a8ff]%s goes onto the Altar. %s gets up, and answers to him.[/color]"
+			% [_who(p.display_name, true), unit.worker_name if unit else "Something"], "events characters")
+		_alert("A Ghoul rises.", "good")
+	)
+	EventBus.villager_captured.connect(func(vil, who, _c):
+		_log("[color=#e0c080]%s: %s has been taken. The village is a hand short.[/color]"
+			% [vil.display_name, who.villager_name], "events")
+	)
+	EventBus.village_found_body.connect(func(vil, s):
+		_log("[color=#ff9070]%s found %s. They will bury the dead — and they blame whatever is out there.[/color]"
+			% [vil.display_name, s.display_name], "events")
+	)
+	EventBus.village_buried.connect(func(vil, who: String, _grave):
+		_log("[color=#c09080]%s buried %s at the graveyard. A fresh grave.[/color]" % [vil.display_name, who], "events")
+	)
 	# ---- The guild, the witnesses, standing (LIVING_WORLD L2) ----
 	EventBus.witnessed.connect(func(v, who, act: String):
 		if v != villain:
@@ -2417,6 +2583,15 @@ func _progress_line() -> String:
 
 ## "a wolf" / "An outlaw": names that already carry their article ("An
 ## outlaw", "The Sexton") keep it; bare ones ("wolf") get one.
+## A name as it reads mid-sentence: "Frank" stays Frank, "An outlaw" becomes
+## "an outlaw" (or keeps its capital at the start of a sentence).
+func _who(n, capital: bool = false) -> String:
+	var s: String = String(n)
+	var low: String = s.to_lower()
+	if low.begins_with("a ") or low.begins_with("an ") or low.begins_with("the "):
+		return (s.substr(0, 1).to_upper() + s.substr(1)) if capital else (s.substr(0, 1).to_lower() + s.substr(1))
+	return s
+
 func _a_name(n, capital: bool = false) -> String:
 	var s: String = String(n)
 	var low: String = s.to_lower()

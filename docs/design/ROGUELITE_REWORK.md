@@ -270,8 +270,9 @@ R1 shipped to spec. During the post-R1 doc reconciliation, two decisions were ma
 4. **The timed recruit event is switched off** (§7 already declared it dead; the code now agrees).
 5. **Level 2 unlocks "Summon Ghoul" at the Dark Altar.** It needs a sacrifice to cast. First
    concrete entry in §9's undead-unit-type unlocks, and the first use of the Altar sacrifice in
-   `LIVING_WORLD_SPEC.md` §10.3. *Not castable yet:* the Altar exists (its blueprint is learned by clearing a den, built at
-   LIVING_WORLD L2) and shows the spell greyed with its reason; the sacrifice needs prisoners (L3).
+   `LIVING_WORLD_SPEC.md` §10.3. *Castable since 2026-09-27* (LIVING_WORLD L3): the Altar (its
+   blueprint from clearing a den) takes a prisoner from the Cell or his rope, at home, and a Ghoul
+   Worker gets up (the workbook's Ghoul row: Str 7, End 6, 20 hp, Undead).
 6. **Victory and the Lair.** Taking the Manor pays XP and keeps the run's loot (first ruled as
    "choose 3 items"; refined by 17.7 to **all gear and relics**). The main menu gains a **Lair** button: a Lair the player decorates and uses
    to organise kept loot, and from which a fresh run can be started carrying loot won in earlier

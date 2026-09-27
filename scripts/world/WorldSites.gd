@@ -243,9 +243,62 @@ func spawn_body(at: Vector2, who: String) -> WorldSite:
 	}, at, 44.0)
 	# Found where he fell: nobody needs to discover a body they just made.
 	site.discovered = true
+	# Whose body, for the village's burial party (L3) and the grave it digs.
+	site.set_meta("body_of", who)
 	add_child(site)
 	sites.append(site)
 	return site
+
+## **A grave the village dug** (LIVING_WORLD section 5.7, L3): a burial party
+## carried `who` to the graveyard and put him in the ground. The fresh-grave
+## grammar -- raise him (free), rob him, put it back -- at the graveyard, found
+## like any site. Leaving bodies is a deposit, at a delay and a notice cost.
+func spawn_grave(at: Vector2, who: String) -> WorldSite:
+	var band: int = 2
+	if world:
+		band = int(world.band_at(at).get("band", 2))
+	var site := WorldSite.new()
+	_graves += 1
+	site.name = "Grave_%d" % _graves
+	site.day_provider = func(): return int(day_provider.call()) if day_provider.is_valid() else 1
+	site.party_filler = party_filler
+	site.guardian_spawner = _post_guardians
+	site.dead_riser = _raise_dead
+	site.setup({
+		"id": "grave_%d" % _graves,
+		"name": "%s's Grave" % who,
+		"subtitle": "Freshly dug — the village buried him",
+		"sprite": GRAVE_SPRITE,
+		"description": "The earth is still soft. Somebody from the village stood here and said his name.",
+		"details": [],
+		"lootable": {
+			"type": "fresh_grave",
+			"band": band,
+			"charges": 1,
+			"channel_seconds": 4.0,
+			"loot_table": "fresh_grave",
+			"choices": "grave_choices",
+			"looted_sprite": GRAVE_SPRITE_DUG,
+			"guardian": null,
+			"notice": {"threat": 1},
+			"pool": "burials",
+			"active_count": 0,
+		},
+	}, at, 46.0)
+	add_child(site)
+	sites.append(site)
+	return site
+
+var _graves: int = 0
+const GRAVE_SPRITE := "res://assets/official/nodes/Grave_Undisturbed.png"
+const GRAVE_SPRITE_DUG := "res://assets/official/nodes/Grave_Dug_Up.png"
+
+## Takes a site off the map for good -- a body a burial party lifted.
+func remove_site(site: WorldSite) -> void:
+	if site == null or not is_instance_valid(site):
+		return
+	sites.erase(site)
+	site.queue_free()
 
 var _bodies: int = 0
 

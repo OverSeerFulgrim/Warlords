@@ -61,6 +61,12 @@ var race_id: String = "wolf"
 var attributes: Dictionary = {}
 var alignment: String = ""
 var flee_below_hp: int = 5
+## **Goes down at 0 hp instead of dying** (LIVING_WORLD section 11.2): humanoids
+## do, wildlife does not. From the guardian kind's `downs`.
+var downs: bool = false
+## Stands to the last -- the outlaws in their own cave (`never_flees`). They
+## have nowhere else to be, and a man who fights to 0 hp is a man you can bind.
+var never_flees: bool = false
 var sprite_path: String = ""
 var token_size: float = 74.0
 var width_scaled: bool = false
@@ -100,6 +106,8 @@ func setup(p_kind: String, spec: Dictionary, p_site: WorldSite, at: Vector2,
 	token_size = float(spec.get("size", 56.0))
 	width_scaled = bool(spec.get("width_scaled", false))
 	flee_below_hp = int(spec.get("flee_below_hp", 0))
+	downs = bool(spec.get("downs", false))
+	never_flees = bool(spec.get("never_flees", false))
 	alignment = String(spec.get("alignment", ""))
 	prowl_radius_px = float(spec.get("prowl_cells", DEFAULT_PROWL_CELLS)) \
 		* float(SettlementGrid.CELL_SIZE)
@@ -257,6 +265,8 @@ func hp_fraction() -> float:
 ## proportional otherwise -- a sentinel rolled from a race row has no authored
 ## flee number and falls back to the project's one fraction.
 func should_flee() -> bool:
+	if never_flees:
+		return false
 	if flee_below_hp > 0:
 		return hp < flee_below_hp
 	return hp_fraction() < Combat.FLEE_HP_FRACTION

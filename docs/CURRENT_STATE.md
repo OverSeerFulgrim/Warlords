@@ -53,10 +53,10 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
     first dead come from a grave. Timed recruitment is off.
   - **The demo shell:** every key an InputMap action by physical key, pause menu, title screen,
     Surrender confirm, dev tools out of release builds, Windows/Linux export presets built and run.
-- **Harnesses, all green:** verify_stats 505, verify_loot_tables 533, verify_terrain 278,
+- **Harnesses, all green:** verify_stats 532, verify_loot_tables 533, verify_terrain 278,
   check_sprite_scales 122, verify_sortie 79, verify_villain_combat 65, verify_guild 69,
-  verify_escort 58, verify_village 56, check_fog_and_minimap 50, verify_run_lifecycle 49,
-  verify_raven 39, verify_demo_shell 44, verify_hud 42, verify_inspect 17, verify_endings 33, verify_combat_feedback 31,
+  verify_escort 58, verify_village 57, check_fog_and_minimap 50, verify_run_lifecycle 49,
+  verify_raven 39, verify_demo_shell 46, verify_hud 42, verify_inspect 17, verify_captives 71, verify_endings 33, verify_combat_feedback 31,
   verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows in band; headless boot clean.
   - **What each ending keeps** (ROGUELITE §17.7): victory keeps all gear and relics, **fleeing the
     region** from the lair keeps 3 of the player's choice, death keeps nothing. The stash, **the
@@ -67,10 +67,14 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
     state and pay into his hands; **witnesses** whose runners lower standing only on arrival; the
     **Altar blueprint** learned by clearing a den; **he wakes on the road** with a first-run popup,
     and a roadside grave past the guild.
+  - **LIVING_WORLD L3** (`history/2026-09-27-living-world-l3.md`, 2026-09-27): humanoids go down
+    at 0 hp and bleed out; bind / finish (and all); guards carry their own home; prisoners on a
+    rope, the Cell, meals, Search; **Summon Ghoul is castable**; burial parties dig a new grave.
   - **The HUD redo** (`history/2026-09-26-hud-redo.md`): no bottom bar; each piece appears the
     first time its mechanic does; a roster of his dead with health; History (L); the full map (M).
 - **Not built:** the manor victory, map shuffle, Lair trophies; R3's reputation axes;
-  LIVING_WORLD L3 onward (prisoners, so Summon Ghoul is shown but not castable); C3; audio; a
+  LIVING_WORLD L4 onward (goblins, adventurers, caravans, bandits — so prisoners cannot yet be
+  traded or hired); C3; audio; a
   settings/rebinding screen; mid-run save.
 - **The prompt order** (`R2_PROMPTS.md`), all landed:
 
@@ -150,8 +154,11 @@ are the record.
      carry) feel like a wage or a chore?
    - the village at a glance: can a player read who does what, and does Hunting feel like a choice;
    - the flee picker and the Lair at real size.
-3. **Then LIVING_WORLD L3** (`LIVING_WORLD_SPEC.md` §14): downed / bleed-out, prisoners, the Cell —
-   which also makes Summon Ghoul castable. Also owed from L0: click-to-assign on empty buildings.
+   - **L3** (built 2026-09-27, ahead of this playtest): is 45 s of bleed-out a decision or a
+     scramble; do guards rescue too eagerly (14 cells); is 1 food per prisoner per meal the right
+     cost; is the outlaw cave still fair now outlaws fight to the last; does the rope read.
+3. **Then LIVING_WORLD L4** (`LIVING_WORLD_SPEC.md` §14): the goblin camp, raiding, adventurers
+   taking bounties, MIA and badges. Also owed from L0: click-to-assign on empty buildings.
    How R3's reputation axes fit (alongside, or folded into the standing model) is the open ruling
    above.
 

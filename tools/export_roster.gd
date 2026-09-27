@@ -75,6 +75,7 @@ const ID_FOR_LABEL := {
 	"Gnoll": "gnoll",
 	"Halfling": "halfling",
 	"Human Outcast": "human_outcast",
+	"Ghoul": "ghoul",
 	"The Necromancer": "necromancer",
 	"Wolf": "wolf",
 }

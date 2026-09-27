@@ -12,9 +12,10 @@ its `README.md` — read the one for the system you touch). Session write-ups go
 ## Current phase
 
 Roguelite rework (`docs/design/ROGUELITE_REWORK.md` §13, §17) + `docs/design/LIVING_WORLD_SPEC.md`
-(§14–15). **R1, R2 and LIVING_WORLD L0–L2 built**: death ends the run, endings keep items (stash,
+(§14–15). **R1, R2 and LIVING_WORLD L0–L3 built**: death ends the run, endings keep items (stash,
 carry-in, the Lair), the living village, the stance, the Guild, witnesses/standing, blueprints, the
-roadside opening. **Next: a human playtest, then L3** (prisoners → Summon Ghoul). Where each
+roadside opening, downed/prisoners/the Cell/Summon Ghoul/burials. **Next: a human playtest, then
+L4** (goblin camp, adventurers). Where each
 landed: the newest rows of `docs/history/README.md`. The win condition is still the legacy
 placeholder. Climate: not implemented. One villain class for now — but **no system may assume
 exactly one villain on the map** (per-villain state on the villain, never in an autoload/global).
@@ -76,7 +77,8 @@ scripts/settlement/  Settlement, SettlementGrid, Building, WorkerSystem (trip lo
 scripts/villain/     Necromancer (data), VillainController, SortieSystem (capacity/deposit/death)
 scripts/combat/      Combat, Engagement, CombatSystem, UndeadCommand, RallyPoint
 scripts/world/       WorldMap (one TileMapLayer + one canopy MultiMesh), FogOfWar, DayNightCycle,
-                     WorldSite(s), Raven/RavenMarker, SiteGuardian, Patrol, Wolf, Roaming, TravelLog
+                     WorldSite(s), Raven/RavenMarker, SiteGuardian, Patrol, Wolf, Roaming, TravelLog,
+                     Captives (downed, the rope, the Cell, Summon Ghoul) + Downed/Prisoner (data)
 scripts/world/village/  Village, Villager, VillageBuilding, VillageLabor (data/village.json)
 scripts/world/guild/    Guild (board, standing, pay), Witnesses (runners) (data/guild.json)
 scripts/bounty|events|missions|threat/  Stage-4 systems, built, mostly unsurfaced
@@ -88,12 +90,14 @@ tools/               generators + harnesses (KEEP). make_world_map.gd GENERATES 
 ## Verification harnesses (`godot --headless --path . res://tools/<name>.tscn`)
 
 `--import` after adding any `class_name`; `--quit-after 200` is the boot check (it sits paused on
-the title — expected). Assertion counts as of 2026-09-26:
+the title — expected). Assertion counts as of 2026-09-27:
 - `measure_travel` — **the gate on any map change**: every row back in band; walk speed is no knob
 - `verify_terrain` 278 — sheets, atlas, masks, the generated layout (roads, Band 4 clearance,
   crossings, reachability, dead ends lead to loot, clearings, canopy budget)
 - `verify_loot_tables` 533 — every table ×10k vs LOOT_SITES_SPEC §5, relics, remainders, dusk gate
-- `verify_stats` 505 — nine attributes vs the workbook, profiles, hp/carry, no identifier named
+- `verify_captives` 71 — L3: down not dead, bleed-out, bind/finish/batch, the rope, the Cell,
+  meals, Search, Summon Ghoul, a guard's rescue, burial into a new grave, the HUD's buttons
+- `verify_stats` 532 — nine attributes vs the workbook, profiles, hp/carry, no identifier named
   Might (after ANY roster/stat change)
 - `check_sprite_scales` 122 — everything draws at its claimed size; looted sprites share a canvas
 - `verify_sortie` 79 — item slots (resources take none), gear worn vs banked, deposit, caches, death
@@ -106,11 +110,11 @@ the title — expected). Assertion counts as of 2026-09-26:
 - `verify_raven` 39 — the five honesty conditions over 1,000 dawns, cap, silence, fog untouched
 - `verify_guild` 69 — roadside spawn, run one builds nothing, blueprints from sites, the board from world state, pay into hands, standing
   drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
-- `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
+- `verify_village` 57 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
 - `verify_inspect` 17 — every clickable's `get_inspect_data()` answers (guardians in every state)
 - `verify_hud` 42 — the HUD shows nothing until its mechanic does, windows/keys, map names only the seen
-- `verify_demo_shell` 44 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
+- `verify_demo_shell` 46 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
 - `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
 - `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)
@@ -124,6 +128,8 @@ the title — expected). Assertion counts as of 2026-09-26:
   him at `_throne_world_centre()`.
 - The HUD floats: no bottom bar. A new HUD piece must appear the first time its mechanic does
   (`verify_hud`); style it with `HudStyle`.
+- A humanoid at 0 hp goes DOWN (`Captives`), not dead: a harness that needs a death finishes him
+  (`captives.finish` / `_die`). Wolves and the undead still die.
 - The lair aura is a POSITION: `CombatSystem.aura_protects_villain()` reads `is_in_lair_band()`.
 - A global signal carrying a villain needs an owner check (`villain_died` fires for every villain).
 - Never read a raw keycode: add a row to `Controls.ACTIONS`.

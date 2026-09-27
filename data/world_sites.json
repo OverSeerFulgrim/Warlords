@@ -28,6 +28,9 @@
 		"outlaw": {
 			"name": "An outlaw",
 			"race_id": "human_outcast",
+			"downs": true,
+			"never_flees": true,
+			"_comment_l3": "LIVING_WORLD L3 (2026-09-27): a man, so he goes down at 0 hp instead of dying (section 11.2) -- bind him or finish him. He fights to the end in his own cave, which is what puts him on the ground to be bound.",
 			"sprite": "res://assets/official/characters/Human_Outcast.png",
 			"size": 58,
 			"prowl_cells": 3,

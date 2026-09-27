@@ -9,6 +9,7 @@ extends HBoxContainer
 ## | Escort | E | once he has any dead |
 ## | Rally point | C | once he has three dead to command |
 ## | Build | B | once he knows a blueprint |
+## | Bind all / Finish all | G / X | while a downed man lies within reach (L3) |
 ##
 ## Polled (a quarter second) rather than signalled: every condition is a count
 ## that changes in several places. The bar never decides anything -- each press
@@ -19,6 +20,8 @@ signal items_pressed
 signal escort_pressed
 signal rally_pressed
 signal build_pressed
+signal bind_pressed
+signal finish_pressed
 
 const RALLY_AFTER := 3
 
@@ -27,12 +30,16 @@ var worker_system: WorkerSystem = null
 var undead_command: UndeadCommand = null
 ## `func() -> bool`: does he know any blueprint?
 var knows_blueprints: Callable = Callable()
+## `func() -> int`: how many downed men lie within Bind-all reach of him.
+var downed_near: Callable = Callable()
 
 var raise_btn: Button
 var items_btn: Button
 var escort_btn: Button
 var rally_btn: Button
 var build_btn: Button
+var bind_btn: Button
+var finish_btn: Button
 var _tick: float = 0.0
 
 func _init() -> void:
@@ -48,6 +55,13 @@ func _init() -> void:
 	items_btn.pressed.connect(func(): items_pressed.emit())
 	build_btn = _make("Build", "build", false)
 	build_btn.pressed.connect(func(): build_pressed.emit())
+	# **The fight over bodies** (LIVING_WORLD 11.3): one order over the field.
+	bind_btn = _make("Bind", "bind", true)
+	bind_btn.pressed.connect(func(): bind_pressed.emit())
+	bind_btn.visible = false
+	finish_btn = _make("Finish", "finish", false)
+	finish_btn.pressed.connect(func(): finish_pressed.emit())
+	finish_btn.visible = false
 
 func _make(title: String, action: String, accent: bool) -> Button:
 	var b := Button.new()
@@ -91,3 +105,11 @@ func refresh() -> void:
 	if villain:
 		items_btn.text = "Items\n%s · %d / %d" % [Controls.label_for("items"), villain.carried_total(), villain.carry_capacity()]
 	build_btn.visible = knows_blueprints.is_valid() and bool(knows_blueprints.call())
+	var down: int = int(downed_near.call()) if downed_near.is_valid() else 0
+	bind_btn.visible = down > 0
+	finish_btn.visible = down > 0
+	if down > 0:
+		bind_btn.text = "Bind %s\n%s · prisoner%s" % ["all" if down > 1 else "him", Controls.label_for("bind"), "s" if down > 1 else ""]
+		finish_btn.text = "Finish %s\n%s · a body" % ["all" if down > 1 else "him", Controls.label_for("finish")]
+		bind_btn.tooltip_text = "Bind every man down within a few cells: prisoners on a rope behind him. They eat, and they are worth more than corpses."
+		finish_btn.tooltip_text = "Finish every man down within a few cells: bodies, to raise."

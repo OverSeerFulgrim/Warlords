@@ -435,6 +435,16 @@ func raise_skeleton_at(at: Vector2, worker_name: String, cost: Dictionary = {}) 
 	w.idle_target = at
 	return w
 
+## **Any dead thing, at a spot, for free** (LIVING_WORLD L3): the Ghoul the
+## Altar makes is a Worker with another race row. Same roster, same trip loop,
+## same Command Undead -- nothing downstream asks what kind of dead it is.
+func raise_unit_at(at: Vector2, worker_name: String, race_id: String) -> Worker:
+	var w := Worker.new(worker_name, race_id)
+	add_worker(w)
+	w.position = at
+	w.idle_target = at
+	return w
+
 ## Next free "Skeleton Worker #n" name.
 func next_skeleton_name() -> String:
 	return "Skeleton Worker #%d" % (workers.size() + 1)

@@ -149,7 +149,7 @@ func _spawn_worker_token(worker) -> void:
 	# Follower portrait -- Skeleton_Worker.png, via the same races.json lookup
 	# every other unit uses. They still read as interchangeable by design:
 	# every worker is the same skeleton, which is the point.
-	var sprite_path: String = RaceCatalog.sprite(Worker.RACE_ID)
+	var sprite_path: String = RaceCatalog.sprite(worker.inspect_race_id())
 	var tex: Texture2D = null
 	if sprite_path != "" and ResourceLoader.exists(sprite_path):
 		tex = load(sprite_path)

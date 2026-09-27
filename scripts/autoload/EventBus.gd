@@ -257,3 +257,35 @@ signal blueprint_found(villain, blueprint_id: String, where: String)
 ## A site put items on the ground in front of him (a pull paid out, or he asked
 ## to look). Main opens the pick-up window for its own villain.
 signal items_on_ground(villain, site, relic_ids: Array)
+
+# ---- Downed and prisoners (LIVING_WORLD L3, 2026-09-27) ----
+## A humanoid hit 0 hp and went down (`Downed`), with a bleed-out window.
+signal unit_downed(downed, by)
+## A downed man died: "bled out" or "finished".
+signal downed_died(downed, killer, how: String)
+## His own side carried him home and brought him round.
+signal downed_rescued(downed, by)
+## Bound: a prisoner on the rope behind `villain`.
+signal prisoner_taken(villain, prisoner)
+## Walked home: `count` went into a Cell, which now holds `held`.
+signal prisoners_delivered(villain, count: int, held: int)
+## Home with prisoners and no room for them in a Cell (`capacity` 0 = no Cell).
+signal prisoners_no_room(villain, waiting: int, capacity: int)
+## A prisoner missed a meal (he dies at the second).
+signal prisoner_hungry(prisoner)
+## A prisoner died where he was held ("starved").
+signal prisoner_died(prisoner, how: String)
+## Searched once: what was in his pockets, and a blueprint id or "".
+signal prisoner_searched(villain, prisoner, loot: Dictionary, blueprint_id: String)
+## He fell with prisoners on the rope; they walked away.
+signal prisoners_freed(villain, count: int)
+## Summon Ghoul: a prisoner went on the Altar and a Ghoul got up.
+signal ghoul_summoned(villain, prisoner, unit)
+## The village took a man of its own prisoner-free: captured by `captor`.
+signal villager_captured(village, villager, captor)
+## A captured villager came home (the rope went slack) or a downed one was carried home.
+signal villager_back(village, villager, how: String)
+## The village found one of its dead, and will bury him.
+signal village_found_body(village, site)
+## A burial party put him in the ground: a new grave at the village graveyard.
+signal village_buried(village, who: String, grave)

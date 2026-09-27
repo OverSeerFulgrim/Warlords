@@ -50,6 +50,14 @@ var gear_strip: HBoxContainer
 var _gear_buttons: Dictionary = {}      # slot -> Button
 var pouch_panel: PanelContainer
 var pouch_label: Label
+## **Prisoners** (L3): who is on his rope and how full the Cell is. Appears with
+## the first man he binds.
+var prisoner_panel: PanelContainer
+var prisoner_label: Label
+## `func() -> Array`: the prisoners held in his Cells.
+var held_provider: Callable = Callable()
+## `func() -> int`: how many his Cells can hold.
+var cell_capacity_provider: Callable = Callable()
 var orientation_label: Label
 var follow_state_label: Label
 var dusk_warning_label: Label
@@ -206,6 +214,16 @@ func _build_left(hud_root: Control) -> void:
 	pouch_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pouch_label.custom_minimum_size = Vector2(COLUMN_WIDTH - 20.0, 0)
 	pouch_panel.add_child(pouch_label)
+
+	prisoner_panel = PanelContainer.new()
+	prisoner_panel.add_theme_stylebox_override("panel", HudStyle.box(HudStyle.BG, HudStyle.BORDER_ACCENT, 8, 8))
+	prisoner_panel.visible = false
+	prisoner_panel.custom_minimum_size = Vector2(COLUMN_WIDTH, 0)
+	left_column.add_child(prisoner_panel)
+	prisoner_label = HudStyle.label("", 13, Color("d9ccf2"))
+	prisoner_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prisoner_label.custom_minimum_size = Vector2(COLUMN_WIDTH - 20.0, 0)
+	prisoner_panel.add_child(prisoner_label)
 
 	var ori_panel := PanelContainer.new()
 	ori_panel.add_theme_stylebox_override("panel", HudStyle.box(Color(0.09, 0.07, 0.11, 0.78), Color(0, 0, 0, 0), 6, 5))
@@ -400,6 +418,32 @@ func refresh_items() -> void:
 	var n: int = _villain.escort.size()
 	escort_chip.visible = n > 0
 	escort_chip.text = "Escort %d" % n
+	refresh_prisoners()
+
+func refresh_prisoners() -> void:
+	if prisoner_panel == null or _villain == null:
+		return
+	var held: Array = held_provider.call() if held_provider.is_valid() else []
+	var cap: int = int(cell_capacity_provider.call()) if cell_capacity_provider.is_valid() else 0
+	var tow: Array = _villain.prisoners
+	prisoner_panel.visible = not tow.is_empty() or not held.is_empty()
+	if not prisoner_panel.visible:
+		return
+	var lines: Array = []
+	if not tow.is_empty():
+		var names: Array = tow.map(func(p): return String(p.display_name))
+		lines.append("On the rope: %s — walk them home" % ", ".join(names))
+	if cap > 0 or not held.is_empty():
+		lines.append("The Cell: %d / %d" % [held.size(), cap])
+	elif not tow.is_empty():
+		lines.append("No Cell to hold them yet")
+	var hungry: int = 0
+	for p in tow + held:
+		if int(p.missed_meals) > 0:
+			hungry += 1
+	if hungry > 0:
+		lines.append("%d hungry — they eat 1 food at dawn and dusk" % hungry)
+	prisoner_label.text = "\n".join(lines)
 
 func top_height() -> float:
 	# No full-width strip any more: the world runs to the top of the window.

@@ -50,6 +50,18 @@ var calm_left: float = 0.0
 var leave_reason: String = ""
 ## Set when he dies, so a stale reference can never be counted twice.
 var dead: bool = false
+## **Down at 0 hp, bleeding out** (LIVING_WORLD section 11.2, L3). Not dead:
+## still the village's man, with his job and his house, until he dies, is
+## taken, or is carried home. `Captives` holds the `Downed` record.
+var downed: bool = false
+## Bound and taken away by the Necromancer. Gone from the village like the
+## dead are, but alive -- he comes back if the rope goes slack.
+var captured: bool = false
+
+## **A guard's errand** (L3): `{"kind": "rescue", "target": Downed}` -- fetch a
+## downed villager home -- or `{"kind": "bury", "target": WorldSite}` -- carry a
+## body to the graveyard. `carrying` is set once he has it. Empty: no errand.
+var duty: Dictionary = {}
 
 ## **A witness with somewhere to be** (LIVING_WORLD section 8.1). While set, he
 ## is running for this point -- the Guardhouse or the Guild -- with `report`, and
@@ -145,7 +157,7 @@ func clear_target() -> void:
 	pass
 
 func can_work_now() -> bool:
-	return not panicked and not dead
+	return not panicked and not dead and not downed and not captured
 
 # ---------------- Inspection ----------------
 
@@ -177,6 +189,15 @@ func inspect_extra_rows() -> Array:
 		rows.append({"label": "Lives", "value": house.display_name})
 	if job == "guard" and not trained:
 		rows.append({"label": "Training", "value": "%d s left at the Guardhouse" % int(ceil(training_left))})
+	if not duty.is_empty():
+		var what: String = ""
+		if String(duty.get("kind", "")) == "rescue":
+			what = "Carrying %s home" % String(duty["target"].display_name) if bool(duty.get("carrying", false)) \
+				else "Going for %s, who is down" % String(duty["target"].display_name)
+		else:
+			what = "Carrying %s to the graveyard" % String(duty.get("who", "a body")) if bool(duty.get("carrying", false)) \
+				else "Going to fetch a body for burial"
+		rows.append({"label": "Now", "value": what})
 	if is_running_to_tell():
 		rows.append({"label": "!", "value": "He saw %s — and he is running to tell." % String(report.get("act", "something")),
 			"color": Color(1.0, 0.45, 0.35)})

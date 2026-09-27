@@ -128,6 +128,12 @@ var carried: Dictionary = {}
 ## individually commanded).
 var escort: Array = []
 
+## **Prisoners on his rope** (LIVING_WORLD L3, 2026-09-27): `Prisoner`s he bound
+## and has not yet walked home. Unbanked like any haul -- if he falls, the rope
+## goes slack. `Captives` moves them; this is only the list, because whose rope
+## it is is his.
+var prisoners: Array = []
+
 ## Items in his bag, by id. A **separate list from `carried`** because
 ## identity matters for an item and does not for a unit of bones. **Each one
 ## occupies one item slot** -- and since 2026-09-26 only items do.

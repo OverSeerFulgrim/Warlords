@@ -47,6 +47,9 @@ total. Each level costs one step more than the last. The cap is level 20.
 | Desecrate a shrine | 10 | 10 | 20 | 30 | 40 |
 | Slay a villager | 10 | 10 | 20 | 30 | 40 |
 | A guild bounty paid | 10 | 10 | 20 | 30 | 40 |
+| Take a prisoner (L3) | 10 | 10 | 20 | 30 | 40 |
+| Search a prisoner (L3, no band) | 5 | 5 | — | — | — |
+| Summon a Ghoul (L3, no band) | 30 | 30 | — | — | — |
 | Clear a guarded site | 30 | 30 | 60 | 90 | 120 |
 | Clear a wolf den | 30 | 30 | 60 | 90 | 120 |
 

@@ -22,13 +22,14 @@ const EXPECTED_PROFILE := {
 	"high_elf": "Arcane", "goblin": "Ranged", "gnoll": "Ranged",
 	"halfling": "Ranged", "human_outcast": "Melee",
 	"necromancer": "Arcane", "wolf": "Melee",
+	"ghoul": "Melee",
 }
 
 ## The workbook's tuned walk speeds. Step 4's gate: these must survive the
 ## export unchanged, because `measure_travel` is calibrated against them.
 const EXPECTED_WALK := {
 	"necromancer": 1.0, "skeleton_worker": 0.9, "wolf": 1.3,
-	"ogre": 0.8, "gnoll": 1.2, "human_peasant": 1.0,
+	"ogre": 0.8, "gnoll": 1.2, "human_peasant": 1.0, "ghoul": 1.1,
 }
 
 ## Spot checks copied from the workbook's **Effective skills** sheet.
@@ -39,6 +40,7 @@ const EXPECTED_EFFECTIVE := [
 	["hobgoblin", "leadership", 8], ["troll", "surgeon", 1],
 	["ogre", "foraging", 1], ["high_elf", "surgeon", 8],
 	["dark_elf", "scouting", 8], ["halfling", "fishing", 7],
+	["ghoul", "woodcutting", 4], ["ghoul", "mining", 4],
 ]
 
 var _passed: int = 0
@@ -71,7 +73,7 @@ func _ready() -> void:
 
 func _data_is_complete() -> void:
 	var ids: Array = RaceCatalog.all_ids()
-	_check("races.json has 19 rows (17 races + villain + wolf)", ids.size() == 19,
+	_check("races.json has 20 rows (18 races incl. the Ghoul + villain + wolf)", ids.size() == 20,
 		"%d rows: %s" % [ids.size(), str(ids)])
 	_check("the derivation divisor exported", int(RaceCatalog.derivation().get("divisor", 0)) == 2,
 		"got %s" % RaceCatalog.derivation())

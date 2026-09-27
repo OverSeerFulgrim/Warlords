@@ -1,0 +1,39 @@
+{
+  "_comment": "LIVING_WORLD L3 (section 10, 11): downed, bleed-out, rescue, prisoners, the Cell. Every number here is a playtest hypothesis (section 16's tunables). Read by scripts/world/Captives.gd.",
+
+  "bleed_out_seconds": 45.0,
+  "_comment_bleed": "How long a downed humanoid lies there before he dies of it. Long enough to walk over and decide; short enough that a fight over bodies is a fight.",
+
+  "bind_reach_px": 72.0,
+  "_comment_reach": "He has to stand over a man to bind or finish him -- no remote actions, same as a site.",
+  "batch_reach_cells": 5.0,
+  "_comment_batch": "Bind all / Finish all (section 11.3) reach every downed body within this many cells of him.",
+
+  "rescue_cells": 14.0,
+  "_comment_rescue": "A guard goes for a downed villager within this many cells of himself, once no alarm needs him.",
+  "revive_hp_fraction": 0.35,
+
+  "tow_gap_px": 30.0,
+  "_comment_tow": "Bound prisoners walk behind him on a rope, this far apart. They keep up; they do not slow him.",
+
+  "home_cells": 6.0,
+  "_comment_home": "Within this many cells of the Throne he is home: prisoners go into a Cell if there is room.",
+
+  "food_per_meal": 1,
+  "starve_after_missed_meals": 2,
+  "_comment_food": "Prisoners eat at dawn and at dusk, from the treasury (ruling 6). Two missed meals in a row and he dies where he is held: a Cell with no food is a Cell with corpses in it -- a body to raise.",
+
+  "search": {
+    "_comment": "Going through a prisoner's pockets, once each (section 10.3 use 3). Resources go into his pack, banked at the Throne like any haul. The first search, while he does not know the Cell, always teaches it; after that a search teaches an unknown blueprint from `blueprints` at `blueprint_chance`.",
+    "resources": { "gold": [0, 3], "food": [0, 2] },
+    "first_blueprint": "cell",
+    "blueprints": ["cell", "bone_pile", "workshop", "barracks", "blacksmith"],
+    "blueprint_chance": 0.25
+  },
+
+  "ghoul": {
+    "_comment": "Summon Ghoul (ROGUELITE_REWORK 17.5): a living prisoner sacrificed at the Dark Altar, level 2. The race row is the workbook's Ghoul.",
+    "race_id": "ghoul",
+    "min_level": 2
+  }
+}

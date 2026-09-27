@@ -14,7 +14,8 @@
 		"desecrate_a_shrine": 10,
 		"cleared_a_site": 30,
 		"cleared_a_den": 30,
-		"slew_a_villager": 10, "guild_bounty": 10
+		"slew_a_villager": 10, "guild_bounty": 10,
+		"took_a_prisoner": 10, "search_a_prisoner": 5, "summon_a_ghoul": 30
 	},
 
 	"band_multiplier": {

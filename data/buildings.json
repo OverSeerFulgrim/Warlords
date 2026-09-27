@@ -130,6 +130,19 @@
     "sprite_path": "res://assets/official/buildings/Barracks.png"
   },
 
+  "cell": {
+    "blueprint": true,
+    "display_name": "The Cell",
+    "description": "Iron rings in a stone floor and a door that locks from outside. Holds 4 prisoners. They eat: one food each, dawn and dusk.",
+    "category": "functional",
+    "cost": { "wood": 6, "stone": 6 },
+    "capacity": 4,
+    "power_value": 3,
+    "requires": "",
+    "_comment_cell": "LIVING_WORLD L3 (section 10.4, ruling 6): prisoners need a building and they eat. A blueprint like any other -- the first prisoner he searches knows how one is built (data/captives.json). 'capacity' is prisoners held, read by Captives.cell_capacity().",
+    "sprite_path": "res://assets/placeholder/kenney/building_crypt_kenney.png"
+  },
+
   "recruit_house": {
     "display_name": "House",
     "description": "A home a recruit built for themselves once you paid for the timber. Frees their Barracks slot.",

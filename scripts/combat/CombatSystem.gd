@@ -143,6 +143,9 @@ var world_sites: WorldSites = null
 ## they have reason: guards answering an alarm, or everyone while he is
 ## Hunting (ruling 15). Untyped -- a plain field, set by Main.
 var village = null
+## **The bottom of the health bar** (LIVING_WORLD L3): a humanoid at 0 hp goes
+## down rather than dying (`Captives`). Null: the old rule, 0 hp is death.
+var captives = null
 
 var wolves: Array = []          # Array[Wolf]
 var _engagements: Array = []    # Array[Engagement]
@@ -877,8 +880,19 @@ func _remove_attacker(attacker) -> void:
 	# kills villagers, so the deed is his.
 	if attacker is Villager:
 		_leave_combat(attacker)
+		# **Down, not dead** (LIVING_WORLD section 11.2): a man at 0 hp lies
+		# where he fell with a bleed-out window -- bind him, finish him, or let
+		# his own come for him. `Captives` owns what happens next.
+		if captives:
+			captives.down_villager(attacker, villain)
+			return
 		if village:
 			village.on_villager_killed(attacker, villain)
+		return
+	# An outlaw downs too; a wolf and a dead sentinel do not (wildlife kills,
+	# and the dead are already dead).
+	if attacker is SiteGuardian and captives and attacker.downs and attacker.leave_reason == "killed":
+		captives.down_guardian(attacker, villain)
 		return
 	if attacker is SiteGuardian:
 		if world_sites:

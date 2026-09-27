@@ -136,6 +136,13 @@ func _nearest(types: Array, from: Vector2) -> ResourceNode:
 ## Training first (at the Guardhouse, for as long as it takes), then the beat.
 ## An alarm outranks both -- see Village.raise_alarm.
 func _tick_guard(v: Villager, delta: float) -> void:
+	# A man with a body over his shoulder finishes the carry. One on his way to
+	# fetch one drops the errand if the alarm needs him.
+	if not v.duty.is_empty():
+		if bool(v.duty.get("carrying", false)) or not (village and village.alarm_active() and village.guard_answers_alarm(v)):
+			_tick_duty(v, delta)
+			return
+		village.drop_duty(v)
 	if village and village.alarm_active() and village.guard_answers_alarm(v):
 		if _step_toward(v, village.alarm_target_position(), delta):
 			pass
@@ -161,6 +168,48 @@ func _tick_guard(v: Villager, delta: float) -> void:
 		_beat_index[v] = (i + 1) % beat.size()
 	else:
 		_beat_index[v] = i
+
+## **A guard's errands** (L3): fetch a downed villager home (he comes round
+## there), or carry a body to the graveyard (a new grave). Slower with a load.
+const CARRY_SPEED_SCALE: float = 0.75
+
+func _tick_duty(v: Villager, delta: float) -> void:
+	var kind: String = String(v.duty.get("kind", ""))
+	var carrying: bool = bool(v.duty.get("carrying", false))
+	v.stage = Laborer.TripStage.WALK_TO_NODE if not carrying else Laborer.TripStage.WALK_HOME
+	if kind == "rescue":
+		var d = v.duty.get("target")
+		var cap = village.captives if village else null
+		if cap == null or d == null or not cap.downed.has(d):
+			village.drop_duty(v)
+			return
+		if not carrying:
+			if _step_toward(v, d.position, delta):
+				cap.pick_up(d, v)
+				v.duty["carrying"] = true
+				village._set_carry_tag(v, "carrying %s" % String(d.person.villager_name if d.person else d.display_name))
+			return
+		var home: Vector2 = d.person.idle_anchor if d.person and d.person.idle_anchor != Vector2.ZERO else home_position
+		if _step_toward(v, home, delta, CARRY_SPEED_SCALE):
+			v.duty = {}
+			village._set_carry_tag(v, "")
+			cap.revive(d)
+		return
+	if kind == "bury":
+		if not carrying:
+			var s = v.duty.get("target")
+			if not village._buryable(s):
+				village.drop_duty(v)
+				return
+			if _step_toward(v, s.position, delta):
+				village.lift_body(v)
+			return
+		if not v.duty.has("to"):
+			v.duty["to"] = village.next_grave_spot()
+		if _step_toward(v, v.duty["to"], delta, CARRY_SPEED_SCALE):
+			village.bury(v)
+		return
+	village.drop_duty(v)
 
 func _nearest_beat_index(v: Villager, beat: Array) -> int:
 	var best: int = 0

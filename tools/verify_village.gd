@@ -203,8 +203,16 @@ func _hunting_kills_and_the_village_reacts() -> void:
 		cs._process(0.05)
 		_vil.labor._process(0.05)
 		_vil._process(0.05)
-		if hale.dead:
+		if hale.dead or hale.downed:
 			break
+	# **Down, not dead** (LIVING_WORLD L3, 2026-09-27): at 0 hp he lies there
+	# bleeding out. Standing over him, the Necromancer finishes him -- which is
+	# the kill this block has always measured.
+	_check("at 0 hp he went down, not dead (L3)", hale.downed and not hale.dead)
+	var downs: Array = _main.captives.downed.filter(func(dd): return dd.person == hale)
+	if not downs.is_empty():
+		v.place_at(downs[0].position + Vector2(8, 0))
+		_main.captives.finish(downs[0], v)
 	EventBus.village_alarm.disconnect(aconn)
 	EventBus.villager_killed.disconnect(kconn)
 	_check("the fight opened and the village raised its alarm", alarms[0] >= 1, "%d" % alarms[0])

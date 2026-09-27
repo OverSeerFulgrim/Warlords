@@ -64,6 +64,10 @@ signal flee_requested
 signal guild_action_requested(guild, action: String, id: int)
 ## The Items window (2026-09-26).
 signal items_requested
+## **Downed and prisoners** (L3): "bind", "finish", "bind_all", "finish_all" on
+## a `Downed`; "search", "ghoul" on a `Prisoner`. Requested, not performed: Main
+## acts, logs and refreshes.
+signal captive_action_requested(action: String, target)
 ## Asked each time his panel is built: can he flee from where he stands?
 var flee_available: Callable = Callable()
 
@@ -196,25 +200,114 @@ func actions_for_building(building: Building) -> Callable:
 		return keep_actions
 	if building.building_id == "dark_altar":
 		return altar_actions
+	if building.building_id == "cell":
+		return cell_actions
 	if building.category == "housing_intake":
 		return barracks_actions
 	return Callable()
 
 ## **The Dark Altar** (ROGUELITE_REWORK 17.5): Summon Ghoul, level 2, for a
-## living sacrifice. Shown as a real button with its reason, because the Altar
-## is buildable before prisoners exist -- the reason says what is missing.
-var ghoul_unlocked: Callable = Callable()
+## living sacrifice (LIVING_WORLD L3, 2026-09-27). One button per prisoner he
+## could put on it; with none, a disabled button and the reason.
+var captives: Captives = null
 
 func altar_actions(box: VBoxContainer) -> void:
-	var b := Button.new()
-	b.text = "Summon Ghoul"
-	b.disabled = true
-	box.add_child(b)
-	var unlocked: bool = ghoul_unlocked.is_valid() and bool(ghoul_unlocked.call())
-	if not unlocked:
-		_note(box, "He has not learned it yet: Summon Ghoul comes at level 2.")
+	var why: String = captives.ghoul_blocker(_villain) if captives else "It needs a living sacrifice."
+	var list: Array = captives.sacrificeable(_villain) if captives and why == "" else []
+	if list.is_empty():
+		var b := Button.new()
+		b.text = "Summon Ghoul"
+		b.disabled = true
+		box.add_child(b)
+		_note(box, why if why != "" else "It needs a living sacrifice — a prisoner.")
+		return
+	_note(box, "A living man goes onto the stone; a Ghoul gets up. Stronger than bone, and it answers to Command Undead like any of the dead.")
+	for p in list:
+		var who: Prisoner = p
+		var b := Button.new()
+		b.text = "Summon Ghoul — sacrifice %s" % who.display_name
+		b.pressed.connect(func(): captive_action_requested.emit("ghoul", who))
+		box.add_child(b)
+
+## **The Cell** (LIVING_WORLD 10.4): who is in it, fed or not, and what can be
+## done with each -- searched here, sacrificed at the Altar.
+func cell_actions(box: VBoxContainer) -> void:
+	if captives == null:
+		return
+	var held: Array = captives.held()
+	_note(box, "Holding %d of %d. Each eats 1 food at dawn and at dusk; two missed meals and he dies in here." % [held.size(), captives.cell_capacity()])
+	if held.is_empty():
+		_note(box, "Empty. Put a man down out there, bind him, and walk him home.")
+		return
+	var home: bool = captives.is_home(_villain)
+	for p in held:
+		var who: Prisoner = p
+		var row := Label.new()
+		row.text = "%s — %s" % [who.display_name, who.status_line()]
+		row.add_theme_font_size_override("font_size", 12)
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
+		box.add_child(row)
+		_prisoner_buttons(box, who, home)
+	if not home:
+		_note(box, "He has to be home to deal with them.")
+
+func _prisoner_buttons(box: VBoxContainer, who: Prisoner, reachable: bool) -> void:
+	var s := Button.new()
+	s.text = "Search him" if not who.searched else "Searched"
+	s.tooltip_text = "Once. Whatever he carries goes in your pack — and the first one you search knows how a Cell is built."
+	s.disabled = who.searched or not reachable
+	s.pressed.connect(func(): captive_action_requested.emit("search", who))
+	box.add_child(s)
+	if captives and captives.ghoul_blocker(_villain) == "" and captives.sacrificeable(_villain).has(who):
+		var g := Button.new()
+		g.text = "Summon Ghoul — sacrifice him"
+		g.pressed.connect(func(): captive_action_requested.emit("ghoul", who))
+		box.add_child(g)
+
+## **A prisoner** clicked on the map (on the rope, or at the Cell).
+func prisoner_actions(box: VBoxContainer, p: Prisoner) -> void:
+	if captives == null or p == null:
+		return
+	var reach: bool = captives.can_reach_prisoner(p, _villain)
+	_prisoner_buttons(box, p, reach)
+	if not reach:
+		_note(box, "He has to be home to deal with the ones in the Cell.")
+	var why: String = captives.ghoul_blocker(_villain)
+	if why != "":
+		_note(box, "Summon Ghoul: " + why)
+
+## **A man down** (LIVING_WORLD 11.2): bind or finish, standing over him; the
+## batch orders (11.3) when more than one lies near.
+func downed_actions(box: VBoxContainer, d: Downed) -> void:
+	if captives == null or d == null:
+		return
+	if not captives.downed.has(d):
+		_note(box, "It is over, one way or the other.")
+		return
+	if not captives.in_reach(d, _villain):
+		_note(box, "Stand over him to bind him or finish him.")
 	else:
-		_note(box, "It needs a living sacrifice -- a prisoner. Taking prisoners is not in the game yet (LIVING_WORLD L3).")
+		var b := Button.new()
+		b.text = "Bind him — a prisoner  [%s]" % Controls.label_for("bind")
+		b.tooltip_text = "He walks behind you on a rope. At home he goes into a Cell. He eats; he can be searched; he can go on the Altar."
+		b.pressed.connect(func(): captive_action_requested.emit("bind", d))
+		box.add_child(b)
+		var f := Button.new()
+		f.text = "Finish him — a body  [%s]" % Controls.label_for("finish")
+		f.tooltip_text = "A corpse where he lies. Raise it for free."
+		f.pressed.connect(func(): captive_action_requested.emit("finish", d))
+		box.add_child(f)
+	var near: int = captives.downed_near(_villain).size()
+	if near > 1:
+		var ba := Button.new()
+		ba.text = "Bind all %d near him" % near
+		ba.pressed.connect(func(): captive_action_requested.emit("bind_all", d))
+		box.add_child(ba)
+		var fa := Button.new()
+		fa.text = "Finish all %d near him" % near
+		fa.pressed.connect(func(): captive_action_requested.emit("finish_all", d))
+		box.add_child(fa)
 
 ## **The guild's board** (LIVING_WORLD section 4.2). Standing first, because it
 ## decides everything under it; then every bounty with the one thing he can do
@@ -359,6 +452,19 @@ func necromancer_actions(box: VBoxContainer) -> void:
 		box.add_child(dismiss)
 
 	_drop_rows(box)
+
+	# **His rope** (L3): each prisoner he is walking home.
+	if captives and not _villain.prisoners.is_empty():
+		box.add_child(HSeparator.new())
+		_note(box, "On the rope: %d. Walk them home — %s." % [_villain.prisoners.size(),
+			"a Cell holds them there" if captives.cell_capacity() > 0 else "he has no Cell to put them in yet"])
+		for p in _villain.prisoners:
+			var who: Prisoner = p
+			var row := Label.new()
+			row.text = "%s — %s" % [who.display_name, who.status_line()]
+			row.add_theme_font_size_override("font_size", 12)
+			box.add_child(row)
+			_prisoner_buttons(box, who, true)
 
 	if flee_available.is_valid() and bool(flee_available.call()):
 		var flee := Button.new()

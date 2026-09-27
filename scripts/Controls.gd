@@ -35,6 +35,8 @@ const ACTIONS := [
 	["build", "Build", KEY_B],
 	["map", "The big map", KEY_M],
 	["history", "History", KEY_L],
+	["bind", "Bind the fallen near him (prisoners)", KEY_G],
+	["finish", "Finish the fallen near him", KEY_X],
 	["pause", "Pause", KEY_SPACE, KEY_P],
 	["cancel", "Cancel / close / pause", KEY_ESCAPE],
 	["debug_overlay", "Dev site overlay (debug builds)", KEY_F3],

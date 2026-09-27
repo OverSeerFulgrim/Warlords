@@ -28,6 +28,9 @@ var world_sites: WorldSites = null
 var combat_system: CombatSystem = null
 ## Who hears a runner's report (L2). Set by Main; may be null.
 var witnesses = null
+## The downed and the taken (L3): whom the guards go out to fetch. Set by Main;
+## may be null, and then a villager at 0 hp simply dies as before.
+var captives = null
 var villain: Necromancer = null
 var day_provider: Callable = Callable()
 
@@ -166,6 +169,18 @@ func _spawn_token(v: Villager) -> void:
 	token.setup(v, _guard_tex if v.is_guard() and _guard_tex else _sprite_tex)
 	_tokens[v] = token
 
+## The art his token wears, for views that draw him somewhere else (lying down,
+## on a rope).
+func sprite_path_for(v: Villager) -> String:
+	if v.is_guard():
+		return String(_data.get("guard_sprite", _data.get("villager_sprite", "")))
+	return String(_data.get("villager_sprite", ""))
+
+func set_token_visible(v: Villager, on: bool) -> void:
+	var token: WorkerToken = _tokens.get(v)
+	if token:
+		token.visible = on
+
 func _refresh_token(v: Villager) -> void:
 	var token: WorkerToken = _tokens.get(v)
 	if token == null:
@@ -178,7 +193,7 @@ func _refresh_token(v: Villager) -> void:
 # ---------------- Queries ----------------
 
 func living() -> Array:
-	return villagers.filter(func(v): return not v.dead and v.is_alive())
+	return villagers.filter(func(v): return not v.dead and not v.captured and not v.downed and v.is_alive())
 
 func population() -> int:
 	return living().size()
@@ -385,7 +400,9 @@ func on_runner_arrived(v: Villager) -> void:
 func on_villager_killed(v: Villager, killer) -> void:
 	if v.dead:
 		return
+	drop_duty(v)
 	v.dead = true
+	v.downed = false
 	v.abandon_trip()
 	settlement.followers.erase(v)
 	var token: WorkerToken = _tokens.get(v)
@@ -403,6 +420,203 @@ func on_villager_killed(v: Villager, killer) -> void:
 
 func _day() -> int:
 	return int(day_provider.call()) if day_provider.is_valid() else 1
+
+# ---------------- Taken, rescued, freed (L3) ----------------
+
+## Bound and led away. The village reads it like a death -- his building keeps
+## his name, empty; the jobs fill by priority -- but there is no body.
+func on_villager_captured(v: Villager, captor) -> void:
+	if v.dead or v.captured:
+		return
+	drop_duty(v)
+	v.captured = true
+	v.downed = false
+	v.abandon_trip()
+	settlement.followers.erase(v)
+	var token: WorkerToken = _tokens.get(v)
+	if token:
+		token.queue_free()
+	_tokens.erase(v)
+	EventBus.villager_captured.emit(self, v, captor)
+	restaff()
+
+## Carried home by a guard and brought round: shaken, hurt, and cowering at home
+## for a while -- but alive, with his job.
+func revive(v: Villager, at: Vector2, hp_fraction: float) -> void:
+	v.downed = false
+	v.position = at
+	v.hp = maxi(1, int(round(float(v.max_hp()) * hp_fraction)))
+	v.stage = Laborer.TripStage.IDLE
+	v.panicked = true
+	v.calm_left = Villager.CALM_SECONDS
+	set_token_visible(v, true)
+	EventBus.villager_back.emit(self, v, "carried home")
+
+## The rope went slack (the Necromancer fell): he walks home.
+func on_villager_freed(v: Villager, at: Vector2) -> void:
+	if not v.captured or v.dead:
+		return
+	v.captured = false
+	v.position = at
+	v.hp = maxi(1, int(v.max_hp() / 3))
+	v.stage = Laborer.TripStage.IDLE
+	v.panicked = true
+	v.calm_left = Villager.CALM_SECONDS
+	settlement.followers.append(v)
+	_spawn_token(v)
+	restaff()
+	EventBus.villager_back.emit(self, v, "freed")
+
+## A guard stops what he was doing for the village -- he went down, died, was
+## taken or panicked. Whatever he was carrying is put down where he stands.
+func drop_duty(v: Villager) -> void:
+	if v.duty.is_empty():
+		return
+	var d: Dictionary = v.duty
+	v.duty = {}
+	_set_carry_tag(v, "")
+	if String(d.get("kind", "")) == "rescue":
+		if captives:
+			captives.release(d.get("target"))
+	elif String(d.get("kind", "")) == "bury":
+		_burials.erase(d.get("target"))
+		if bool(d.get("carrying", false)) and world_sites:
+			var body: WorldSite = world_sites.spawn_body(v.position, String(d.get("who", "Somebody")))
+			_known_bodies[body] = true
+
+# ---------------- The dead are buried (section 5.7) ----------------
+
+## Bodies the village knows about (found), and which guard is burying which.
+var _known_bodies: Dictionary = {}   # WorldSite -> true
+var _burials: Dictionary = {}        # WorldSite -> Villager
+var _graves_dug: int = 0
+var _duty_tick: float = 0.0
+
+## A body is buryable while the corpse is still in it and nobody has hidden it.
+func _buryable(site) -> bool:
+	return site != null and is_instance_valid(site) and site.loot_type == "villager_body" \
+		and site.corpse_present() and not site.is_concealed()
+
+func graveyard_position() -> Vector2:
+	if world_sites:
+		for s in world_sites.sites:
+			if s.site_id == String(_data.get("graveyard_site", "village_graveyard")):
+				return s.position
+	return labor.home_position if labor else Vector2.ZERO
+
+## Where the next grave goes: rows beside the graveyard, filling outward. Every
+## burial is a new grave -- the graveyard grows with the village's losses.
+func next_grave_spot() -> Vector2:
+	var base: Vector2 = graveyard_position()
+	var i: int = _graves_dug
+	var at: Vector2 = base + Vector2(-72.0 + float(i % 5) * 36.0, 58.0 + float(int(i / 5)) * 40.0)
+	return world.nearest_walkable(at) if world else at
+
+## The guards learn of a body when anyone of the village sees it: within
+## `body_notice_cells` of a living villager. A body found raises threat (Era I:
+## humans blame animals and outlaws). A hidden one is never found.
+func _scan_bodies() -> void:
+	if world_sites == null:
+		return
+	var reach: float = float(_data.get("body_notice_cells", 6.0)) * float(SettlementGrid.CELL_SIZE)
+	var people: Array = living()
+	for s in world_sites.sites:
+		if _known_bodies.has(s) or not _buryable(s):
+			continue
+		for v in people:
+			if v.position.distance_to(s.position) <= reach:
+				_known_bodies[s] = true
+				GameState.add_threat(int(_data.get("body_found_threat", 1)))
+				EventBus.village_found_body.emit(self, s)
+				break
+	for s in _known_bodies.keys():
+		if not _buryable(s) and not _burials.has(s):
+			_known_bodies.erase(s)
+
+## A free guard: not fighting, not running, not already on an errand.
+func _free_guards() -> Array:
+	return living().filter(func(v): return v.is_guard() and v.duty.is_empty() and not v.in_combat \
+		and not v.panicked and not v.is_running_to_tell())
+
+## Errands, handed to the nearest free guard, while no alarm needs him: first
+## the living (a downed villager within rescue reach), then the dead.
+func _assign_duties() -> void:
+	if alarm_active():
+		return
+	var guards: Array = _free_guards()
+	if guards.is_empty():
+		return
+	if captives:
+		for g in guards.duplicate():
+			var d = captives.rescue_target("human", g.position)
+			if d != null:
+				captives.claim(d, g)
+				g.abandon_trip()
+				g.duty = {"kind": "rescue", "target": d}
+				guards.erase(g)
+	for s in _known_bodies.keys():
+		if guards.is_empty():
+			return
+		if _burials.has(s) or not _buryable(s):
+			continue
+		var best = null
+		var best_d: float = INF
+		for g in guards:
+			var dist: float = g.position.distance_to(s.position)
+			if dist < best_d:
+				best_d = dist
+				best = g
+		best.abandon_trip()
+		best.duty = {"kind": "bury", "target": s}
+		_burials[s] = best
+		guards.erase(best)
+
+## The guard reached the body: he lifts it (the site goes -- there is nothing
+## left there to raise).
+func lift_body(g: Villager) -> bool:
+	var s = g.duty.get("target")
+	if not _buryable(s):
+		drop_duty(g)
+		return false
+	var who: String = String(s.get_meta("body_of", s.display_name.trim_suffix("'s Body")))
+	g.duty["carrying"] = true
+	g.duty["who"] = who
+	_burials.erase(s)
+	_known_bodies.erase(s)
+	world_sites.remove_site(s)
+	_set_carry_tag(g, "carrying %s" % who)
+	return true
+
+## At the graveyard: a new grave, named for him, with him in it -- to be dug up.
+func bury(g: Villager) -> void:
+	var who: String = String(g.duty.get("who", "Somebody"))
+	g.duty = {}
+	_set_carry_tag(g, "")
+	var grave = null
+	if world_sites:
+		grave = world_sites.spawn_grave(next_grave_spot(), who)
+	_graves_dug += 1
+	EventBus.village_buried.emit(self, who, grave)
+
+func _set_carry_tag(v: Villager, text: String) -> void:
+	var token: WorkerToken = _tokens.get(v)
+	if token == null:
+		return
+	var tag: Label = token.get_node_or_null("CarryTag")
+	if text == "":
+		if tag:
+			tag.queue_free()
+		return
+	if tag == null:
+		tag = Label.new()
+		tag.name = "CarryTag"
+		tag.add_theme_font_size_override("font_size", 10)
+		tag.add_theme_color_override("font_color", Color(0.95, 0.85, 0.7))
+		tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		tag.add_theme_constant_override("outline_size", 4)
+		tag.position = Vector2(-34, 6)
+		token.add_child(tag)
+	tag.text = text
 
 # ---------------- The alarm ----------------
 
@@ -448,3 +662,8 @@ func _process(delta: float) -> void:
 	if _alarm_left > 0.0:
 		_alarm_left -= delta
 	_process_bangs()
+	_duty_tick -= delta
+	if _duty_tick <= 0.0:
+		_duty_tick = 0.5
+		_scan_bodies()
+		_assign_duties()

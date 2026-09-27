@@ -212,6 +212,7 @@ func reset() -> void:
 	for k in STARTING_STOCK.keys():
 		player_settlement.stockpile[k] = int(STARTING_STOCK[k])
 	player_settlement._deposit_carry.clear()
+	player_settlement.prisoners.clear()
 	player_settlement.stockpile_changed.emit()
 	reputation = 0
 	threat = 0

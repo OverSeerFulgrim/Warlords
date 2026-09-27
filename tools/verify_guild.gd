@@ -29,6 +29,11 @@ func _ready() -> void:
 	seed(20260926)
 	_guild = _main.guild
 	_vil = _main.village
+	# Threat here is the witnesses' alone: the village finding a body raises
+	# threat too (L3's burial parties, measured in verify_captives), so it is
+	# kept out of this harness.
+	if _vil:
+		_vil._data["body_notice_cells"] = 0.0
 	print("\n=== The Guild, witnesses, blueprints, the road (LIVING_WORLD L2) ===\n")
 	_the_road()
 	if _guild == null or _vil == null:
@@ -367,7 +372,7 @@ func _the_panels() -> void:
 	var btn = _find(box2, "Button")
 	_check("the Altar offers Summon Ghoul", btn != null and btn.text == "Summon Ghoul")
 	var lvl: int = _main.run_lifecycle.profile.level(_main.villain.class_id)
-	var why: String = "level 2" if lvl < 2 else "prisoner"
+	var why: String = "level 2" if lvl < 2 else ("Altar" if _main.captives.altar() == null else "prisoner")
 	_check("...greyed, with the reason (%s)" % why, btn != null and btn.disabled and _texts(box2).contains(why))
 	box2.queue_free()
 	_main._show_opening_popup()

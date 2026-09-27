@@ -296,6 +296,15 @@ func channel_progress() -> float:
 func is_den() -> bool:
 	return loot_type == "wolf_den"
 
+## **A body is still in it** (L3's burial parties ask): a charge left and not
+## raised. A grave that was finished reset its state, and has no charge.
+func corpse_present() -> bool:
+	return lootable and charges_left > 0 and not bool(_grave["raised"])
+
+## Hidden -- "drag him out of sight", "destroy the evidence". Nobody finds it.
+func is_concealed() -> bool:
+	return bool(_grave["concealed"]) or _conceals > 0
+
 func is_dropped_cache() -> bool:
 	return loot_type == "dropped_cache"
 

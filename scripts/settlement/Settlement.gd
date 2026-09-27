@@ -43,6 +43,10 @@ var stockpile: Dictionary = {}
 ## it is every living villager.
 var followers: Array = []
 
+## **Prisoners held in this settlement's Cells** (LIVING_WORLD L3, ruling 6):
+## `Prisoner`s. They eat from this stockpile. `Captives` manages them.
+var prisoners: Array = []
+
 ## Derived score -- see GameState.recompute_power for the player's formula.
 var power: int = 0
 
