@@ -79,9 +79,12 @@ when you die.
 
 > **Built (2026-09-26, L2):** he wakes on the worn track at the east edge of the lair band
 > (`Main.ROADSIDE_SPAWN_CELL` (37, 60)); the first-run popup shows when a class has never finished
-> a run; the board's den bounties are the first jobs; a **roadside grave** (`fresh_grave_scree`,
-> moved to (84, 78)) stands beside the trade road past the guild, and `fresh_grave_hollow` stays
-> north-west of the Throne; **clearing a den teaches the Dark Altar** for good (§9.1) — it is
+> a run; the board's den bounties are the first jobs; a **roadside grave** (`fresh_grave_scree`)
+> stands beside the track past the guild, and `fresh_grave_hollow` stays
+> north-west of the Throne. **After the first playtest (designer ruling, 2026-09-26): the guild is
+> in sight when he wakes** — at the first fork east of the lair's edge, (43, 58), its ground known
+> from the start and marked on the minimap — and the popup names the direction; the roadside
+> grave now stands at (51, 66) on the track south past it. **Clearing a den teaches the Dark Altar** for good (§9.1) — it is
 > blueprint-gated, not a starting building. No starting skeleton; **Raise Dead** is his starting
 > spell (a grave's corpse free at the graveside, otherwise 5 bones anywhere); 3 starting bones.
 > Second Wake still wakes him at the Throne.

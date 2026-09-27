@@ -109,6 +109,12 @@ var opening_popup: PanelContainer
 ## with the map.
 const ROADSIDE_SPAWN_CELL := Vector2i(37, 60)
 const OPENING_POPUP_TEXT := "Follow this road to the Adventurers' Guild."
+## Which way, from where he stands -- the track forks four ways at the lair's
+## edge, and the first playtest took the wrong one.
+func opening_popup_text() -> String:
+	if guild == null or villain == null:
+		return OPENING_POPUP_TEXT
+	return "%s  The hall is just ahead, to the %s." % [OPENING_POPUP_TEXT, Guild.compass(guild.position - villain.position)]
 ## Site discovery is checked on this clock rather than every frame -- it is a
 ## distance test over fifteen sites, and a quarter-second late is invisible.
 var _discovery_timer: float = 0.0
@@ -233,10 +239,10 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_on_viewport_resized)
 	# The opening, in one line. He wakes on the road with no dead and too few
 	# bones to raise one (rulings 2026-09-26), so the first thing the player
-	# needs to know is where the dead are: beside the road past the guild
+	# needs to know is where the dead are: down the south track past the guild
 	# (fresh_grave_scree, the roadside grave) and in the hollow north-west of
 	# the Throne (fresh_grave_hollow).
-	_log("[color=#b8a0e0]He wakes on the road at the edge of his lair with no dead, and three bones will not raise one. The road east runs to the Adventurers' Guild, and there are graves beside it past the guild — and one in the hollow north-west of the Throne.[/color]", "events")
+	_log("[color=#b8a0e0]He wakes on the road at the edge of his lair with no dead, and three bones will not raise one. The Adventurers' Guild stands just up the road; past it, beside the track south, is a fresh grave — and there is another in the hollow north-west of the Throne.[/color]", "events")
 	_show_title_once()
 
 ## The title, over a paused world, the first time the game runs this session --
@@ -598,6 +604,10 @@ func _build_guild() -> void:
 		guild = null
 		return
 	settlement.add_child(guild)
+	# A public hall: its ground is known from the first frame, so he can see it
+	# from where he wakes (first playtest, 2026-09-26).
+	if fog:
+		fog.reveal_permanently(guild.known_ground())
 	witnesses = Witnesses.new()
 	witnesses.name = "Witnesses"
 	witnesses.villain = villain
@@ -616,9 +626,11 @@ func _show_opening_popup() -> void:
 		layer.layer = 58
 		add_child(layer)
 		var holder := CenterContainer.new()
-		holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		holder.offset_top = 90.0
-		holder.offset_bottom = 170.0
+		# Low, just above the command bar: the hall it points at stands up and
+		# to the right of him, where a top banner would cover its roof.
+		holder.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		holder.offset_top = -float(BOTTOM_BAR_HEIGHT) - 90.0
+		holder.offset_bottom = -float(BOTTOM_BAR_HEIGHT) - 16.0
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(holder)
 		opening_popup = PanelContainer.new()
@@ -628,7 +640,7 @@ func _show_opening_popup() -> void:
 		row.add_theme_constant_override("separation", 14)
 		opening_popup.add_child(row)
 		var lbl := Label.new()
-		lbl.text = OPENING_POPUP_TEXT
+		lbl.text = opening_popup_text()
 		lbl.add_theme_font_size_override("font_size", 16)
 		lbl.add_theme_color_override("font_color", Color(0.9, 0.82, 1.0))
 		row.add_child(lbl)
@@ -1039,13 +1051,15 @@ func _build_bottom_shell(hud_root: Control) -> void:
 		return debug_site_overlay.minimap_points() if debug_site_overlay else []
 	minimap.raven_markers_source = func():
 		return raven.minimap_points() if raven else []
+	minimap.landmarks_source = func():
+		return [guild.position] if guild else []
 	minimap.camera_requested.connect(_on_minimap_camera_requested)
 	minimap.move_requested.connect(_on_right_tap)
 	minimap_column.add_child(minimap)
 	minimap_hint = Label.new()
 	minimap_hint.add_theme_font_size_override("font_size", 9)
 	minimap_hint.modulate = Color(1, 1, 1, 0.55)
-	minimap_hint.text = "○ lair   ● you   · yours   (M hides)"
+	minimap_hint.text = "○ lair   ⌂ guild   ● you   · yours   (M hides)"
 	minimap_column.add_child(minimap_hint)
 	bar_hbox.add_child(minimap_column)
 

@@ -13,15 +13,15 @@ the Altar.
   Second Wake still wakes him at the Throne.
 - **First-run popup:** *"Follow this road to the Adventurers' Guild."* with a Go button, shown when
   the title's Begin is pressed and this class has never finished a run. Never again.
-- **The roadside grave:** `fresh_grave_scree` moved from (33, 70) to **(84, 78)**, beside the trade
-  road past the guild, subtitle "The trade road — Band 1". Not signposted, so the generated map is
+- **The roadside grave:** `fresh_grave_scree` moved from (33, 70) to (84, 78), beside the trade
+  road past the guild *(moved again after the first playtest — see below)*. Not signposted, so the generated map is
   unchanged (the loot-site count stays 15). `fresh_grave_hollow` stays north-west of the Throne.
 - The opening log line now says where he is and where the dead are.
 
 ## The Guild (§4)
 
-- **`data/guild.json`** and **`scripts/world/guild/Guild.gd`**: a neutral hall at (89, 61) on the
-  cobble road, `guild_hall.png` (generated placeholder). Reach 2.5 cells.
+- **`data/guild.json`** and **`scripts/world/guild/Guild.gd`**: a neutral hall, first at (89, 61) on
+  the cobble road *(moved after the first playtest — see below)*, `guild_hall.png` (generated placeholder). Reach 2.5 cells.
 - **The board is generated from world state** (§4.2), refreshed every second: every standing den
   posts "Clear the den" (6 gold × band) with its direction from the door, because both dens are
   called "A Wolf Den"; a village short of wood (< 10) or food (< 12) posts a delivery of 10 for 8
@@ -57,7 +57,7 @@ the Altar.
 
 ## Verification
 
-`tools/verify_guild.tscn` — **62**: the spawn cell is road, inside the lair band on its east edge,
+`tools/verify_guild.tscn` — **62** at first (68 after the playtest fixes below): the spawn cell is road, inside the lair band on its east edge,
 and he stands there; the roadside grave is past the guild; the hall is on open ground beside the
 road and inspectable once seen; one bounty per standing den, readable apart; deliveries posted
 once and taken down; out-of-reach refusals; delivery moves goods between treasuries; pay into
@@ -67,6 +67,28 @@ drops standing once, adds threat and goes home; a second telling and another vil
 change nothing; day attention beats night; Suspected pays half; the keeper's instant report to
 Known, the shut doors and the refused job; the board, Altar and popup panels. The whole suite
 stayed green; `measure_travel` in band; headless boot clean.
+
+## After the first playtest (same evening)
+
+The designer's first run went the wrong way: the lair's track forks four ways within a dozen
+cells of where he wakes, and "follow this road" did not say which. Ruled: **the guild must be in
+sight when he wakes, and marked on the minimap.**
+
+- **The guild moved** from (89, 61) on the cobble road to **(43, 58)**, at the first fork east of
+  the lair's edge, beside the track north — 6.3 cells from the spawn, inside his fog sight and on
+  screen. Its 7×7 cells of ground are revealed from the first frame (`reveal_cells`: a public
+  hall, known to everyone).
+- **The keeper's sight is his own**, shorter than a villager's (`keeper_attention_cells` 5 by day,
+  3 by night), so the derelict graveyard ~6.7 cells down the south track is out of his view.
+- **The minimap marks it**: an orange house drawn above the fog; the legend reads
+  "○ lair ⌂ guild ● you".
+- **The popup says which way** ("…The hall is just ahead, to the east.", from `Guild.compass`) and
+  sits above the command bar, where it does not cover the hall.
+- **The roadside grave followed**: `fresh_grave_scree` moved again, to **(51, 66)** beside the
+  track south past the guild (toward the standing stones and the valley den). Still not
+  signposted; the map is unchanged.
+- `verify_guild` **68** (+6: in sight, on screen, ground known, on the minimap, the keeper clear of
+  the graveyard, the popup's direction). The whole suite stayed green.
 
 ## Not built yet
 

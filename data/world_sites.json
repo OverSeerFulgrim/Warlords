@@ -161,11 +161,11 @@
 		{
 			"id": "fresh_grave_scree",
 			"name": "A Fresh Grave",
-			"subtitle": "The trade road — Band 1",
-			"cell": [84, 78],
+			"subtitle": "The south track — Band 1",
+			"cell": [51, 66],
 			"size": 46,
 			"sprite": "res://assets/official/nodes/Grave_Undisturbed.png",
-			"description": "Piled stones at the roadside instead of earth, because whoever dug it hit rock at two feet and gave up. Somebody died on the road past the guild and was buried where he fell.",
+			"description": "Piled stones beside the track instead of earth, because whoever dug it hit rock at two feet and gave up. Somebody died on the road past the guild and was buried where he fell.",
 			"details": [],
 			"lootable": {
 				"type": "fresh_grave",

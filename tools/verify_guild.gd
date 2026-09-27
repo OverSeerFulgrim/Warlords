@@ -74,6 +74,20 @@ func _the_road() -> void:
 	_check("a fresh grave stands beside the road past the guild", grave != null and _guild != null
 		and grave.position.y > _guild.position.y
 		and grave.position.distance_to(_guild.position) < 20.0 * SettlementGrid.CELL_SIZE)
+	# First playtest (2026-09-26): the track forks four ways at the lair's edge,
+	# so the guild has to be in sight when he wakes, and on the minimap.
+	if _guild != null:
+		var d: float = v.position.distance_to(_guild.position) / float(SettlementGrid.CELL_SIZE)
+		_check("the guild is in sight of where he wakes (within his 7-cell fog sight)", d <= 7.0, "%.1f cells" % d)
+		var off: Vector2 = _guild.position - v.position
+		_check("...and on screen at the opening framing", absf(off.x) < 600.0 and off.y > -200.0 and off.y < 200.0, str(off))
+		_check("...its ground is known from the first frame", _main.fog.is_visible_at(_guild.position)
+			and _main.fog.is_visible_at(_guild.position + Vector2(0, -2.0 * SettlementGrid.CELL_SIZE)))
+		_check("...and the minimap marks it", _main.minimap.landmarks_source.is_valid()
+			and _main.minimap.landmarks_source.call().has(_guild.position))
+		_check("the keeper's sight stops short of the derelict graveyard",
+			_site("derelict_graveyard") == null or _site("derelict_graveyard").position.distance_to(_guild.position)
+			> _guild.keeper_attention_px(true))
 
 # ---------------- Section 4: the hall and its board -----------------------------
 
@@ -361,6 +375,7 @@ func _the_panels() -> void:
 	_main._show_opening_popup()
 	_check("the first-run hint says where to go", _main.opening_popup.visible
 		and _texts(_main.opening_popup).contains(_main.OPENING_POPUP_TEXT))
+	_check("...and which way (the track forks)", _texts(_main.opening_popup).contains("to the "))
 
 # ---------------- Helpers ------------------------------------------------------
 

@@ -88,6 +88,9 @@ const DEBUG_MARKER_COLOR := Color(1.0, 0.95, 0.25, 0.9)
 ## the world leaking through the fog, and it reveals nothing about the ground
 ## between you and it. Do not "fix" this by fog-gating it. Engine-space points.
 var raven_markers_source: Callable = Callable()
+## Known public buildings (the guild), drawn above the fog as a small house.
+var landmarks_source: Callable = Callable()
+const LANDMARK_COLOR := Color(0.95, 0.62, 0.3)
 const RAVEN_MARKER_COLOR := Color(0.78, 0.58, 1.0)
 
 var _terrain_texture: ImageTexture
@@ -145,6 +148,7 @@ func _draw() -> void:
 	_draw_friendly_units()
 	_draw_debug_markers()
 	_draw_raven_markers()
+	_draw_landmarks()
 	if villain:
 		draw_circle(_to_map(villain.position), 2.5, VILLAIN_COLOR)
 	draw_rect(Rect2(Vector2.ZERO, size), BORDER_COLOR, false, 1.0)
@@ -158,6 +162,17 @@ func _draw_debug_markers() -> void:
 		return
 	for point in debug_markers_source.call():
 		draw_circle(_to_map(point), 1.8, DEBUG_MARKER_COLOR)
+
+## Public buildings everyone knows -- the Adventurers' Guild. Drawn through
+## the fog on purpose: they are known from the first frame (LIVING_WORLD §3,
+## the first-run ask: "follow this road" needs somewhere to point).
+func _draw_landmarks() -> void:
+	if not landmarks_source.is_valid():
+		return
+	for point in landmarks_source.call():
+		var c: Vector2 = _to_map(point)
+		draw_rect(Rect2(c + Vector2(-2.5, -1.0), Vector2(5.0, 4.0)), LANDMARK_COLOR)
+		draw_colored_polygon(PackedVector2Array([c + Vector2(-3.5, -1.0), c + Vector2(0, -4.5), c + Vector2(3.5, -1.0)]), LANDMARK_COLOR)
 
 func _draw_raven_markers() -> void:
 	if not raven_markers_source.is_valid():

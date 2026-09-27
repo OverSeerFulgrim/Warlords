@@ -2,13 +2,17 @@
 	"_comment": "The Adventurers' Guild (LIVING_WORLD_SPEC section 4, L2, built 2026-09-26). A neutral hall on the road that takes coin from anyone and does not know what he is -- yet. Its board is generated from world state (section 4.2): a den that stands posts a bounty; a village that runs short of something posts one. Standing (Unknown / Suspected / Known) is per villain and per run and only moves one way (ruling 4). Every number is a playtest hypothesis.",
 	"id": "guild",
 	"name": "The Adventurers' Guild",
-	"cell": [89, 61],
+	"_comment_place": "Designer call 2026-09-26 (first playtest): the guild must be in sight when he wakes, because the lair's track forks four ways and 'follow this road' alone was ambiguous. It stands at the first fork east of the lair edge, beside the track north, and its ground is revealed from the start (reveal_cells) -- a public hall, known to everyone. The minimap always marks it.",
+	"cell": [43, 58],
+	"reveal_cells": 3,
 	"size": 92,
 	"sprite": "res://assets/placeholder/generated/guild_hall.png",
 	"reach_cells": 2.5,
 
 	"_comment_attention": "How far anyone can see him do something (ruling 15): longer by day, shorter at night. The keeper behind the counter, the villagers at their work -- one number each, per unit later when there are more kinds of people.",
 	"attention_cells": {"day": 8.0, "night": 4.0},
+	"_comment_keeper": "The keeper watches from the doorway, not the whole fork: shorter than a villager in the fields, so the derelict graveyard down the south track (about 7 cells off) is out of his sight.",
+	"keeper_attention_cells": {"day": 5.0, "night": 3.0},
 
 	"_comment_reports": "A runner who reaches the guild or the village's guardhouse drops his standing one tier (only the first runner per deed counts) and adds threat.",
 	"report_threat": 5,

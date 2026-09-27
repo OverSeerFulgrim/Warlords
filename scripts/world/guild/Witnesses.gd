@@ -11,7 +11,8 @@ extends Node
 ## **What a unit can see is its attention range** (ruling 15): longer by day,
 ## shorter at night, one number per kind of watcher for now
 ## (`data/guild.json`). The keeper behind the guild's counter sees what happens
-## within range of the door, and he is already where the report is going.
+## within his own, shorter range of the door (`keeper_attention_cells`), and
+## he is already where the report is going.
 ##
 ## Only the first report of each deed lowers standing: three villagers who saw
 ## the same raising are one report, told three times.
@@ -56,7 +57,7 @@ func witness(act: String, at: Vector2, victim = null, key: String = "") -> int:
 			v.start_run(_nearest_refuge(v.position), {"villain": villain, "act": act, "id": id})
 			seen += 1
 			EventBus.witnessed.emit(villain, v, act)
-	if guild.position.distance_to(at) <= reach:
+	if guild.position.distance_to(at) <= guild.keeper_attention_px(_is_day()):
 		seen += 1
 		EventBus.witnessed.emit(villain, guild, act)
 		_report(act, id, guild.display_name)

@@ -54,7 +54,7 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
   - **The demo shell:** every key an InputMap action by physical key, pause menu, title screen,
     Surrender confirm, dev tools out of release builds, Windows/Linux export presets built and run.
 - **Harnesses, all green:** verify_stats 505, verify_loot_tables 536, verify_terrain 278,
-  check_sprite_scales 122, verify_sortie 67, verify_villain_combat 65, verify_guild 62,
+  check_sprite_scales 122, verify_sortie 67, verify_villain_combat 65, verify_guild 68,
   verify_escort 58, verify_village 56, check_fog_and_minimap 50, verify_run_lifecycle 49,
   verify_raven 39, verify_demo_shell 39, verify_endings 33, verify_combat_feedback 31,
   verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows in band; headless boot clean.

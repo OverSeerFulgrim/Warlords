@@ -103,7 +103,7 @@ the title — expected). Assertion counts as of 2026-09-26:
 - `verify_run_lifecycle` 49 — XP/level formulas (PROGRESSION.md), profile never written by a
   harness, owner checks, Second Wake, death ending the run, the run-end screen
 - `verify_raven` 39 — the five honesty conditions over 1,000 dawns, cap, silence, fog untouched
-- `verify_guild` 62 — roadside spawn, the board from world state, pay into hands/owed, standing
+- `verify_guild` 68 — roadside spawn, the board from world state, pay into hands/owed, standing
   drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
 - `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair

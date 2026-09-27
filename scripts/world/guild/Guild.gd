@@ -84,6 +84,21 @@ func attention_px(is_day: bool) -> float:
 	var a: Dictionary = _data.get("attention_cells", {})
 	return float(a.get("day" if is_day else "night", 8.0 if is_day else 4.0)) * float(SettlementGrid.CELL_SIZE)
 
+## The keeper's, from the doorway -- shorter than a villager's (guild.json).
+func keeper_attention_px(is_day: bool) -> float:
+	var a: Dictionary = _data.get("keeper_attention_cells", {})
+	return float(a.get("day" if is_day else "night", 5.0 if is_day else 3.0)) * float(SettlementGrid.CELL_SIZE)
+
+## The cell the hall stands on, and the square of ground around it that is
+## known from the start (a public building; nobody has to find it).
+func cell() -> Vector2i:
+	var c: Array = _data.get("cell", [0, 0])
+	return Vector2i(int(c[0]), int(c[1]))
+
+func known_ground() -> Rect2i:
+	var r: int = int(_data.get("reveal_cells", 3))
+	return Rect2i(cell() - Vector2i(r, r), Vector2i(r * 2 + 1, r * 2 + 1))
+
 func report_threat() -> int:
 	return int(_data.get("report_threat", 5))
 
