@@ -56,7 +56,7 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
 - **Harnesses, all green:** verify_stats 505, verify_loot_tables 533, verify_terrain 278,
   check_sprite_scales 122, verify_sortie 79, verify_villain_combat 65, verify_guild 69,
   verify_escort 58, verify_village 56, check_fog_and_minimap 50, verify_run_lifecycle 49,
-  verify_raven 39, verify_demo_shell 44, verify_hud 42, verify_endings 33, verify_combat_feedback 31,
+  verify_raven 39, verify_demo_shell 44, verify_hud 42, verify_inspect 17, verify_endings 33, verify_combat_feedback 31,
   verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows in band; headless boot clean.
   - **What each ending keeps** (ROGUELITE §17.7): victory keeps all gear and relics, **fleeing the
     region** from the lair keeps 3 of the player's choice, death keeps nothing. The stash, **the

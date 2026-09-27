@@ -287,14 +287,17 @@ func get_inspect_data() -> Dictionary:
 		hp_row["color"] = Color(1.0, 0.45, 0.45)
 	elif hp < max_hp():
 		hp_row["color"] = Color(0.95, 0.70, 0.40)
+	var prof: Dictionary = combat_profile()
 	var rows: Array = [
 		{"label": "Activity", "value": activity},
 		hp_row,
 		{"label": "Guarding", "value": site.display_name if site else "—"},
+		# `attack_attr` is the attack VALUE (Combat.profile_for); the attribute's
+		# name comes from ATTACK_FOR_PROFILE, as in Laborer._attribute_rows().
 		{"label": "Profile", "value": "%s — %s %d" % [
-			combat_profile()["profile"],
-			String(combat_profile()["attack_attr"]).capitalize(),
-			attribute(String(combat_profile()["attack_attr"]))]},
+			prof["profile"],
+			String(Combat.ATTACK_FOR_PROFILE[prof["profile"]]).capitalize(),
+			int(prof["attack_attr"])]},
 		{"label": "Physical", "value": "Str %d   Dex %d   Spd %d   End %d" % [
 			attribute("strength"), attribute("dexterity"),
 			attribute("speed"), attribute("endurance")]},

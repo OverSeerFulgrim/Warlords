@@ -108,6 +108,7 @@ the title — expected). Assertion counts as of 2026-09-26:
   drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
 - `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
+- `verify_inspect` 17 — every clickable's `get_inspect_data()` answers (guardians in every state)
 - `verify_hud` 42 — the HUD shows nothing until its mechanic does, windows/keys, map names only the seen
 - `verify_demo_shell` 44 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
