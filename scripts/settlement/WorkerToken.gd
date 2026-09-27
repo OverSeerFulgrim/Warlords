@@ -21,6 +21,12 @@ var worker  # Worker (untyped to avoid a hard script dependency loop)
 
 var sprite: Sprite2D
 var carry_label: Label
+## A small health bar over his head (the HUD redo, 2026-09-26): shown while he
+## is wounded or walking under orders (rallied, the escort), hidden otherwise
+## so a field of busy workers stays clean.
+var hp_back: ColorRect
+var hp_fill: ColorRect
+const HP_BAR_W := 28.0
 
 ## **Content height in world px: 58 = 0.90 of a 64px tile**, which is
 ## SPRITE_SPEC.md §3's *Medium* body family. The Skeleton Worker is listed there
@@ -48,6 +54,16 @@ func _ready() -> void:
 	carry_label.position = Vector2(-18, -SPRITE_TARGET_SIZE - 14.0)
 	carry_label.visible = false
 	add_child(carry_label)
+
+	hp_back = ColorRect.new()
+	hp_back.color = Color("3a2230")
+	hp_back.size = Vector2(HP_BAR_W, 4)
+	hp_back.position = Vector2(-HP_BAR_W * 0.5, -SPRITE_TARGET_SIZE - 6.0)
+	hp_back.visible = false
+	add_child(hp_back)
+	hp_fill = ColorRect.new()
+	hp_fill.size = Vector2(HP_BAR_W, 4)
+	hp_back.add_child(hp_fill)
 
 	set_process(true)
 
@@ -78,6 +94,12 @@ func _process(_delta: float) -> void:
 		sprite.flip_h = true
 	elif worker.stage == Worker.TripStage.WALK_TO_NODE:
 		sprite.flip_h = false
+	var frac: float = worker.hp_fraction() if worker.has_method("hp_fraction") else 1.0
+	var show_hp: bool = frac < 0.999 or bool(worker.get("rallied"))
+	hp_back.visible = show_hp and worker.is_alive()
+	if hp_back.visible:
+		hp_fill.size.x = HP_BAR_W * clampf(frac, 0.0, 1.0)
+		hp_fill.color = Color("8fbf7a") if frac >= 0.999 else (Color("d8604f") if frac < 0.4 else Color("e0a050"))
 	if worker.carrying_amount > 0:
 		carry_label.visible = true
 		carry_label.text = "+%d %s" % [worker.carrying_amount, worker.carrying_kind]

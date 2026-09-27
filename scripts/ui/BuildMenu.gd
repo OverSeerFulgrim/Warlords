@@ -109,8 +109,10 @@ func populate() -> void:
 			var data: Dictionary = BuildingCatalog.get_building(bid)
 			var cost_str := _format_cost(data.get("cost", {}))
 			var b := Button.new()
-			b.text = data.get("display_name", bid)
-			b.tooltip_text = cost_str if cost_str != "" else "free"
+			b.text = "%s\n%s" % [data.get("display_name", bid), cost_str if cost_str != "" else "free"]
+			b.tooltip_text = String(data.get("description", ""))
+			b.custom_minimum_size = Vector2(130, 60)
+			HudStyle.style_button(b, true, 14)
 			b.pressed.connect(func(): enter_placement_mode(bid))
 			build_row.add_child(b)
 
@@ -121,6 +123,8 @@ func populate() -> void:
 	build_row.add_child(VSeparator.new())
 	demolish_tab_btn = Button.new()
 	demolish_tab_btn.text = "Demolish"
+	demolish_tab_btn.custom_minimum_size = Vector2(110, 60)
+	HudStyle.style_button(demolish_tab_btn, false, 14)
 	demolish_tab_btn.tooltip_text = "Click, then select a building on the map to remove it. No resource refund."
 	demolish_tab_btn.pressed.connect(toggle_demolish_mode)
 	build_row.add_child(demolish_tab_btn)

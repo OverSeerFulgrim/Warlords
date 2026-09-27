@@ -69,7 +69,8 @@ scripts/run/         RunLifecycle (endings, items kept, carry-in, XP, Second Wak
                      (XP, stash, blueprints)
 scripts/ui/          InspectionPanel, Minimap, HudTopBar, BuildMenu, EconomyTab, EventPanelUI,
                      InspectorActions, TokenLayer, CombatFeedback, DebugSiteOverlay (F3),
-                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen, ItemsDialog
+                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen, ItemsDialog;
+                     the HUD: HudStyle (palette), DeadRoster, ActionBar, HudWindow, LogTicker, MapScreen
 scripts/settlement/  Settlement, SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                      MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/     Necromancer (data), VillainController, SortieSystem (capacity/deposit/death)
@@ -107,7 +108,8 @@ the title — expected). Assertion counts as of 2026-09-26:
   drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
 - `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
-- `verify_demo_shell` 40 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
+- `verify_hud` 42 — the HUD shows nothing until its mechanic does, windows/keys, map names only the seen
+- `verify_demo_shell` 44 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
 - `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
 - `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)
@@ -119,6 +121,8 @@ the title — expected). Assertion counts as of 2026-09-26:
   or set a `discovered` flag, or it perjures the Raven.
 - He wakes at `Main.ROADSIDE_SPAWN_CELL`, not the Throne; a harness that needs him home places
   him at `_throne_world_centre()`.
+- The HUD floats: no bottom bar. A new HUD piece must appear the first time its mechanic does
+  (`verify_hud`); style it with `HudStyle`.
 - The lair aura is a POSITION: `CombatSystem.aura_protects_villain()` reads `is_in_lair_band()`.
 - A global signal carrying a villain needs an owner check (`villain_died` fires for every villain).
 - Never read a raw keycode: add a row to `Controls.ACTIONS`.

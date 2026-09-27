@@ -223,7 +223,9 @@ const MINIMAP_SIZE := 144.0
 ## content at the default window size. The ScrollContainer around the Town tab
 ## (see _build_cmd_town) is the belt-and-braces for smaller windows -- this
 ## constant is what keeps scrolling from being *needed* at the default one.
-const BOTTOM_BAR_HEIGHT := 250
+## What the HUD keeps clear at the bottom (the action bar). The old command bar
+## was 250 px across the whole width; the redo floats everything.
+const BOTTOM_BAR_HEIGHT := 96
 
 const MAX_ALERTS := 3            # oldest alert pin is dropped once a 4th arrives
 const MAX_HISTORY_ENTRIES := 200 # oldest history-log row is dropped past this cap
@@ -309,7 +311,8 @@ func _throne_world_centre() -> Vector2:
 ## whatever it laid out to.
 func _sync_camera_insets() -> void:
 	camera.ui_top_inset = hud_top_bar.top_height() if hud_top_bar else 0.0
-	camera.ui_bottom_inset = float(BOTTOM_BAR_HEIGHT)
+	# The HUD floats over the world now; nothing spans the width to inset for.
+	camera.ui_bottom_inset = 0.0
 
 ## Frames the opening: on *him*, because he wakes on the road, not at the
 ## Throne (the name is older than the roadside spawn).
@@ -370,6 +373,7 @@ func _process(delta: float) -> void:
 		if inspector and inspector.is_open():
 			inspector.refresh()
 		event_panel_ui.refresh_open_offer()
+		_refresh_hud_state()
 		# Follow drops silently on a right-drag, so it's polled on the same slow
 		# tick as everything else that changes without announcing itself.
 		hud_top_bar.refresh_follow_state()
@@ -635,8 +639,8 @@ func _show_opening_popup() -> void:
 		# Low, just above the command bar: the hall it points at stands up and
 		# to the right of him, where a top banner would cover its roof.
 		holder.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-		holder.offset_top = -float(BOTTOM_BAR_HEIGHT) - 90.0
-		holder.offset_bottom = -float(BOTTOM_BAR_HEIGHT) - 16.0
+		holder.offset_top = -float(BOTTOM_BAR_HEIGHT) - 190.0
+		holder.offset_bottom = -float(BOTTOM_BAR_HEIGHT) - 116.0
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		layer.add_child(holder)
 		opening_popup = PanelContainer.new()
@@ -652,6 +656,8 @@ func _show_opening_popup() -> void:
 		row.add_child(lbl)
 		var ok := Button.new()
 		ok.text = "Go"
+		ok.custom_minimum_size = Vector2(64, 40)
+		HudStyle.style_button(ok, true, 15)
 		ok.pressed.connect(func(): opening_popup.visible = false)
 		row.add_child(ok)
 	opening_popup.visible = true
@@ -811,7 +817,7 @@ func _build_ui() -> void:
 		villain, villain_controller, travel_log)
 	_build_alert_stack(hud_root)
 	_build_placement_hint(hud_root)
-	_build_bottom_shell(hud_root)
+	_build_hud(hud_root)
 	hud_top_bar.set_minimap(minimap)   # born in the bottom shell, above
 	hud_top_bar.set_sortie_system(sortie_system)
 	_build_inspection_panel(hud_root)
@@ -876,8 +882,6 @@ func _build_ui() -> void:
 	hud_top_bar.refresh_stats()
 	build_menu.populate()
 	economy_tab.build_priority_rows()
-	_select_folder_tab("town")
-	_select_category_tab("build")
 
 func _panel_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
@@ -896,7 +900,7 @@ func _build_alert_stack(hud_root: Control) -> void:
 	alert_stack = VBoxContainer.new()
 	alert_stack.add_theme_constant_override("separation", 4)
 	alert_stack.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	alert_stack.position = Vector2(-40, 40)
+	alert_stack.position = Vector2(-44, 150)
 	hud_root.add_child(alert_stack)
 
 func _build_placement_hint(hud_root: Control) -> void:
@@ -949,122 +953,88 @@ func _build_inspection_panel(hud_root: Control) -> void:
 		sortie_system, world_sites)
 	inspector_actions.progress_line_provider = _progress_line
 
-## The bottom command bar itself, plus the Town/History/Research "folder"
-## tabs attached directly above it -- positioned above the command column
-## specifically (not the info panel, not the full screen width), per explicit
-## back-and-forth with the user in the design-mockup pass.
-func _build_bottom_shell(hud_root: Control) -> void:
-	var bottom_shell := VBoxContainer.new()
-	bottom_shell.add_theme_constant_override("separation", 0)
-	bottom_shell.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	# set_anchors_preset() alone pins both the top and bottom edges of this
-	# container to the same line (the screen's bottom), giving it zero
-	# height -- nothing inside it can render until an explicit offset claims
-	# actual screen space. Same fix pattern the original code already used
-	# for the old log_panel (a hardcoded negative position.y). 190px is
-	# generous enough for the folder tabs row plus the tallest command-bar
-	# content (Economy's two stacked action rows); a few px of slack if the
-	# real content ends up shorter is harmless.
-	bottom_shell.offset_top = -BOTTOM_BAR_HEIGHT
-	bottom_shell.offset_bottom = 0
-	bottom_shell.offset_left = 0
-	bottom_shell.offset_right = 0
-	hud_root.add_child(bottom_shell)
+## **The HUD** (the HUD redo, 2026-09-26; mockups: the "Warlords HUD redo"
+## canvas). Replaces the old bottom command bar (Town / History / Research,
+## Build / Bounty / Economy) with pieces that each appear when their mechanic
+## first does: his dead (the roster), the action bar, a fading log ticker, the
+## minimap in its corner, the History window (L), the big map (M), the Build
+## tray (B), the Workforce window and Flee at home, and the new-blueprint
+## banner. HudTopBar owns the two top corners.
+var dead_roster: DeadRoster
+var action_bar: ActionBar
+var log_ticker: LogTicker
+var history_window: HudWindow
+var workforce_window: HudWindow
+var build_tray: PanelContainer
+var _build_tray_note: Label
+var home_buttons: VBoxContainer
+var _workforce_btn: Button
+var _flee_btn: Button
+var map_screen: MapScreen
+var _unlock_banner: PanelContainer
+var _unlock_title: Label
+var _unlock_text: Label
 
-	var folder_tabs_row := HBoxContainer.new()
-	folder_tabs_row.add_theme_constant_override("separation", 3)
+func _build_hud(hud_root: Control) -> void:
+	# His dead, under his portrait column.
+	dead_roster = DeadRoster.new()
+	dead_roster.name = "DeadRoster"
+	dead_roster.worker_system = worker_system
+	dead_roster.villain = villain
+	hud_top_bar.left_column.add_child(dead_roster)
+	dead_roster.unit_pressed.connect(func(u):
+		_inspect(u)
+		if camera:
+			camera.center_on_manual(u.position))
 
-	# Collapse arrow, left of the Town tab. Down-arrow while expanded (click
-	# to collapse), flips to an up-arrow once collapsed (click to bring the
-	# command bar back). Only bar_panel hides/shows -- the tabs themselves
-	# (including this button) stay visible either way.
-	collapse_tab_btn = Button.new()
-	collapse_tab_btn.text = "▼"
-	collapse_tab_btn.tooltip_text = "Collapse the command bar"
-	collapse_tab_btn.pressed.connect(_toggle_bottom_bar_collapsed)
-	folder_tabs_row.add_child(collapse_tab_btn)
+	# The action bar, bottom centre.
+	var bar_holder := CenterContainer.new()
+	bar_holder.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	bar_holder.offset_top = -80
+	bar_holder.offset_bottom = -14
+	bar_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(bar_holder)
+	action_bar = ActionBar.new()
+	action_bar.name = "ActionBar"
+	action_bar.villain = villain
+	action_bar.worker_system = worker_system
+	action_bar.undead_command = undead_command
+	action_bar.knows_blueprints = func() -> bool:
+		return run_lifecycle != null and not run_lifecycle.profile.blueprints.is_empty()
+	bar_holder.add_child(action_bar)
+	action_bar.raise_pressed.connect(_recruit_worker)
+	action_bar.items_pressed.connect(_open_items)
+	action_bar.escort_pressed.connect(_toggle_escort)
+	action_bar.rally_pressed.connect(_enter_rally_placement_mode)
+	action_bar.build_pressed.connect(_toggle_build_tray)
 
-	# Spacer pushes the Town/History/Research tabs to start above the command
-	# area rather than the info panel -- width is an approximation of
-	# info-panel-width + the separator/margins next to it; nudge if it looks
-	# off once seen live.
-	var tab_spacer := Control.new()
-	tab_spacer.custom_minimum_size = Vector2(INFO_PANEL_WIDTH + 20, 0)
-	folder_tabs_row.add_child(tab_spacer)
+	# The last few lines of the log, above the bar, left of centre.
+	log_ticker = LogTicker.new()
+	log_ticker.name = "LogTicker"
+	log_ticker.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	log_ticker.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	log_ticker.offset_left = 340
+	log_ticker.offset_bottom = -92
+	log_ticker.offset_top = -92
+	hud_root.add_child(log_ticker)
 
-	town_tab_btn = Button.new()
-	town_tab_btn.text = "Town"
-	history_tab_btn = Button.new()
-	history_tab_btn.text = "History"
-	research_tab_btn = Button.new()
-	research_tab_btn.text = "Research"
-	town_tab_btn.pressed.connect(func(): _select_folder_tab("town"))
-	history_tab_btn.pressed.connect(func(): _select_folder_tab("history"))
-	research_tab_btn.pressed.connect(func(): _select_folder_tab("research"))
-	folder_tabs_row.add_child(town_tab_btn)
-	folder_tabs_row.add_child(history_tab_btn)
-	folder_tabs_row.add_child(research_tab_btn)
-	bottom_shell.add_child(folder_tabs_row)
-
-	bar_panel = PanelContainer.new()
-	bar_panel.custom_minimum_size = Vector2(0, 100)
-	# Expand to fill whatever space is left in bottom_shell's fixed 190px
-	# band after folder_tabs_row takes its own height, instead of stopping at
-	# the 100px minimum and leaving a gap of bare background below it.
-	bar_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bar_panel.add_theme_stylebox_override("panel", _panel_style())
-	bottom_shell.add_child(bar_panel)
-
-	var bar_hbox := HBoxContainer.new()
-	bar_panel.add_child(bar_hbox)
-
-	# Info panel: a one-line echo of whatever the inspection panel is showing,
-	# so the bottom bar still says what's selected once the panel is closed or
-	# scrolled past. Fed from the same Dictionary -- see _inspect().
-	var info_panel := VBoxContainer.new()
-	info_panel.custom_minimum_size = Vector2(INFO_PANEL_WIDTH, 0)
-	info_panel.alignment = BoxContainer.ALIGNMENT_CENTER
-	info_name_label = Label.new()
-	info_name_label.text = "Nothing selected"
-	info_name_label.add_theme_font_size_override("font_size", 15)
-	info_panel.add_child(info_name_label)
-	info_class_label = Label.new()
-	info_class_label.text = "Click a unit, a building, or a resource"
-	info_class_label.add_theme_font_size_override("font_size", 11)
-	info_panel.add_child(info_class_label)
-	info_status_label = Label.new()
-	info_status_label.add_theme_font_size_override("font_size", 11)
-	info_panel.add_child(info_status_label)
-	bar_hbox.add_child(info_panel)
-
-	bar_hbox.add_child(VSeparator.new())
-
-	var command_area := VBoxContainer.new()
-	command_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Vertical fill too, or the History log inside it has no height to expand
-	# into -- the container would shrink to its content and leave the dead band
-	# playtest reported below the log.
-	command_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bar_hbox.add_child(command_area)
-
-	_build_cmd_town(command_area)
-	_build_cmd_history(command_area)
-	_build_cmd_research(command_area)
-
-	bar_hbox.add_child(VSeparator.new())
-
-	# The real minimap, replacing the ColorRect placeholder that stood here.
-	# MINIMAP_SIZE is the world's cell count on purpose: one pixel per cell.
+	# The minimap, bottom right, with its legend.
 	minimap_column = VBoxContainer.new()
-	minimap_column.add_theme_constant_override("separation", 2)
+	minimap_column.name = "MinimapCorner"
+	minimap_column.add_theme_constant_override("separation", 4)
+	minimap_column.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	minimap_column.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	minimap_column.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	minimap_column.offset_right = -14
+	minimap_column.offset_bottom = -12
+	hud_root.add_child(minimap_column)
+	var mm_frame := PanelContainer.new()
+	mm_frame.add_theme_stylebox_override("panel", HudStyle.box(Color("0d0b10"), HudStyle.BORDER, 8, 4))
+	minimap_column.add_child(mm_frame)
 	minimap = Minimap.new()
 	minimap.custom_minimum_size = Vector2(MINIMAP_SIZE, MINIMAP_SIZE)
-	# mouse_filter is set to STOP inside setup() -- the minimap takes its own
-	# clicks now, and must not let them fall through to the world behind it.
 	minimap.setup(world_map, fog, villain, camera)
 	minimap.units_source = func(): return worker_system.all_units() if worker_system else []
-	# Dev-only site dots. The overlay returns an empty Array while it is hidden,
-	# so the minimap's normal path is unchanged until F3 is pressed.
 	minimap.debug_markers_source = func():
 		return debug_site_overlay.minimap_points() if debug_site_overlay else []
 	minimap.raven_markers_source = func():
@@ -1073,199 +1043,214 @@ func _build_bottom_shell(hud_root: Control) -> void:
 		return [guild.position] if guild else []
 	minimap.camera_requested.connect(_on_minimap_camera_requested)
 	minimap.move_requested.connect(_on_right_tap)
-	minimap_column.add_child(minimap)
-	minimap_hint = Label.new()
-	minimap_hint.add_theme_font_size_override("font_size", 9)
-	minimap_hint.modulate = Color(1, 1, 1, 0.55)
-	minimap_hint.text = "○ lair   ⌂ guild   ● you   · yours   (M hides)"
+	mm_frame.add_child(minimap)
+	minimap_hint = HudStyle.label("○ lair  ⌂ guild  ◆ raven  ● you  ·  %s: full map" % Controls.label_for("map"), 11, HudStyle.MUTED)
+	minimap_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	minimap_column.add_child(minimap_hint)
-	bar_hbox.add_child(minimap_column)
 
-## Town tab content: the Build/Bounty/Economy category tabs plus each one's
-## row of actions. Originally folded in every action button the old top-strip
-## debug UI had (Build, Recruit Worker, Forge Equipment, Train Followers, both
-## bounty posts, Dispatch Mission, Lay Low). The foundation reset then pulled
-## the four Stage-4 ones (both bounty posts, Forge Equipment, Train Followers)
-## plus Dispatch Mission back out of the UI -- see the comments inline below
-## and CLAUDE.md's "Foundation reset" section; the code behind them is intact.
-func _build_cmd_town(command_area: VBoxContainer) -> void:
-	# Scroll wrapper. Two jobs: (1) nothing in this tab can ever be rendered
-	# below the window edge and be unreachable -- which is exactly what
-	# happened to the Food and Bones priority rows -- and (2) it stops
-	# cmd_town's content minimum height propagating up to bar_panel, which is
-	# what let the panel grow taller than the band it lives in. A
-	# ScrollContainer reports ~0 minimum on any axis it can scroll.
-	#
-	# Only the Town tab is wrapped: the History tab already owns an inner
-	# ScrollContainer for its log, and nesting two would make the log fight
-	# the outer scroll. Research is a one-line placeholder.
-	cmd_town_scroll = ScrollContainer.new()
-	cmd_town_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	cmd_town_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	cmd_town_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	cmd_town_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	command_area.add_child(cmd_town_scroll)
+	# At home: Workforce (once a building works) and Flee the region.
+	home_buttons = VBoxContainer.new()
+	home_buttons.add_theme_constant_override("separation", 6)
+	home_buttons.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	home_buttons.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	home_buttons.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	home_buttons.offset_right = -14
+	home_buttons.offset_bottom = -(MINIMAP_SIZE + 52)
+	home_buttons.custom_minimum_size = Vector2(190, 0)
+	hud_root.add_child(home_buttons)
+	_workforce_btn = Button.new()
+	_workforce_btn.text = "Workforce"
+	_workforce_btn.custom_minimum_size = Vector2(190, 42)
+	HudStyle.style_button(_workforce_btn)
+	_workforce_btn.pressed.connect(func(): workforce_window.toggle())
+	home_buttons.add_child(_workforce_btn)
+	_flee_btn = Button.new()
+	_flee_btn.text = "Flee the region…"
+	_flee_btn.custom_minimum_size = Vector2(190, 42)
+	HudStyle.style_button(_flee_btn)
+	_flee_btn.pressed.connect(_request_flee)
+	home_buttons.add_child(_flee_btn)
+	home_buttons.visible = false
 
-	cmd_town = VBoxContainer.new()
-	cmd_town.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cmd_town_scroll.add_child(cmd_town)
+	# The Build tray, above the action bar, opened by B.
+	var tray_holder := CenterContainer.new()
+	tray_holder.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	tray_holder.offset_top = -210
+	tray_holder.offset_bottom = -90
+	tray_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(tray_holder)
+	build_tray = PanelContainer.new()
+	build_tray.add_theme_stylebox_override("panel", HudStyle.box(HudStyle.BG, HudStyle.BORDER_ACCENT, 10, 12))
+	build_tray.visible = false
+	tray_holder.add_child(build_tray)
+	var tray := VBoxContainer.new()
+	tray.add_theme_constant_override("separation", 8)
+	build_tray.add_child(tray)
+	var tray_head := HBoxContainer.new()
+	tray.add_child(tray_head)
+	var tray_title := HudStyle.label("Build  %s" % Controls.label_for("build"), 16)
+	tray_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tray_head.add_child(tray_title)
+	_build_tray_note = HudStyle.label("", 12, HudStyle.MUTED)
+	tray_head.add_child(_build_tray_note)
+	build_menu.build_row_into(tray, settlement)
+	build_menu.set_tab_visible(true)
 
-	var category_row := HBoxContainer.new()
-	category_row.add_theme_constant_override("separation", 4)
-	cmd_town.add_child(category_row)
-	build_tab_btn = Button.new()
-	build_tab_btn.text = "Build"
-	bounty_tab_btn = Button.new()
-	bounty_tab_btn.text = "Bounty"
-	economy_tab_btn = Button.new()
-	economy_tab_btn.text = "Economy"
-	build_tab_btn.pressed.connect(func(): _select_category_tab("build"))
-	bounty_tab_btn.pressed.connect(func(): _select_category_tab("bounty"))
-	economy_tab_btn.pressed.connect(func(): _select_category_tab("economy"))
-	category_row.add_child(build_tab_btn)
-	category_row.add_child(bounty_tab_btn)
-	category_row.add_child(economy_tab_btn)
-
-	# Build: was a separate popup menu (build_menu_panel) toggled by a
-	# "Build..." button; now an inline row of buildable entries, refreshed by
-	# BuildMenu.populate() whenever the settlement changes (a new Workshop
-	# can unlock Blacksmith/Barracks appearing here).
-	build_menu.build_row_into(cmd_town, settlement)
-
-	# Bounty tab: the two Post Bounty buttons are hard-locked for the
-	# foundation build (Stage 4 -- see GAME_OUTLINE). The tab itself stays,
-	# showing a locked placeholder rather than vanishing, same "visible promise
-	# of the roadmap" treatment FOUNDATION_SPEC section 9 asks for on the
-	# Barracks Upgrade button and the Research tab already uses. BountyBoard /
-	# Bounty are still constructed and wired -- nothing calls them from the UI.
-	bounty_row = HBoxContainer.new()
-	bounty_row.add_theme_constant_override("separation", 6)
-	cmd_town.add_child(bounty_row)
-	_add_locked_placeholder(bounty_row, "Bounty board -- unlocks in Stage 4")
-
+	# Windows: History (L), Workforce.
+	history_window = HudWindow.new().setup("History", 720, 520)
+	history_window.name = "HistoryWindow"
+	hud_root.add_child(history_window)
+	_build_cmd_history(history_window.body)
+	cmd_history.visible = true
+	workforce_window = HudWindow.new().setup("Workforce", 620, 440)
+	workforce_window.name = "WorkforceWindow"
+	hud_root.add_child(workforce_window)
 	economy_tab = EconomyTab.new()
 	economy_tab.name = "EconomyTab"
 	add_child(economy_tab)
-	economy_tab.build(cmd_town, worker_system, resource_field)
+	economy_tab.build(workforce_window.body, worker_system, resource_field)
+	economy_tab.set_tab_visible(true)
 
-## History tab content: Events/Alerts/Characters filter chips above a
-## scrollable log. Replaces the old always-visible bottom-left log panel --
-## every _log() call still fires, it just lands here instead.
-func _build_cmd_history(command_area: VBoxContainer) -> void:
+	# The new-blueprint banner, top centre, for a few seconds.
+	var banner_holder := CenterContainer.new()
+	banner_holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	banner_holder.offset_top = 90
+	banner_holder.offset_bottom = 200
+	banner_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(banner_holder)
+	_unlock_banner = PanelContainer.new()
+	_unlock_banner.add_theme_stylebox_override("panel", HudStyle.box(HudStyle.BG, HudStyle.ACCENT, 10, 16))
+	_unlock_banner.visible = false
+	_unlock_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner_holder.add_child(_unlock_banner)
+	var ub := VBoxContainer.new()
+	ub.add_theme_constant_override("separation", 4)
+	_unlock_banner.add_child(ub)
+	ub.add_child(HudStyle.label("NEW BLUEPRINT", 12, HudStyle.ACCENT))
+	_unlock_title = HudStyle.label("", 24)
+	ub.add_child(_unlock_title)
+	_unlock_text = HudStyle.label("", 14, Color("d7cce8"))
+	ub.add_child(_unlock_text)
+
+	# The big map (M), over everything else in the HUD.
+	var map_layer := CanvasLayer.new()
+	map_layer.layer = 50
+	add_child(map_layer)
+	map_screen = MapScreen.new()
+	map_screen.name = "MapScreen"
+	map_screen.world = world_map
+	map_screen.fog = fog
+	map_screen.villain = villain
+	map_screen.camera = camera
+	map_screen.world_sites = world_sites
+	map_screen.guild = guild
+	map_screen.village = village
+	map_screen.raven = raven
+	map_screen.worker_system = worker_system
+	map_layer.add_child(map_screen)
+	map_screen.build()
+	map_screen.place_chosen.connect(_on_minimap_camera_requested)
+	map_screen.walk_requested.connect(_on_right_tap)
+
+	# The top corners' buttons.
+	hud_top_bar.home_provider = _near_throne
+	hud_top_bar.level_provider = func() -> int:
+		return run_lifecycle.profile.level(villain.class_id) if run_lifecycle else 1
+	hud_top_bar.stance_pressed.connect(_toggle_stance)
+	hud_top_bar.items_pressed.connect(_open_items)
+	hud_top_bar.map_pressed.connect(_toggle_map)
+	hud_top_bar.history_pressed.connect(func(): history_window.toggle())
+	hud_top_bar.guild_chip_pressed.connect(func():
+		if guild:
+			_on_minimap_camera_requested(guild.position))
+
+## "Home" for the HUD: within a few cells of the Throne -- the Treasury, the
+## Workforce and Flee only show there, so the roadside spawn (inside the lair
+## band) opens clean.
+const HOME_RADIUS_CELLS := 6.0
+func _near_throne() -> bool:
+	return villain != null and villain.position.distance_to(_throne_world_centre()) <= HOME_RADIUS_CELLS * float(SettlementGrid.CELL_SIZE)
+
+## B: the Build tray. It lists what he knows and counts what he does not.
+func _toggle_build_tray() -> void:
+	if build_tray == null:
+		return
+	build_tray.visible = not build_tray.visible
+	if build_tray.visible:
+		build_menu.populate()
+		var gated: int = 0
+		for id in BuildingCatalog.all_ids():
+			if BuildingCatalog.get_building(id).get("blueprint", false):
+				gated += 1
+		var known: int = run_lifecycle.profile.blueprints.size() if run_lifecycle else 0
+		_build_tray_note.text = "%d of %d blueprints known · the rest are out in the world" % [mini(known, gated), gated]
+	elif build_menu.is_placing():
+		build_menu.cancel_placement()
+
+## M: the big map.
+func _toggle_map() -> void:
+	if map_screen:
+		map_screen.toggle()
+
+## The home buttons, the guild chip and the blueprint banner's timer: polled
+## with the inspector, a few times a second.
+func _refresh_hud_state() -> void:
+	if home_buttons == null or villain == null:
+		return
+	var home: bool = _near_throne()
+	var any_building: bool = false
+	for b in settlement.cells.values():
+		if b != null and not b.is_main_building:
+			any_building = true
+			break
+	_workforce_btn.visible = home and any_building
+	_flee_btn.visible = home and run_lifecycle != null and run_lifecycle.can_flee()
+	home_buttons.visible = _workforce_btn.visible or _flee_btn.visible
+	if guild and not hud_top_bar.guild_chip.visible and guild.in_reach(villain):
+		hud_top_bar.set_guild_standing(Necromancer.standing_name(villain.standing_with(Guild.FACTION)))
+
+func _show_unlock_banner(building_name: String, how: String) -> void:
+	if _unlock_banner == null:
+		return
+	_unlock_title.text = building_name
+	_unlock_text.text = "Learned by %s. Known for every run from now on." % how
+	_unlock_banner.visible = true
+	_unlock_banner.modulate = Color.WHITE
+	var tw := _unlock_banner.create_tween()
+	tw.tween_interval(6.0)
+	tw.tween_property(_unlock_banner, "modulate:a", 0.0, 1.2)
+	tw.tween_callback(func(): _unlock_banner.visible = false)
+
+## History window content: Events/Alerts/Characters filter chips above a
+## scrollable log. Every _log() call lands here (and the last few also in the
+## ticker above the action bar).
+func _build_cmd_history(container: VBoxContainer) -> void:
 	cmd_history = VBoxContainer.new()
-	cmd_history.visible = false
-	# Claim the whole command area. Without this the tab shrinks to its content
-	# minimum and the log is stuck in a 56px slot with a band of dead space
-	# underneath it -- which is what made the History tab a "tiny scrollwheel"
-	# in playtest.
 	cmd_history.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	cmd_history.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	command_area.add_child(cmd_history)
-
+	container.add_child(cmd_history)
 	var filter_row := HBoxContainer.new()
 	filter_row.add_theme_constant_override("separation", 4)
 	cmd_history.add_child(filter_row)
 	for cat in ["events", "alerts", "characters"]:
-		var c: String = cat  # explicit re-bind for the closure below, same pattern used elsewhere in this file
+		var c: String = cat
 		var fb := Button.new()
 		fb.text = c.capitalize()
 		fb.toggle_mode = true
+		HudStyle.style_button(fb, false, 13)
 		fb.toggled.connect(func(pressed: bool): _on_history_filter_toggled(c, pressed))
 		history_filter_buttons[c] = fb
 		filter_row.add_child(fb)
-
-	var scroll := ScrollContainer.new()
-	# EXPAND_FILL rather than a fixed 56px height: the log should use every
-	# pixel the bottom band has left after the filter chips, and grow with the
-	# window instead of staying a letterbox.
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, 56)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	cmd_history.add_child(scroll)
 	history_log_list = VBoxContainer.new()
 	history_log_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(history_log_list)
-
-## Research tab content: a placeholder, per the user's explicit "empty tab
-## that says 'Future roadmap goal'" instruction during the mockup pass.
-func _build_cmd_research(command_area: VBoxContainer) -> void:
-	cmd_research = CenterContainer.new()
-	cmd_research.visible = false
-	command_area.add_child(cmd_research)
-	var lbl := Label.new()
-	lbl.text = "Future roadmap goal"
-	lbl.modulate = Color(1, 1, 1, 0.5)
-	cmd_research.add_child(lbl)
-
-# ---------------- Folder tabs (Town/History/Research) ----------------
-
-func _folder_tab_style(active: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	# Active tab's background matches the command bar panel below it so the
-	# two visually fuse into one shape -- the classic "folder tab" look this
-	# was explicitly asked for in the design-mockup pass.
-	style.bg_color = Color(0.05, 0.05, 0.08, 0.78) if active else Color(0.03, 0.03, 0.05, 0.6)
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 0
-	style.corner_radius_bottom_right = 0
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 5
-	style.content_margin_bottom = 5
-	return style
-
-func _restyle_folder_tab(btn: Button, active: bool) -> void:
-	var style := _folder_tab_style(active)
-	btn.add_theme_stylebox_override("normal", style)
-	btn.add_theme_stylebox_override("hover", style)
-	btn.add_theme_stylebox_override("pressed", style)
-	btn.add_theme_color_override("font_color", Color(0.9, 0.85, 0.75) if active else Color(0.55, 0.57, 0.63))
-
-func _select_folder_tab(tab: String) -> void:
-	# Toggle the scroll wrapper, not cmd_town itself -- hiding the inner VBox
-	# while leaving the ScrollContainer visible would leave an empty scrolling
-	# hole where the tab used to be.
-	cmd_town_scroll.visible = tab == "town"
-	cmd_history.visible = tab == "history"
-	cmd_research.visible = tab == "research"
-	_restyle_folder_tab(town_tab_btn, tab == "town")
-	_restyle_folder_tab(history_tab_btn, tab == "history")
-	_restyle_folder_tab(research_tab_btn, tab == "research")
-
-## Hides/shows the command bar body (info panel, Build/Bounty/Economy or
-## History/Research content, minimap) while leaving the folder tabs row --
-## and this button itself -- always visible and clickable, so collapsing
-## never traps the player without a way back.
-func _toggle_bottom_bar_collapsed() -> void:
-	bar_panel.visible = not bar_panel.visible
-	if bar_panel.visible:
-		collapse_tab_btn.text = "▼"
-		collapse_tab_btn.tooltip_text = "Collapse the command bar"
-	else:
-		collapse_tab_btn.text = "▲"
-		collapse_tab_btn.tooltip_text = "Expand the command bar"
-
-# ---------------- Category tabs (Build/Bounty/Economy) ----------------
-
-func _restyle_category_tab(btn: Button, active: bool) -> void:
-	btn.add_theme_color_override("font_color", Color(0.85, 0.7, 0.3) if active else Color(0.8, 0.8, 0.8))
-
-func _select_category_tab(tab: String) -> void:
-	build_menu.set_tab_visible(tab == "build")
-	bounty_row.visible = tab == "bounty"
-	economy_tab.set_tab_visible(tab == "economy")
-	_restyle_category_tab(build_tab_btn, tab == "build")
-	_restyle_category_tab(bounty_tab_btn, tab == "bounty")
-	_restyle_category_tab(economy_tab_btn, tab == "economy")
+	cmd_history.add_child(history_log_list)
 
 # ---------------- Unit/building selection info panel ----------------
 
-func _select_info(unit_name: String, klass: String, status: String) -> void:
-	info_name_label.text = unit_name
-	info_class_label.text = klass
-	info_status_label.text = status
+## The old bottom bar's one-line selection readout is gone with the bar (the
+## HUD redo); the inspection panel says it all. Kept as a no-op for callers.
+func _select_info(_unit_name: String, _klass: String, _status: String) -> void:
+	pass
 
 ## A greyed, non-interactive stand-in for a roadmap-locked action -- a Label,
 ## not a disabled Button, so there's nothing to click and no implied "this
@@ -1324,10 +1309,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	# M hides the minimap. Below the placement blocks with everything else, and
-	# `echo`-guarded so holding the key does not strobe the log.
-	if event.is_action_pressed("minimap", false, false):
-		_toggle_minimap()
+	# The HUD's keys (the HUD redo, 2026-09-26): M the big map, L History, B the
+	# Build tray, E the escort, C the rally point. `echo`-guarded like the rest.
+	if event.is_action_pressed("map", false, false):
+		_toggle_map()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("history", false, false):
+		history_window.toggle()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("build", false, false):
+		if action_bar.build_btn.visible:
+			_toggle_build_tray()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("escort", false, false):
+		if action_bar.escort_btn.visible:
+			_toggle_escort()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("rally", false, false):
+		if action_bar.rally_btn.visible:
+			_enter_rally_placement_mode()
 		get_viewport().set_input_as_handled()
 		return
 
@@ -1508,11 +1512,12 @@ func _inspect_at(world_pos: Vector2) -> bool:
 ## Opens the inspector on `source` and mirrors its header into the bottom-bar
 ## info strip, so the two never disagree about what's selected.
 func _inspect(source: Object, extra: Callable = Callable()) -> void:
-	inspector.position.y = _menu_open_y()
-	# Cap the body to the visible band so a long roster scrolls inside the panel
-	# instead of running off the bottom of the window and under the command bar.
-	inspector.max_body_height = maxf(
-		140.0, get_viewport_rect().size.y - float(BOTTOM_BAR_HEIGHT) - _menu_open_y() - 8.0)
+	# **On the right** (the HUD redo): his column owns the top left, so the
+	# panel opens under the day and the map buttons, left of the alert pins,
+	# and stops above the minimap corner.
+	var vp: Vector2 = get_viewport_rect().size
+	inspector.position = Vector2(vp.x - InspectionPanel.PANEL_WIDTH - 56.0, _menu_open_y())
+	inspector.max_body_height = maxf(140.0, vp.y - _menu_open_y() - float(MINIMAP_SIZE) - 90.0)
 	_poll_timer = 0.0
 	var data: Dictionary = inspector.inspect(source, extra)
 	if data.is_empty():
@@ -1532,7 +1537,11 @@ func _close_inspector() -> void:
 ## height, with a small margin -- used to position the inspection panel each
 ## time it opens, rather than a hardcoded number.
 func _menu_open_y() -> float:
-	return hud_top_bar.top_height() + 12.0
+	# Under the top-right column (day, Map/History, chips), whatever height it
+	# laid out to.
+	if hud_top_bar and hud_top_bar.right_column:
+		return 12.0 + hud_top_bar.right_column.get_combined_minimum_size().y + 12.0
+	return 150.0
 
 # ---------------- Inspector action handlers ----------------
 #
@@ -1734,21 +1743,6 @@ func _toggle_site_overlay() -> void:
 	if minimap:
 		minimap.queue_redraw()
 	_log("[color=#e8e040]DEBUG: site overlay %s[/color]" % ("on" if on else "off"), "events")
-
-## **M — hide the minimap.** The one thing the P2 human check needed and did not
-## have: "Throne to village by ground alone" cannot be tested with a map on
-## screen, and neither can R2's exit walk. It hides the whole column (map and
-## legend together), because a legend for an invisible map is worse than either.
-##
-## One travel-log line per change, and no alert: this is the player telling the
-## game something, not the game telling the player something.
-func _toggle_minimap() -> void:
-	if minimap_column == null:
-		return
-	minimap_column.visible = not minimap_column.visible
-	EventBus.travel_noted.emit(
-		"Minimap on. Press M to navigate by the ground alone." if minimap_column.visible
-		else "Minimap off. Find your way by the ground — M brings it back.", 0.0)
 
 ## A right-click tap on the world or on the minimap.
 ##
@@ -2060,8 +2054,8 @@ func _connect_signals() -> void:
 			"characters events")
 	)
 	EventBus.escort_member_lost.connect(func(v, unit, cause: String):
-		_log("[color=orange]One of the escort is down to a %s — and whatever it was carrying with it.[/color]"
-			% cause, "characters alerts events")
+		_log("[color=orange]One of the escort is down to %s — and whatever it was carrying with it.[/color]"
+			% _a_name(cause), "characters alerts events")
 	)
 
 	# ---- The return leg (SORTIE_SPEC §9) ----
@@ -2209,6 +2203,7 @@ func _connect_signals() -> void:
 		if v != villain or faction != Guild.FACTION:
 			return
 		_log("[color=#ff9070]%s. The guild's standing: %s.[/color]" % [why, Necromancer.standing_name(tier)], "events")
+		hud_top_bar.set_guild_standing(Necromancer.standing_name(tier))
 		if tier == Necromancer.Standing.KNOWN:
 			_alert("The guild knows what he is. Its doors are shut.", "bad")
 		else:
@@ -2226,6 +2221,7 @@ func _connect_signals() -> void:
 		_log("[color=#c8a8ff]Blueprint learned by %s: %s. It can be built from now on — this run and every run after.[/color]"
 			% [source, name_], "events")
 		_alert("Blueprint learned: %s" % name_, "good")
+		_show_unlock_banner(name_, source)
 		build_menu.populate()
 	)
 	# ---- The Raven (RAVEN_SPEC section 5) ----
@@ -2292,8 +2288,8 @@ func _connect_signals() -> void:
 		hud_top_bar.refresh_villain_hp()
 	)
 	EventBus.combat_started.connect(func(attacker: String, defender: String):
-		_log("[color=orange]A %s sets on %s![/color]" % [attacker, defender], "events alerts characters")
-		_alert("A %s is attacking %s." % [attacker, defender], "warn")
+		_log("[color=orange]%s sets on %s![/color]" % [_a_name(attacker, true), defender], "events alerts characters")
+		_alert("%s is attacking %s." % [_a_name(attacker, true), defender], "warn")
 	)
 	EventBus.combat_joined.connect(func(f, attacker: String):
 		_log("[color=lightgreen]%s wades in against the %s.[/color]" % [f.follower_name, attacker],
@@ -2301,7 +2297,7 @@ func _connect_signals() -> void:
 		_alert("%s joins the fight." % f.follower_name, "good")
 	)
 	EventBus.worker_destroyed.connect(func(w, cause: String):
-		_log("[color=red]A %s tore apart %s.[/color]" % [cause, w.worker_name], "events alerts characters")
+		_log("[color=red]%s tore apart %s.[/color]" % [_a_name(cause, true), w.worker_name], "events alerts characters")
 		_alert("%s was destroyed." % w.worker_name, "bad")
 		# A Worker is RefCounted, so the panel's is_instance_valid() guard can't
 		# see this -- same case as a deserting Follower.
@@ -2318,9 +2314,9 @@ func _connect_signals() -> void:
 			"characters events")
 	)
 	EventBus.deer_taken_by_predator.connect(func(_n, predator: String):
-		_log("[color=orange]A %s brought down one of the deer. That food is gone.[/color]" % predator,
+		_log("[color=orange]%s brought down one of the deer. That food is gone.[/color]" % _a_name(predator, true),
 			"events alerts")
-		_alert("A %s took a deer." % predator, "warn")
+		_alert("%s took a deer." % _a_name(predator, true), "warn")
 	)
 	EventBus.undead_commanded.connect(func(_at: Vector2, order_name: String, bound: int):
 		_log("[color=#b8a0e0]Command Undead — %d of the dead answer. Order: %s.[/color] They will not gather while bound."
@@ -2419,6 +2415,16 @@ func _progress_line() -> String:
 		text += "  ·  Second Wake ready"
 	return text
 
+## "a wolf" / "An outlaw": names that already carry their article ("An
+## outlaw", "The Sexton") keep it; bare ones ("wolf") get one.
+func _a_name(n, capital: bool = false) -> String:
+	var s: String = String(n)
+	var low: String = s.to_lower()
+	if low.begins_with("a ") or low.begins_with("an ") or low.begins_with("the "):
+		return (s.substr(0, 1).to_upper() + s.substr(1)) if capital else (s.substr(0, 1).to_lower() + s.substr(1))
+	var art: String = "an" if "aeiou".contains(low.substr(0, 1)) else "a"
+	return ("%s %s" % [art.capitalize(), s]) if capital else ("%s %s" % [art, s])
+
 func _log(msg: String, category: String = "events") -> void:
 	print(msg)
 	if not history_log_list:
@@ -2430,6 +2436,8 @@ func _log(msg: String, category: String = "events") -> void:
 	entry.add_theme_font_size_override("normal_font_size", 12)
 	entry.text = msg
 	entry.set_meta("log_cat", category)
+	if log_ticker:
+		log_ticker.push(msg)
 	history_log_list.add_child(entry)
 	entry.visible = _entry_matches_filters(entry)
 	# Trim the oldest entry once the log grows past the cap, so a long session
