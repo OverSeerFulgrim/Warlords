@@ -276,7 +276,8 @@ func dens() -> Array:
 
 ## The nearest den still standing, or null. Feeds **the breadcrumb** (designer
 ## ruling, 2026-08-30 playtest: finding a den felt like a chore) -- one direction
-## word in the dusk log line, so a player who has met the wolf has some idea
+## word in the dawn "tracks" log line (CombatSystem._note_the_tracks), so a
+## player who has met the wolf has some idea
 ## which way their home is.
 ##
 ## Deliberately **not** a marker, not a path, and not a change to where wolves

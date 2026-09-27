@@ -70,7 +70,7 @@ signal wolf_killed(at: Vector2, bones: int)
 ## A fight began. Names rather than objects because the only consumer is the
 ## log, and an attacker can outlive the unit it was fighting.
 signal combat_started(attacker_name: String, defender_name: String)
-## A Warrior-category (or Might >= 6) recruit waded in unbidden -- the
+## A Warrior-category (or Strength >= 6) recruit waded in unbidden -- the
 ## emergent-defence rule. This is the one the player is meant to notice.
 signal combat_joined(follower, attacker_name: String)
 ## A Skeleton Worker was destroyed. Workers are the only unit wildlife can kill.

@@ -156,7 +156,8 @@ func _ready() -> void:
 ## stays on the data object -- `Necromancer.take_damage()` announces it, so that
 ## anything able to hurt him announces it, not just this file.
 ##
-## Clearing the haul and putting him back at the Throne moved to
+## Clearing the haul (and, until 2026-09-26, putting him back at the Throne --
+## now `RunLifecycle`'s call) moved to
 ## `SortieSystem` in R2c, which is what this handler's own comment said would
 ## happen: SORTIE_SPEC section 6 owns the unbanked load, and that system is
 ## built first so its handler runs before this one and before Main's log line.
@@ -372,7 +373,7 @@ func _advance_wolf(wolf: Wolf, _delta: float) -> void:
 
 	# Reached it. A deer is eaten outright -- no fight, no exchange -- because a
 	# wolf killing a deer is a foraging event, not a battle, and modelling it as
-	# combat would mean giving deer a Might value that means nothing.
+	# combat would mean giving deer attributes that mean nothing.
 	if _is_deer(target):
 		_take_deer(wolf, target)
 		return
@@ -736,7 +737,7 @@ func _begin_fight(attacker, defender) -> void:
 
 ## The emergent-defence rule, and the reason this is worth building before
 ## guard posts exist: **nobody is ordered to fight.** Any Warrior-category or
-## Might >= 6 recruit close enough to see it wades in on their own; everyone
+## Strength >= 6 recruit close enough to see it wades in on their own; everyone
 ## else drops what they're carrying and runs. The player's only lever is who
 ## they recruited and where those people happen to be -- which is the Majesty
 ## indirect-control pillar applied to defence.
@@ -920,8 +921,10 @@ func _resolve_defeat(unit, attacker) -> void:
 		# guardian can now actually kill him, so there has to be one -- and this
 		# is deliberately all of it: `Necromancer.take_damage()` already emitted
 		# `villain_died` (from the data object, so *anything* that can hurt him
-		# announces it), Main logs it loudly, and the run lifecycle stays R4's.
-		# `SORTIE_SPEC.md` section 6 owns clearing the unbanked haul, in R2c.
+		# announces it), Main logs it loudly, and whether the run ends is
+		# `RunLifecycle`'s (R4-lite, 2026-09-26: death ends the run; a Second
+		# Wake is an unlock). `SortieSystem` clears the unbanked haul
+		# (`SORTIE_SPEC.md` section 6, R2c).
 		return
 	# Defensive: a Follower should never get here. If one does, treat it as an
 	# injury rather than a death, so the design rule holds even if a future

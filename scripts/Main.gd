@@ -31,7 +31,7 @@ var day_night: DayNightCycle
 var morale_system: MoraleSystem
 var combat_system: CombatSystem
 var undead_command: UndeadCommand
-## The villain, as data -- position, hp, Might, carry, escort. **This node holds
+## The villain, as data -- position, hp, attributes, carry, escort. **This node holds
 ## a reference to one instance; it is not a singleton and nothing looks it up.**
 ## Anything that needs "the villain" is handed this (see combat_system.villain,
 ## villain_controller.villain) -- ROGUELITE_REWORK section 11, which is what
@@ -455,7 +455,7 @@ func _build_systems() -> void:
 	event_system = EventSystem.new()
 	event_system.name = "EventSystem"
 	add_child(event_system)
-	event_system.settlement = settlement  # housing hard-gate needs to query the grid
+	event_system.settlement = settlement  # Barracks gate + free-slot checks query the grid
 
 	mission_system = MissionSystem.new()
 	mission_system.name = "MissionSystem"
@@ -628,8 +628,9 @@ func _build_world_map() -> void:
 	# his own valley doesn't dim when he leaves it.
 	fog.reveal_permanently(world_map.lair_band)
 
-## Stage 0 (Arrival) per FOUNDATION_SPEC section 10: the Throne of Bones, one
-## Skeleton Worker, and nothing else. The Bone Pile and Dark Altar used to be
+## Stage 0 (Arrival) per FOUNDATION_SPEC section 10: the Throne of Bones and
+## nothing else -- the one starting Skeleton Worker was removed 2026-09-26
+## (LIVING_WORLD ruling 9; the first dead come from a grave). The Bone Pile and Dark Altar used to be
 ## seeded here too, and three followers (Grix/Morra/Vash) came free -- all
 ## removed so the run actually starts at the bottom of the Stage 1-3 ladder
 ## the outline describes (labor before buildings, buildings before followers).
@@ -643,8 +644,9 @@ func _seed_starting_state() -> void:
 	_place_from_catalog("throne_of_bones", Vector2i(0, 0))
 
 	# **No starting skeleton** (LIVING_WORLD ruling 9, 2026-09-26). The dead
-	# come from graves -- free -- or from Raise Dead paid in bones, and the
-	# starting bones are enough for either choice on minute one.
+	# come from graves -- free -- or from Raise Dead paid in bones. The starting
+	# bones (3, GameState) are below Raise Dead's 5, so the first dead always
+	# come from a grave.
 
 ## Places a catalog building directly (no cost check, no player-driven
 ## click-to-place) -- used only for game-start seeding. Player construction

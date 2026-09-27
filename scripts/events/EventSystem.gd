@@ -1,9 +1,14 @@
 extends Node
 class_name EventSystem
-## Loads data/events.json and periodically fires a random eligible event,
-## applying whichever choice effect the player (or, for now, an autoplay
-## stub) picks. UI layer listens to EventBus.event_triggered to show a popup;
-## this script never touches UI directly.
+## Loads data/events.json and the recruit-offer machinery, and applies whichever
+## choice effect the player picks. UI layer listens to EventBus.event_triggered
+## to show a popup; this script never touches UI directly.
+##
+## **Today nothing fires on its own.** The timer only ever fired recruit offers,
+## and timed recruit offers are off (`TIMED_RECRUIT_OFFERS = false`, ruling
+## 2026-09-26); nothing calls the random flavor-event path
+## (`_fire_random_event`). The machinery is kept for R3 to re-trigger from
+## reputation.
 
 const EVENTS_PATH := "res://data/events.json"
 const FOLLOWERS_PATH := "res://data/followers.json"
@@ -35,7 +40,8 @@ func _ready() -> void:
 ## fire from turn zero and drown out whatever else was being tested. Now
 ## there's a real in-fiction reason for the timer to be off at the start:
 ## GAME_OUTLINE Stage 2 ends with "Barracks built -> recruitment-event timer
-## turns on", so until the player builds one, nobody comes.
+## turns on", so until the player builds one, nobody comes. (Since 2026-09-26
+## the timer stays off even with a Barracks -- see TIMED_RECRUIT_OFFERS.)
 ##
 ## Note this gates on the Barracks *existing*, not on it having a free slot.
 ## A full Barracks still gets offers -- they just arrive with only turn-away

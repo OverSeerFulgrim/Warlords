@@ -25,8 +25,9 @@ extends Node
 ## Raise Dead, paid in bones, at his feet (ruling C, 2026-09-26). Same handler
 ## the Economy tab's button and the R key use. The name is historical.
 signal recruit_worker_pressed
-## The Keep's Surrender button -- ends the run (RunLifecycle.abandon) and
-## brings up the run-end screen.
+## The Keep's Surrender button -- asks for confirmation (the pause menu's
+## confirm), then ends the run (RunLifecycle.abandon) and brings up the run-end
+## screen.
 signal surrender_requested
 ## Command Undead / Move the rally point: asks Main.gd to enter rally placement
 ## mode, which first has to cancel any build or demolish mode in force.

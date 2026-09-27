@@ -4,6 +4,17 @@ Concrete numbers for the foundation build (Stages 1–3 of `GAME_OUTLINE.md`: co
 
 **Current roadmap focus:** a smooth run of Stages 1–3 only. Bounty board, missions, training centers, market/trade, grudges, and spells are **hard-locked** until this loop is proven. The Barracks gets its **Upgrade button now, but hard-locked** ("Locked" state, no cost shown) as a visible promise of the roadmap.
 
+> **Status, 2026-09-26 — built, and partly superseded.** The Stage 1–3 loop this spec numbers is
+> **built**; its exit criteria (§11) were met on 2026-08-27 (`docs/history/2026-08-foundation-exit-criteria.md`),
+> and it is now the in-run base layer of `ROGUELITE_REWORK.md`, whose §13 replaces the "Stages"
+> roadmap framing below. Superseded here, and marked where they sit:
+> - **Stats.** The Might / Guile / Influence / Loyalty model of §1–§3 is retired. C2 (2026-08-26) made
+>   the nine attributes of `COMBAT_SPEC.md` §2 live; `RACES.md` / `data/races.json` hold the numbers.
+> - **Starting state (§10).** No starting skeleton and **3 bones** (rulings 2026-09-26): the first dead
+>   are raised from a grave by Raise Dead, his starting spell.
+> - **Recruitment (§9, §11.3).** Timed recruit offers are switched off (`EventSystem.TIMED_RECRUIT_OFFERS
+>   = false`) until R3 triggers them from reputation.
+
 ---
 
 ## 1. The stat scale and the Human Peasant reference
@@ -12,12 +23,12 @@ All stats and skills run **1–10**. The reference point is a **Human Peasant = 
 
 Stat groups:
 
-- **Character stats:** Might, Guile, Influence, Loyalty (unchanged from current code)
+- **Character stats:** Might, Guile, Influence, Loyalty (unchanged from current code) *(Retired by C2, 2026-08-26: now the nine attributes — Strength, Dexterity, Speed, Endurance, Intelligence, Guile, Perception, Tact, Loyalty — and twelve skills including the three below; `COMBAT_SPEC.md` §2.)*
 - **Labor skills (new):** Woodcutting, Mining, Foraging — these drive *work speed*, not permissions. Anyone can chop; skill decides how fast.
 
 ## 2. Race baselines
 
-**The full roster (16 races with alignment, rarity, and housing styles) lives in `RACES.md`** — that file supersedes the starter table below, which is kept as a quick reference for the core eight. Baseline = the racial *average*. Individual recruits vary (Section 3).
+**The full roster (16 races with alignment, rarity, and housing styles) lives in `RACES.md`** — that file supersedes the starter table below, which is kept as a quick reference for the core eight. *(The table is pre-C2: its Might / Guile / Influence columns are the retired model and some walk speeds have since moved — read live numbers from `RACES.md`.)* Baseline = the racial *average*. Individual recruits vary (Section 3).
 
 | Race | Category | Might | Guile | Influence | Loyalty | Woodcut | Mining | Forage | Walk speed | Food/meal |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -42,7 +53,7 @@ value = clamp(baseline + d3 - d3, 1, 10)     # d3 = randi 1..3 → range ±2, be
 ```
 
 - Two dice give a center-weighted spread: most recruits sit at baseline, ±2 is rare. Some ogres are just stronger than others.
-- **Exceptional roll:** 5% chance per recruit of +1 to their race's *category-defining* stat after the roll (warrior → Might, economy → best labor skill, research → Guile, foraging → Foraging). These are the recruits worth funding houses for early.
+- **Exceptional roll:** 5% chance per recruit of +1 to their race's *category-defining* stat after the roll (warrior → Might, economy → best labor skill, research → Guile, foraging → Foraging). *(C2 retargeted these to attributes: Warrior → Strength, Economy → the attribute governing that recruit's best labor skill, Research → Intelligence, Foraging → Perception — `data/recruitment.json`.)* These are the recruits worth funding houses for early.
 - Loyalty rolls the same way but is the *starting* value — it moves with play. Skeleton Workers don't roll; they're fixed at baseline (interchangeable by design).
 - Walk speed and Food/meal are racial constants — no per-recruit variance.
 
@@ -78,7 +89,7 @@ walk to node → gather until carry-full or node empty → walk home → deposit
 - **Gather time per unit:** `base_time × 5 / skill`, with `base_time = 4s`.
   - Human peasant (skill 5): 4s per unit — matches the old tick rate, so overall pacing survives.
   - Gray Dwarf mining (9): ~2.2s per stone. Skeleton (3): ~6.7s. Skill is *visible* as speed.
-- **Carry capacity = Endurance.** (Reworded 2026-08-06 per `COMBAT_SPEC.md` §2.1's adopted stat rework — was Might; the code says Might until prompt C2 migrates it.) An Ogre (End 8) hauls 8 units per trip; a Gnome (End 3) makes many small trips. Endurance carrying HP *and* load is deliberate — it opens the tough-porter build without rebuilding Might under a new name.
+- **Carry capacity = Endurance.** (Reworded 2026-08-06 per `COMBAT_SPEC.md` §2.1's adopted stat rework — was Might; C2 migrated the code on 2026-08-26, and carry reads Endurance.) An Ogre (End 8) hauls 8 units per trip; a Gnome (End 3) makes many small trips. Endurance carrying HP *and* load is deliberate — it opens the tough-porter build without rebuilding Might under a new name.
 - Priority list (Stage 1 system) decides *which* node type a worker heads to on each new trip, using the threshold fall-through rule.
 
 ## 7. Day/night cycle
@@ -98,7 +109,7 @@ walk to node → gather until carry-full or node empty → walk home → deposit
 
 - Cost: 8 Wood, 6 Stone. **Capacity 5. Only one can ever exist.**
 - **Upgrade button: present, hard-locked** — greyed "Locked" state, no tooltip cost. Unlock is a roadmap milestone, not a hidden requirement.
-- Recruitment events require: Barracks built AND free slot. Full Barracks = offer fizzles with a clear message.
+- Recruitment events require: Barracks built AND free slot. Full Barracks = offer fizzles with a clear message. *(2026-09-26: timed offers are switched off until R3; the gate is kept for then.)*
 - Fund-a-house (frees a slot): flat **6 Wood, 4 Stone** for the foundation build (per-race costs later). **The recruit picks the spot by their race's housing style** (Clustered/Communal/Spaced/Near-feature/Edge — see `RACES.md`): goblins pile in next to each other, a minotaur wants empty cells around him.
 
 ## 10. Starting state (Stage 0)
@@ -106,13 +117,13 @@ walk to node → gather until carry-full or node empty → walk home → deposit
 | Item | Value |
 |---|---|
 | Buildings | Throne of Bones only |
-| Workers | 1 Skeleton Worker |
-| Wood / Stone / Bones | 8 / 5 / 10 |
+| Workers | **None** *(amended 2026-09-26, LIVING_WORLD ruling 9; was 1 Skeleton Worker)* |
+| Wood / Stone / Bones | 8 / 5 / **3** *(bones amended 2026-09-26; was 10)* |
 | Food | 5 (a small larder for the first living recruit) |
 | Dark Essence | 0 — not part of the foundation loop (harvest bounties are locked) |
 | Followers | 0 |
 
-10 starting Bones = 2 extra Skeleton Workers (5 Bones each) before any gathering.
+**Amended 2026-09-26** (this line read "10 starting Bones = 2 extra Skeleton Workers (5 Bones each) before any gathering"): 3 bones is deliberately below the 5 that Raise Dead costs, so the first dead always come from a grave — a corpse raised there is free (`scripts/Main.gd` `_seed_starting_state`, `GameState.bones`).
 
 ## 11. What "running smoothly" means (foundation exit criteria)
 

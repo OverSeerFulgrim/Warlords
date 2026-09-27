@@ -4,6 +4,32 @@
 **Date:** 2026-08-05  
 **Purpose:** Identify what the current prototype is missing, recommend the next development priorities, and provide a focused checklist for design review.
 
+> **Status note, 2026-09-26.** This is a snapshot from 2026-08-05 and is left as written. Much of it
+> has since been built. For what is true today, read `CLAUDE.md` and the dated files in
+> `docs/history/`; the newest review is `docs/REVIEW_2026-09-26.md`.
+>
+> **Done:**
+> - **§2, the sortie loop** (R2a–R2d): graves with a choice sheet, channelled looting, carry
+>   capacity, remainders left at the site, the automatic deposit at the Throne, and death losing the
+>   unbanked haul. The audiovisual deposit payoff is **not** done; there is no audio yet.
+> - **§3, field actions:** Raise Dead (his starting spell; a grave's corpse is raised free), rob /
+>   return / conceal at a grave, and the escort.
+> - **§6, a real failure state:** death ends the run. There is a run-end screen with stats, XP and
+>   level, and "Begin a new run" (built 2026-09-26). Not done: fleeing the region and the manor
+>   victory. The legacy win still stands in.
+> - **§9, feedback:** red damage numbers (F1). Not done: audio and real onboarding. The title screen
+>   has a four-line how-to-play.
+> - **§10:** fourteen assertion harnesses exist and are green (counts in `CLAUDE.md`). The keys are
+>   InputMap actions bound by physical key. Timed recruitment is off. The legacy crusade and win now
+>   end the run. Not done: CI and run seeds.
+> - **§11:** `.gitattributes` exists, and the line endings were normalised (`19fc078`).
+> - **§12, the order:** items 1–3, 5–7 and 9–11 are done. So are parts of 12 (F1, the demo shell) and
+>   14 (the run lifecycle, but not the map shuffle). Meta-progression (16) has **started before** the
+>   "enjoyable without it" check this review asked for: XP and levels are banked across runs
+>   (`docs/design/PROGRESSION.md`).
+>
+> **Still open:** item 8 and §14. That is the R2 exit playtest, which needs a human.
+
 This document does not replace `ROGUELITE_REWORK.md`, the R2 specifications, or the established implementation roadmap. It is a product-level assessment intended to help decide whether that roadmap is proving the right player experience.
 
 ---

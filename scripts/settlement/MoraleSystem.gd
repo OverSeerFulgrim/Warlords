@@ -2,7 +2,7 @@ extends Node
 class_name MoraleSystem
 ## Meals, morale, misbehaviour and desertion -- FOUNDATION_SPEC section 8.
 ##
-## This is the last unbuilt piece of the foundation day/night loop. The clock
+## This was the last unbuilt piece of the foundation day/night loop. The clock
 ## and its `dawn_started` / `dusk_started` signals already existed (see
 ## DayNightCycle, which deliberately emitted signals rather than calling
 ## anything directly, precisely so this could hang off them); what was missing
@@ -33,8 +33,9 @@ const MISCHIEF_MAX: int = 3
 const DEPARTURE_MORALE: int = 1
 
 ## What a disgruntled recruit will help themselves to. Deliberately excludes
-## dark_essence -- it's the locked Stage-4 resource and stealing it would be a
-## confusing loss of something the player has no way to replace yet.
+## dark_essence -- it is field loot only (LOOT_SITES_SPEC section 5), never
+## gathered at home, and stealing it would be a confusing loss of something
+## the player cannot simply re-gather.
 const STEALABLE := ["food", "wood", "stone", "bones"]
 
 const MISCHIEF_FLAVOR := [

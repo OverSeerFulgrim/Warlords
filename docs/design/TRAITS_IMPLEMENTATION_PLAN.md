@@ -2,11 +2,18 @@
 
 A self-contained work order for implementing the trait system. Written for an implementing agent with no prior context on this project.
 
+**Status, 2026-09-26: not built.** There is no `data/traits.json` and no `TraitCatalog`; a generated
+recruit still gets one trait from `RecruitGenerator.TRAIT_POOL` (Loyal, Greedy, Bloodthirsty, Cowardly,
+Fanatic — the old pool). Timed recruit offers are switched off (`EventSystem.TIMED_RECRUIT_OFFERS =
+false`), so no recruit reaches the Barracks in play until R3 re-triggers offers from reputation. The
+stat-rework ordering in §0 has resolved — see the 2026-09-26 update there. (CLAUDE.md no longer
+carries the blank-window gotcha or a "Physical gathering" section; the trip loop is `WorkerSystem`.)
+
 **Read before touching anything:** `CLAUDE.md` (architecture conventions + what every system does), `TRAITS.md` (the design being implemented — trait list, rules, conflicts), `RACES.md` (how recruits are generated), `FOUNDATION_SPEC.md` §3 (stat roll rules). Follow CLAUDE.md's conventions: data-driven JSON, autoload singletons for catalogs, EventBus signals for cross-system communication, log-and-alert over modal popups. **Commit when done** with a descriptive message. If the game launches as a blank window at any point, check `scenes/Main.tscn` still has its `script = ExtResource(...)` line before debugging anything else (known recurring corruption — see CLAUDE.md).
 
 ## 0. Ordering — read this first
 
-A **stat system rework is in design and not yet built.** It replaces Might/Guile/Influence/Loyalty with nine attributes (Strength, Dexterity, Speed, Endurance, Intelligence, Guile, Perception, Tact, Loyalty), twelve skills derived as `skill + floor((governing_attribute − 5) / 2)`, and a condition layer (hp, morale, hunger, disease). It also replaces the combat system's flat hp-percentage flee check with morale-driven routing.
+A **stat system rework is in design and not yet built.** *(True when written; C2 built it on 2026-08-26 — see the updates below.)* It replaces Might/Guile/Influence/Loyalty with nine attributes (Strength, Dexterity, Speed, Endurance, Intelligence, Guile, Perception, Tact, Loyalty), twelve skills derived as `skill + floor((governing_attribute − 5) / 2)`, and a condition layer (hp, morale, hunger, disease). It also replaces the combat system's flat hp-percentage flee check with morale-driven routing.
 
 **Traits are still worth building now**, because the bulk of this plan is MoraleSystem and economy work that the rework doesn't touch. But three things follow from the ordering, and they are not optional:
 
@@ -21,6 +28,13 @@ The stat rework will be its own pass with its own document. Nothing here should 
 > already authored in `stat_rework_roster.xlsx`. The ordering rules above still hold; if C2 runs
 > *before* this plan, rules 2–3 simplify (Perception and Leadership will exist), and the deferred
 > combat effects unblock at C3, not C2 — routing is C3's.
+
+> **Update, 2026-09-26:** C2 ran first — it landed 2026-08-26. The nine attributes and twelve skills
+> are live, Might and Influence are gone, and **Perception and Leadership exist** (Perception an
+> attribute, Leadership a skill). So rules 2–3 simplify: all four `stat_bonus` traits — Loyal,
+> Sticky-fingered, Charming (+1 Leadership) and Keen-eyed (+1 Perception) — can be live, and §2's
+> skip-an-unknown-stat path is now only a guard. Rule 1 still holds: C3 (morale routing) is not
+> built, and `Combat.FLEE_HP_FRACTION` is still the flee rule, so every combat effect stays blocked.
 
 ## 1. Data: `data/traits.json`
 
@@ -92,7 +106,7 @@ Store and ignore, same as blocked, but these wait on features rather than on a r
 
 **`RecruitGenerator`** — after stats are rolled: roll 1 trait uniformly; 30% chance of a second; if the second conflicts with the first (check both directions via `conflicts`), reroll the second up to a few attempts, then settle for one. Apply `stat_bonus` and `baseline_morale_bonus`. Skeleton Workers get no traits (they're `Worker`, not `Follower` — this should already fall out naturally; verify).
 
-**Charming and Keen-eyed** target Leadership and Perception, which don't exist yet. Do **not** add those stats to `races.json` or `Follower` to make the bonus work — that's the stat rework leaking into this pass. Instead: give both traits their full JSON entry with the correct `stat_bonus` (`{"leadership": 1}` and `{"perception": 1}`), and have `RecruitGenerator` skip any `stat_bonus` key it doesn't recognise as a field on the recruit, logging nothing. Both traits still roll, still display, still read correctly to the player; their bonus activates for free the day the stat exists. Same principle as the blocked keys.
+**Charming and Keen-eyed** target Leadership and Perception, which don't exist yet. *(Since C2, 2026-08-26, both exist — wire their `stat_bonus` like Loyal's; see the §0 update.)* Do **not** add those stats to `races.json` or `Follower` to make the bonus work — that's the stat rework leaking into this pass. Instead: give both traits their full JSON entry with the correct `stat_bonus` (`{"leadership": 1}` and `{"perception": 1}`), and have `RecruitGenerator` skip any `stat_bonus` key it doesn't recognise as a field on the recruit, logging nothing. Both traits still roll, still display, still read correctly to the player; their bonus activates for free the day the stat exists. Same principle as the blocked keys.
 
 **`Follower`** — `traits` array already exists; keep storing **trait ids** (strings). `evaluate_bounty()` already string-matches old trait names (Bloodthirsty, Greedy, Cowardly, Loyal, Fanatic) — those ids collide with the new set *by design*; verify the casing matches what evaluate_bounty expects or normalize. The retired old-pool traits that don't exist in traits.json need no migration (no live followers persist across sessions).
 

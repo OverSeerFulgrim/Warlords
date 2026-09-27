@@ -105,7 +105,7 @@ func _process(delta: float) -> void:
 ##
 ## **This is the point of recruiting.** A settled Gray Dwarf brings Mining 9
 ## against a skeleton's 3, so the same trip yields stone roughly three times
-## faster (`4.0s * 5 / skill`), and their higher Might means a bigger load per
+## faster (`4.0s * 5 / skill`), and their higher Endurance means a bigger load per
 ## round trip on top. Workers and Followers stay separate classes -- see
 ## Laborer.gd for where that line is drawn -- they just share the job.
 ## Workers are filtered by can_labor() too, not appended wholesale -- Command

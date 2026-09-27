@@ -59,7 +59,7 @@ Today the engine must scale each sprite individually to a per-race target, and t
 
 ## 3. Body families
 
-Five families. Height is the character's own extent, top of head (or ears/horns — see §5) to baseline.
+Six families. Height is the character's own extent, top of head (or ears/horns — see §5) to baseline.
 
 | Family | Height | Canvas fill | Width budget | Members |
 |---|---|---|---|---|
@@ -70,12 +70,12 @@ Five families. Height is the character's own extent, top of head (or ears/horns 
 | **Villain** | 1.05 cells | 180 / 256 | ≤ 0.70 cells | Necromancer (and future playable classes) |
 | **Quadruped** | 0.72 cells tall | 122 / 256 | **1.15 cells wide** | Wolf, Deer |
 
-**Body class is its own field in `races.json`. It is not derived from any stat, and must not be.** Gray Dwarf and Hobgoblin both have Might 6; one is four feet tall and one is six. Deriving height from Might would make dwarves tall, which is the opposite of a dwarf. Deriving it from `food_per_meal` fails on Halflings, who eat 1.5 — more than a Human — entirely on purpose.
+**Body class is its own field in `races.json`. It is not derived from any stat, and must not be.** Gray Dwarf and Hobgoblin both have Might 6; one is four feet tall and one is six. *(Amended 2026-09-26: Might is gone since C2. Under the nine attributes both have Strength 6, so the point stands. The field is still not in `races.json`; see §9.2.)* Deriving height from Might would make dwarves tall, which is the opposite of a dwarf. Deriving it from `food_per_meal` fails on Halflings, who eat 1.5 — more than a Human — entirely on purpose.
 
 **Two families have deliberate exceptions, and both are load-bearing:**
 
 - **Villain sits above Medium but below Large.** The player character should read as the protagonist without being a giant. He is not a Large creature and must never be scaled like one.
-- **Quadruped is measured by *width*, not height.** A wolf is low and long. `CLAUDE.md`'s combat section records a playtest where a 34px wolf was literally invisible on dark ground and the fix was making it the largest object on the map — the 1.15-cell width budget is how that decision survives this spec. Do not "correct" the wolf to be shorter than the Necromancer and call it consistent; it is wider, and area is what legibility actually depends on.
+- **Quadruped is measured by *width*, not height.** A wolf is low and long. `docs/history/2026-08-combat-and-wolf.md` records a playtest where a 34px wolf was literally invisible on dark ground and the fix was making it the largest object on the map — the 1.15-cell width budget is how that decision survives this spec. Do not "correct" the wolf to be shorter than the Necromancer and call it consistent; it is wider, and area is what legibility actually depends on.
 
 ---
 
@@ -130,7 +130,7 @@ The whole point of this document is that this list is short.
 
 1. Choose a body family. Write `"body_class": "medium"` into the race's `races.json` entry.
 2. Commission or generate a 256×256 static token on the §1 canvas at that family's height.
-3. Drop the PNG in `Official Sprites/`, point the race's `sprite` field at it.
+3. Drop the PNG in `assets/official/characters/`, point the race's `sprite` field at it.
 4. Done. No code change, no scale constant, no size table.
 5. *Later, optionally:* commission a 4×5 sheet to §6 and swap the reference. Same canvas, so it drops in.
 
@@ -144,7 +144,7 @@ This chapter exists so the decision is written down, not because anything here i
 
 **Skinned deformation (`Skeleton2D` / `Bone2D` / `Polygon2D`) is rejected outright, permanently, at this render size.** At 39–83 px a limb is six to ten pixels wide; weighted vertices land on non-integer positions and the rasterizer resamples every frame, producing exactly the crawling shimmer this document's contrast rules exist to prevent. Rigid cut-out layering — `Sprite2D` pieces in a `Node2D` hierarchy rotated by an `AnimationPlayer` — is the version that stays on the table.
 
-**When it arrives, it inherits this document unchanged.** The canvas, the baseline, the anchor and the five families are the same whether a character is one flat drawing or fourteen stacked pieces. That is the reason to adopt §1 now: it is the part that never needs redoing.
+**When it arrives, it inherits this document unchanged.** The canvas, the baseline, the anchor and the six families are the same whether a character is one flat drawing or fourteen stacked pieces. That is the reason to adopt §1 now: it is the part that never needs redoing.
 
 Reserved layer order, for when it happens: `cape_back → legs → torso → arms_back → head → hair → arms_front → weapon_main → weapon_off → effects`.
 
@@ -179,11 +179,11 @@ Consequences worth knowing:
 
 ### 9.2 Next — `body_class` in `races.json`
 
-**Still the interim step, and now a pure data change.** `FollowerToken` applies Medium (0.90 cells) to every recruit, so a Troll and a Halfling are the same height on screen. Add `body_class` to every entry in `races.json` and have the token look its height up by family. The scaling machinery it needed — content measurement — exists; what is missing is only the field and a five-entry table.
+**Still the interim step, and now a pure data change.** `FollowerToken` applies Medium (0.90 cells) to every recruit, so a Troll and a Halfling are the same height on screen. Add `body_class` to every entry in `races.json` and have the token look its height up by family. The scaling machinery it needed — content measurement — exists; what is missing is only the field and a six-entry table.
 
 Because each existing sprite fills its own frame, scaling per family produces roughly correct relative size from the art already in the repo — a Troll near 83 px against a Halfling near 40 px, versus today's uniform 58. It is approximate, because the source art has no shared baseline and the ratio comes out a little wide. It is right in every way that matters at a glance.
 
-**The `body_class` field survives the migration.** It is what §7 step 1 writes, and what the interim scaling reads. Adding it now is not throwaway work — coordinate it with the C2 stat rework, which is re-authoring `races.json` anyway.
+**The `body_class` field survives the migration.** It is what §7 step 1 writes, and what the interim scaling reads. Adding it now is not throwaway work — coordinate it with the C2 stat rework, which is re-authoring `races.json` anyway. *(2026-09-26: C2 landed 2026-08-26 without it. `body_class` is still not in `races.json`, and `FollowerToken` still applies Medium to every recruit.)*
 
 ### 9.3 Not done — the world map
 

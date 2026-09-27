@@ -7,7 +7,8 @@ morality inverted: you are the Necromancer, hiding in a lair because you are wea
 about the arc from **Hide → Explore → Influence → Rule**. One region is one run. Permadeath. What
 persists between runs is variety, never power.
 
-Built in **Godot 4.7.1**, GDScript, GL Compatibility renderer. No external dependencies.
+Built in **Godot 4.7.1**, GDScript, GL Compatibility renderer. No runtime dependencies (the
+`godot_mcp` editor bridge is a dev tool; its autoloads are freed at startup in release builds).
 
 ## Where the project stands
 
@@ -18,25 +19,27 @@ stages, each playable before the next begins:
 |---|---|
 | Stage 1–3 settlement loop — grid, priority-list economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat, Command Undead | **Built and verified** |
 | **R1 — The world exists.** 144×144 fixed world, terrain/blocking/roads, fog of war, directly-controlled killable Necromancer with camera follow, static village, sealed rival ground, travel times in band | **Built and verified** |
-| **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **R2a–R2d built and verified** (generated world with forests, sites and dens, his Arcane kit, deposit at the Throne, the escort); **R2e (Raven pings) not built**; the R2 exit playtest has not run |
-| R3 — reputation axes and reputation-gated recruitment | Designed at outline level |
-| R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | Designed at outline level |
-| R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | Designed at outline level |
+| **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **Built and verified** — every prompt (P0, U1, F1, C2, P1, P2, R2a–R2e) landed by 2026-09-26. **Next: the R2 exit playtest** (a human at the keyboard) |
+| R3 — reputation axes and reputation-gated recruitment | Designed at outline level. Timed recruitment is already switched off |
+| R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | **Partly built (R4-lite, 2026-09-26):** death ends the run, a run-end screen, a new run. Flee, the manor victory and map shuffle are not built |
+| R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | **XP half built (2026-09-26):** XP banked per deed, levels, the Second Wake unlock, the last chronicle lines (`docs/design/PROGRESSION.md`). The Lair hub is not built |
 
-Win/lose is still the old placeholder until R4. Climate and additional villain classes are
-deliberately deferred. `docs/CURRENT_STATE.md` is the dated snapshot that reconciles every design
-document into one picture; read it before anything else in `docs/`.
+After R2 comes `docs/design/LIVING_WORLD_SPEC.md` (settlement symmetry, the guild, faction
+ecosystems), starting with its stage L0. Victory is still the legacy placeholder until the manor
+exists. Climate and additional villain classes are deliberately deferred. `docs/CURRENT_STATE.md`
+is the dated snapshot of where things stand; `docs/README.md` says which document is live.
 
 ### The build order for R2
 
-`docs/prompts/R2_PROMPTS.md` is the only live prompt set. Nothing in it runs before a human has
-playtested R1 for feel:
+`docs/prompts/R2_PROMPTS.md` is the only live prompt set. **Every prompt in it has landed**; what
+is left of R2 is its exit playtest:
 
 ```
-playtest R1 → P0 (travel harness + doc fixes) → F1 (damage numbers) → C2 (stat rework)
+playtest R1 → P0 (travel harness + doc fixes) → U1 (minimap click, right-click move)
+            → F1 (damage numbers) → C2 (stat rework)
             → P1 (tilesheets) → P2 (generated world + forests)
             → R2a (sites + dens) → R2b (villain combat) → R2c (deposit)
-            → R2d (escort) → R2e (raven)
+            → R2d (escort) → R2e (raven) → R2 exit playtest   ← next
 ```
 
 ## Running it
@@ -48,8 +51,9 @@ playtest R1 → P0 (travel harness + doc fixes) → F1 (damage numbers) → C2 (
 
 Controls (the full list is on the title screen and in the pause menu): **WASD** walks the
 Necromancer (by key position, so it works on AZERTY too), **right-click** walks him there,
-**arrow keys** pan the camera, **F** follows him, **R** casts Raise Dead, **M** hides the minimap,
-**Space / P / Esc** pause. Everything else is mouse-driven from the HUD. Debug builds also have a
+**arrow keys** pan the camera, **F** follows him, **R** casts Raise Dead, **M** hides the minimap
+(clicking it looks there; right-clicking it walks him there), **Space / P** pause, and **Esc** closes
+what is open, then pauses. Everything else is mouse-driven from the HUD. Debug builds also have a
 time-scale control (1×/10×/60×) and the **F3** site overlay; exported builds have neither.
 
 **Exporting:** `export_presets.cfg` (gitignored, on disk) has Windows Desktop and Linux presets that
@@ -68,10 +72,11 @@ godot --headless --path . res://tools/measure_travel.tscn
 ## Layout
 
 ```
-scripts/        Main.gd (wiring root), ui/, autoload/, settlement/, villain/, combat/, world/,
-                plus bounty/events/missions/threat (Stage-4 systems, built but mostly unsurfaced)
+scripts/        Main.gd (wiring root), Controls.gd (key actions), ui/, autoload/, run/ (run
+                lifecycle + XP profile), settlement/, villain/, combat/, world/, plus
+                bounty/events/missions/threat (Stage-4 systems, built but mostly unsurfaced)
 data/           all game content as JSON — races, buildings, events, missions, recruitment,
-                world_map, world_sites. New content is a JSON edit.
+                world_map, world_sites, loot tables, relics, progression. New content is a JSON edit.
 assets/         official/ (commissioned art), placeholder/ (stand-ins), vendor/ (cold storage)
 tools/          generators and verification harnesses; they re-derive every tuned number
 docs/           design/ (specs), art/ (sprite rules), prompts/ (build order), history/ (dated
@@ -83,9 +88,8 @@ docs/           design/ (specs), art/ (sprite rules), prompts/ (build order), hi
 Stated once, in `docs/README.md`, and repeated here because it matters:
 **`ROGUELITE_REWORK.md` wins on design intent; the newest `docs/history/` file wins on what the
 code actually does; `CLAUDE.md` wins on code conventions.** The nine-attribute stat model in
-`COMBAT_SPEC.md` §2 is adopted, with `stat_rework_roster.xlsx` as the authoritative statline
-source until prompt C2 exports it to `data/races.json` — the code still reads the old Might until
-then.
+`COMBAT_SPEC.md` §2 is live since prompt C2 (2026-08-26): `stat_rework_roster.xlsx` is the
+editing surface and `tools/export_roster.gd` exports it to `data/races.json`. Might is gone.
 
 ## Design pillars (short form)
 

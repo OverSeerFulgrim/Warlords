@@ -79,7 +79,7 @@
 
 	"wolf_den": {
 		"band": 2,
-		"exception": "RELIC COLUMN ONLY. §5 authorises exactly one thing here -- the best wolfhide_cloak odds in the game (~24% against the band's ~15%) -- so the resource columns are held to Band 2 like any other site and the harness checks them. The gold is what the pack dragged in with whatever it last ate; the wolves have no use for it. No arms: amendment ruling 2 is explicit that arms are human sites only.",
+		"exception": "RELIC COLUMN ONLY. §5 authorises exactly one thing here -- the best wolfhide_cloak odds in the game (~23%: 3 rolls at weight 10 of 120, against the band's ~15%) -- so the resource columns are held to Band 2 like any other site and the harness checks them. The gold is what the pack dragged in with whatever it last ate; the wolves have no use for it. No arms: amendment ruling 2 is explicit that arms are human sites only.",
 		"rolls": 3,
 		"entries": [
 			{"kind": "bones", "min": 2, "max": 4, "weight": 30},

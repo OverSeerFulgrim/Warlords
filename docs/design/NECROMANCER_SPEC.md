@@ -1,17 +1,20 @@
 # NECROMANCER SPEC — His Own Two Hands (R2)
 
-**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Answers the open tunable `ROGUELITE_REWORK.md` §15 has
+**Status:** **built** — R2b landed, see `docs/history/2026-08-villain-combat.md` (harness
+`tools/verify_villain_combat.tscn`). Amendment ruling 2 (the hot-slot row) is **not built**, by
+design (R5). Reviewed and amended 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Answers the open tunable `ROGUELITE_REWORK.md` §15 has
 carried since the rework was written — *"Necromancer combat stats, and whether a protective aura
 applies inside his own lair"* — and gives the villain the one thing R2's world makes urgent:
-**a way to fight back.** Nothing here is implemented.
+**a way to fight back.**
 
 > **Amendment, 2026-08-06 (same day) — written against C2, and he is Arcane.** `COMBAT_SPEC.md`'s
 > stat rework was adopted into the build order the day this spec was drafted (its amendment
 > block; prompt C2 in `R2_PROMPTS.md`), so this spec now speaks the nine-attribute language:
 > the villain gets a full statline (§2) and his profile is **Arcane** — Intelligence-driven,
 > 5-cell reach — by designer decision. §3's engagement model is the engage-close/cast-far split
-> that decision requires. Where this file says Endurance or Intelligence and the R1 code says
-> Might, C2 is the migration point.
+> that decision requires. Where this file says Endurance or Intelligence and the R1 code said
+> otherwise, C2 was the migration point — **landed** (`docs/history/2026-08-stat-rework.md`); the
+> old single stat is gone from code.
 
 **Scope:** what the villain is in a fight — his stats confirmed, how he attacks (and the input
 model that keeps it order-free), retaliation, what hunts him once the lair aura goes positional,
@@ -50,6 +53,23 @@ cover-the-retreat, which reads the thresholds set here), `CLAUDE.md`.
 > a key. The hotbar is for spells-as-tools (Command Undead today; wards, rituals, and the R5
 > kit later). Not built in R2: two spells do not need nine slots.
 
+> **Amended 2026-09-26 — pointers to later rulings** (`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`,
+> `LIVING_WORLD_SPEC.md` §8.7 / §15):
+>
+> - **Death ends the run** (`scripts/run/RunLifecycle.gd`). The haul is still lost first; waking
+>   at the Throne is the **Second Wake** unlock (level 5, once per run), not the default. §6 and
+>   §10 below are amended in place.
+> - **Raise Dead is his starting spell** (ruling C). A grave's corpse ("Raise the corpse" on the
+>   grave sheet) is raised **free** as a real Skeleton Worker at the graveside; without a corpse it
+>   costs **5 bones** and works wherever he stands — his panel, the Economy tab, or the **R** key.
+>   There is no free starting skeleton, and he starts with **3 bones**, so the first dead come from
+>   a grave. §7's table is amended in place.
+> - **Hidden / Hunting stance** (LIVING_WORLD ruling 15, §8.7) — **not built**, scheduled with
+>   LIVING_WORLD L2. "No attack button, ever" **stands**: the stance is a policy on him, not a key
+>   that swings. Hidden (the default) never starts a fight with the living — only hostiles trigger
+>   his 26px engage, which is §3 as built; Hunting makes anything living within 26px fair game,
+>   puts the escort Aggressive, and makes anyone who sees it a witness.
+
 ---
 
 ## 1. Design goals
@@ -78,7 +98,7 @@ cover-the-retreat, which reads the thresholds set here), `CLAUDE.md`.
 ## 2. What exists, confirmed as the baseline
 
 The R1 data object (`Necromancer.gd`) carries everything this spec builds on. Under C2 his single
-`BASE_MIGHT = 6` becomes a full statline, chosen so that **every number the R1/R2 tuning already
+R1 stat (6) becomes a full statline, chosen so that **every number the R1/R2 tuning already
 depends on is preserved**, authored in `stat_rework_roster.xlsx` beside the races:
 
 | Attribute | Value | Why this number |
@@ -171,7 +191,7 @@ a finish line the fiction already believed in.
 |---|---|---|
 | hp < 100% | red numbers already told the story per hit | `COMBAT_FEEDBACK_SPEC.md` |
 | hp < `FLEE_HP_FRACTION` (30%) | **He does not flee — the player decides.** The escort interposes (*"The dead close ranks."*), the HUD hp readout goes red, one log line fires | `ESCORT_SPEC.md` §4; HUD here |
-| hp = 0 | `villain_died` (already emitted by the data object). R2: haul cleared (`SORTIE_SPEC.md` §6), loud log, respawn at the Throne at full hp. The run ending is R4 | `SortieSystem` death handler |
+| hp = 0 | `villain_died` (already emitted by the data object). R2: haul cleared (`SORTIE_SPEC.md` §6), loud log, respawn at the Throne at full hp. The run ending is R4. **Amended 2026-09-26:** haul cleared first, then **the run ends** (run-end screen); he wakes at the Throne at full hp only with a Second Wake (level 5, once per run) | `SortieSystem` (the haul), then `RunLifecycle` (wake or end) |
 
 No auto-flee is deliberate and load-bearing: removing player control at low hp would break the
 one carve-out the control pillar makes, and panic is the player's job. The game's whole duty at
@@ -195,6 +215,11 @@ Necromancer's R2 list:
 | Command Undead: Rally | place the point | today |
 | Command Undead: Escort | anchor the point to him | `ESCORT_SPEC.md` §3 |
 | Raise the Corpse | grave choice sheets, not the panel — a *ritual at a site*, which is what site actions are | `LOOT_SITES_SPEC.md` §4 |
+
+**Amended 2026-09-26:** the third row became **Raise Dead**, his starting spell, on both surfaces —
+free from a grave's corpse (the sheet's "Raise the corpse" makes a real Skeleton Worker), or
+5 bones anywhere from his panel, the Economy tab, or **R**. It replaced the "Recruit Worker
+(5 Bones)" buttons. No `spells: Array` exists yet; the panel row is wired directly.
 
 That third row is the pattern for growth: cheap spells live on the panel, ritual spells live at
 sites. New spells are R5 unlock material (`ROGUELITE_REWORK.md` §9) and get their own spec when
@@ -254,7 +279,8 @@ a dead flag beside a live rule is how the next reader flips the wrong one.
   constants were right. The harness pins the derived figure and prints it every run, so drift in
   Speed, chase, reach or the exchange interval trips it.)
 - his death clears the haul before any other handler (cross-check `verify_sortie`) and he
-  respawns at the Throne
+  respawns at the Throne *(amended 2026-09-26: the harness grants a Second Wake before this test,
+  so the wake is what it checks; without one, death ends the run — `verify_run_lifecycle`)*
 - Int 7 vs one wolf (Int 2): simulate 1,000 fights, he wins the large majority but averages
   meaningful hp loss (the §1.2 "costly win" shape, asserted as a band not a point — wolf Int is
   the knob if arcane runs hot)

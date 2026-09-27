@@ -1,8 +1,9 @@
 # COMBAT FEEDBACK SPEC — Red Numbers, in Real Time
 
-**Status:** Reviewed as-built (shipped in F1), designer review 2026-08-29. Originally drafted 2026-08-06. Small by design and independent of every other R2
+**Status:** **built** — F1 landed, see `docs/history/2026-08-combat-feedback.md` (harness
+`tools/verify_combat_feedback.tscn`); reviewed as-built by the designer 2026-08-29. Originally drafted 2026-08-06. Small by design and independent of every other R2
 slice — it can be built the day after P0 and makes every combat that follows (guardians, dens,
-the villain's own melee) legible for free. Nothing here is implemented.
+the villain's own melee) legible for free.
 
 **Scope:** floating damage numbers over combatants, the one signal that feeds them, and the view
 layer that draws them. **Out of scope:** hp bars beyond what exists (the wolf keeps its label),

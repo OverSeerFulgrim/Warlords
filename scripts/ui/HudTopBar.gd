@@ -181,7 +181,7 @@ func _build_top_bar(hud_root: Control, panel_style: StyleBoxFlat) -> void:
 
 ## Clickable player portrait, top-left under the resource bar. It and the on-map
 ## token are two doors to one room: both open his entry in the shared inspection
-## panel, which now reads real state (hp, Might, carry, escort) off the
+## panel, which now reads real state (hp, attributes, carry, escort) off the
 ## `Necromancer` data object rather than the placeholder rows it used to carry.
 func _build_necro_badge(hud_root: Control) -> void:
 	necro_badge = Button.new()

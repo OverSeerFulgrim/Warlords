@@ -5,10 +5,10 @@ extends Laborer
 ## visual representation. Keeps the "hundreds of followers" case cheap.
 ##
 ## Extends `Laborer` because recruits work: a settled Gray Dwarf out-mines
-## every skeleton you own, which is most of the reason to recruit one. Might
-## and the three labor skills, plus the whole trip-loop state machine, live on
-## the base class; everything below is what makes a Follower a *person* rather
-## than a job -- name, race identity, traits, the three social stats, and the
+## every skeleton you own, which is most of the reason to recruit one. The
+## nine attributes and the twelve skills, plus the whole trip-loop state machine,
+## live on the base class; everything below is what makes a Follower a *person*
+## rather than a job -- name, race identity, traits, morale and housing, and the
 ## bounty/mission behaviour Workers will never have.
 
 var follower_name: String

@@ -15,7 +15,8 @@ extends Node
 ## and goes out as a signal. Lay Low is a pure GameState call with no Main
 ## involvement, so it is wired directly.
 
-## Recruit Worker was pressed. Main.gd owns the cost check and the log line.
+## Raise Dead (the bones-paid button) was pressed. The signal name is
+## historical. Main.gd owns the cost check and the log line.
 signal recruit_worker_pressed
 
 const PRIORITY_ROW_HEIGHT := 24.0

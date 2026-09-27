@@ -3,7 +3,7 @@
 **Status:** Reviewed as-built (shipped in P1/P2), designer review 2026-08-29. Originally drafted 2026-08-06. Extends the terrain layer built in R1
 (`docs/history/2026-08-world-map-r1.md`) from one tilesheet to seven, adds a connection-tile
 (autotile) layer, and teaches `tools/make_world_map.gd` to lay roads by rule instead of by hand.
-Nothing here is implemented. **Sits between P0 and R2a** in `docs/prompts/R2_PROMPTS.md`.
+**Built in P1/P2** (this line read "Nothing here is implemented" when drafted); `verify_terrain` and `measure_travel` pass as of 2026-09-26. It sat between P0 and R2a in `docs/prompts/R2_PROMPTS.md`.
 
 > **Amendment, 2026-08-06 — forests.** Added §6b (dense forest and open woodland as terrain,
 > forest corridors, and interior clearings as the map's isolated pockets), two legend rows (§5),

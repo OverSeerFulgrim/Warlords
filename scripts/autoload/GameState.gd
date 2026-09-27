@@ -18,13 +18,14 @@ signal game_lost(reason: String)
 enum ThreatTier { LOW, MEDIUM, HIGH }
 
 # --- Resources ---
-# dark_essence stays a separate "magic" resource tied to ritual/harvest
-# bounties, not something workers gather -- wood/stone/bones/food are the
+# dark_essence stays a separate "magic" resource, field loot only (LOOT_SITES_
+# SPEC section 5), not something workers gather -- wood/stone/bones/food are the
 # four mundane resources. Food is the newest of them (FOUNDATION_SPEC
 # section 8): only living recruits eat, undead labor eats nothing, so it
 # sits idle at the starting 5 until Stage 3 brings the first living recruit.
-# Starting values are FOUNDATION_SPEC section 10's Stage-0 table -- dark
-# essence starts at 0 because harvest bounties (its only source) are locked.
+# Starting values are FOUNDATION_SPEC section 10's Stage-0 table (bones since
+# lowered to 3, below) -- dark essence starts at 0 because lootable sites out
+# in the world are its only source.
 var dark_essence: int = 0
 ## 3, below Raise Dead's 5 (ruling 2026-09-26): the first dead must come from a
 ## grave, never from the stockpile on minute one.
@@ -248,8 +249,8 @@ func lose_game(reason: String) -> void:
 
 ## Returns every var back to its Stage-0 starting value so
 ## reload_current_scene() produces a fresh run rather than
-## picking up where the old one left off. Called by the
-## Surrender button and the future game-over restart panel.
+## picking up where the old one left off. Called by
+## Main._begin_new_run, the start of every new run.
 func reset() -> void:
 	dark_essence = 0
 	bones = 3

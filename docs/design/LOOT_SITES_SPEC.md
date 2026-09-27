@@ -1,7 +1,11 @@
 # LOOT SITES SPEC — What the World Gives Up (R2)
 
-**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §8 and the site half of
-milestone R2 ("The world is worth exploring"). Nothing here is implemented.
+**Status:** **built** — R2a landed, see `docs/history/2026-08-loot-sites.md` (harnesses
+`tools/verify_loot_tables.tscn`, `tools/smoke_site_actions.tscn`); camp occupancy and ruling 1 on
+the camp landed with R2e (`docs/history/2026-09-26-raven.md`, implementation notes at the end of
+this file). Amendment rulings 4 (witnesses, R3) and 5 (haulage) are **not built**, by design; the
+pool/activation shuffle (§8) is R4's. Reviewed and amended 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §8 and the site half of
+milestone R2 ("The world is worth exploring").
 
 **Scope:** lootable site types, the interaction and choice model, loot tables, the first relic
 set, data schemas, and code touchpoints. **Out of scope, specced separately:** carry capacity
@@ -132,9 +136,9 @@ layout, must land inside 10–15 active lootable sites.
 | Type id | Name | Band | Per run | Yields | Risk profile |
 |---|---|---|---|---|---|
 | `fresh_grave` | A Fresh Grave | 1 | 2–3 | bones, trinket chance | None. The tutorial loot. |
-| `small_cache` | A Hidden Cache | 1 | 1–2 | wood/stone/food, gold chance | None. Raven-ping fodder. |
+| `small_cache` | A Hidden Cache | 1 | 1–2 | wood/stone/food, gold chance (ruling 1: **gold-first**, mundane as garnish) | None. Raven-ping fodder. |
 | `wayside_shrine` | A Wayside Shrine | 2 | 1–2 | gold offerings, Dark Essence | Desecration is *loud* (threat). |
-| `abandoned_camp` | An Abandoned Camp | 2 | 2–3 | mixed mundane, relic chance | Sometimes not abandoned (occupant roll). |
+| `abandoned_camp` | An Abandoned Camp | 2 | 2–3 | mixed mundane, relic chance (ruling 1: **gold-first**, mundane as garnish, small arms chance) | Sometimes not abandoned (occupant roll — built: 35%, one outlaw). |
 | `valuable_grave` | A Marked Grave | 2 | 2–4 | bones, gold, relic chance | The four-way choice (§4). Noticed. |
 | `ruin_pocket` | A Collapsed Ruin | 2 | 1–2 | stone, Dark Essence, relic chance | Multi-charge; each pull rolls a guardian. |
 | `wolf_den` | A Wolf Den | 2 | 1–2 | bones, food, wolfhide relic chance | **Clearable** (§3b): 2–3 wolf guardians; while any den stands, dusk raids continue. |
@@ -243,7 +247,7 @@ five-axis system itself is R3; R2 writes the ledger it will read.
 
 | Choice | Immediate effect | Deed axes | Notice (threat) |
 |---|---|---|---|
-| **Raise the corpse** | +1 escort-eligible skeleton at the site (caps at carry party rules; dormant until escort lands, then retroactively live) | Forbidden Knowledge + | + |
+| **Raise the corpse** | +1 escort-eligible skeleton at the site (caps at carry party rules; dormant until escort lands, then retroactively live). **Amended 2026-09-26:** live — a real, **free** Skeleton Worker at the graveside (ruling C: Raise Dead is his starting spell), joining an active escort the next frame, otherwise walking home to work | Forbidden Knowledge + | + |
 | **Steal the valuables** | Roll the grave's loot table into `carried` | Wealth + | + |
 | **Return the belongings** | No loot; consumes the grave's valuables | Mercy + | none |
 | **Destroy the evidence** | Available *after* raise/steal, replaces the looted-sprite swap with an undisturbed one | Cruelty + | removes this grave's notice |
@@ -293,7 +297,7 @@ weighted entries rolled `rolls` times without replacement of the `unique` entrie
 | 4 | 6–10 | 3–5 | 6–12 | crypt: guaranteed rare+; others ~40% |
 
 One authored exception to the band ratios: the `wolf_den` table carries the game's best
-`wolfhide_cloak` odds (~20% against the band's ~15%, `unique` as ever) — the cloak comes from
+`wolfhide_cloak` odds (~23% against the band's ~15%, `unique` as ever — *amended 2026-09-26: was "~20%", the target before the table was built; 3 rolls at weight 10 of 120 give 23%*) — the cloak comes from
 somewhere, and a player who wants it can go pick the fight that drops it. That is the model for
 thematic drops generally: bias the *site's* table, never invent a bespoke drop system.
 
@@ -444,3 +448,14 @@ the carry, and produces a TravelLog line per §6 — before the deposit step eve
   garnish. The harness asserts gold-dominance for it as it does for the cache.
 - **Wolf den gold weight 26 → 30:** the mean sat exactly on Band 2's gold floor and the harness passed
   or failed on noise. Now ≈2.25 per den.
+
+## Implementation notes, 2026-09-26 (run lifecycle and Raise Dead pass)
+
+See `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`.
+
+- **"Raise the corpse" makes a real unit** (ruling C). `WorldSites._raise_dead` hands each corpse to
+  `WorkerSystem.raise_skeleton_at` — a free Skeleton Worker at the graveside, live on arrival.
+  `RaisedDead.gd` (the inert raised-corpse view from the 2026-08-30 playtest fix) is **deleted**.
+- **The graves are the opening.** No free starting skeleton (LIVING_WORLD ruling 9) and 3 starting
+  bones against Raise Dead's 5, so the first dead always come from a grave; the opening log line
+  points to the graves NW of the Throne.

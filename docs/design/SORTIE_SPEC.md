@@ -1,8 +1,11 @@
 # SORTIE SPEC — Carrying It, and Getting It Home (R2)
 
-**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §1 (the banking rule) and
+**Status:** **built** — R2c landed, see `docs/history/2026-08-sortie-deposit.md` (harness
+`tools/verify_sortie.tscn`). Reviewed and amended 2026-08-29 (designer) — the dated amendment block
+below governs where it differs from the body; ruling 3 (the night as a risk axis) is designed for
+R3 and **not built**. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §1 (the banking rule) and
 §5 (the sortie loop), and covers the two R2 pieces `LOOT_SITES_SPEC.md` put out of scope: **carry
-capacity** and **deposit-at-lair**. Nothing here is implemented.
+capacity** and **deposit-at-lair**.
 
 **Scope:** the return leg. Party carry capacity and how it is spent, the deposit step and what
 banking means in R2, remainder charges left at sites, dropping a load, what death does to an
@@ -65,8 +68,8 @@ tables, §7 relics), `WORLD_MAP_PLAN.md` (§3 travel times, §9 danger from choi
    you, and there is one more grave forty seconds the wrong way.
 3. **Capacity pressure comes from one number, not from a system.** Carry capacity is Endurance,
    the rule every other unit follows (FOUNDATION_SPEC §6; reworded 2026-08-06 per COMBAT_SPEC
-   §2.1's adopted rework — was Might, and the values are identical where it matters: skeleton
-   End 4, villain End 6). No bespoke villain carry stat, no bags, no encumbrance curve. Scarcity
+   §2.1's adopted rework, live since C2 — the old single stat is gone, and the values are
+   identical where it matters: skeleton End 4, villain End 6). No bespoke villain carry stat, no bags, no encumbrance curve. Scarcity
    is created by *what sites yield*, not by inventing a second stat.
 4. **The escort is the relief valve, and it costs the economy.** More hauling capacity means more
    dead walking with you, which means fewer dead digging at home. That trade is the answer to
@@ -81,8 +84,8 @@ tables, §7 relics), `WORLD_MAP_PLAN.md` (§3 travel times, §9 danger from choi
 
 ## 2. Party capacity
 
-**The villain.** `Necromancer.carry_capacity()` returns Endurance (post-C2; the R1 code says
-Might), currently **6** either way, and
+**The villain.** `Necromancer.carry_capacity()` returns Endurance (plus any banked relic's
+`carry_delta`), currently **6**, and
 `carry_space()` / `add_carried()` / `take_carried()` already implement the fungible half. No change
 to that arithmetic — the capacity was built in R1 precisely so that the field and the panel agreed
 from the start.
@@ -180,6 +183,12 @@ reorganising your haul; dropping in open country is a sacrifice, and it should r
 
 ## 6. Death, and the unbanked haul
 
+> **Amended 2026-09-26:** **death now ends the run** (`scripts/run/RunLifecycle.gd`, see
+> `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`). The haul is still lost **first** —
+> `SortieSystem`'s handler runs before `RunLifecycle`'s — and waking at the Throne is no longer the
+> default: it is the **Second Wake** unlock (level 5, once per run). The two lines below that say
+> R2 has no run lifecycle and that he respawns at the Throne are superseded.
+
 R2 has no run lifecycle — `EventBus.villain_died` fires and `Main` logs *"the run would end here"*
 (R4 owns the rest). Until then:
 
@@ -190,7 +199,8 @@ R2 has no run lifecycle — `EventBus.villain_died` fires and `Main` logs *"the 
 - **The escort dies where it stands.** Bound undead are destroyed by `Combat`, not despawned; their
   loads go with them.
 - Nothing else happens yet. He respawns at the Throne at full hp, the log is loud, and the chronicle
-  line waits for R5.
+  line waits for R5. *(Superseded 2026-09-26 — see the note above: the run ends and the run-end
+  screen shows the epitaph; he wakes at the Throne only with a Second Wake.)*
 
 ---
 
@@ -219,7 +229,7 @@ readout. The player should never discover they were overloaded at nightfall by d
 | Constant | Home | Value | Why |
 |---|---|---|---|
 | `DEPOSIT_RADIUS_PX` | `Main` or a new `SortieSystem` | `1.5 * CELL_SIZE` | matches the Throne-repair radius |
-| `carry_capacity()` | `Necromancer` (exists) | `Endurance` = 6 (Might until C2 migrates) | FOUNDATION_SPEC §6, one rule |
+| `carry_capacity()` | `Necromancer` (exists) | `Endurance` = 6 | FOUNDATION_SPEC §6, one rule |
 | escort haul | `Laborer.carrying_*` (exists) | `Endurance` per member | the trip loop's own fields |
 
 `LOOT_SITES_SPEC.md` §8's `loot_tables.json` is where yields get tuned against this capacity. The
@@ -272,6 +282,8 @@ assumed.
 - `DEPOSIT_RADIUS_PX` — 1.5 cells is a guess borrowed from Throne repair.
 - Whether a partial deposit should cost a channel (currently free, and probably should stay free).
 - Whether dropping in open country should be destructive at all, or merely lossy (e.g. half).
+  *(Settled by the 2026-08-29 amendment, ruling 2, and built in R2c: neither — it leaves a
+  `dropped_cache` holding exactly what was dropped.)*
 - How loud the dusk warning is, and at what hour it starts.
 - Whether relics should be droppable *at all* once carried — currently yes, deliberately, because
   "drop it and run" is the tension §7's deposit-activation rule exists to create.

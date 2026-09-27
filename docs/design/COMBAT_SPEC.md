@@ -2,7 +2,12 @@
 
 Companion to `FOUNDATION_SPEC.md` (which owns the settlement loop's numbers) and `GAME_OUTLINE.md` (which owns the arc of a run). This file owns **the stat system, combat resolution, and the systems that read them**. Where this file and `FOUNDATION_SPEC.md` disagree about a stat, this file is newer and wins; where this file and the code disagree, this file is the target.
 
-`RACES.md` and `TRAITS.md` are downstream of this document — both were written against the retired four-stat model and `RACES.md` still needs its table re-authored (see §12).
+`RACES.md` and `TRAITS.md` are downstream of this document — both were written against the retired four-stat model and `RACES.md` still needs its table re-authored (see §12). *(Amended 2026-09-26: both are now on the nine-attribute model — `TRAITS.md` was rewritten against it, and `RACES.md` was re-issued 2026-09-26 from `data/races.json`.)*
+
+**Status:** slices **C1, C1.5 and C2 are built** — C2 (§2–§4, the stat rework) landed 2026-08-26, see
+`docs/history/2026-08-stat-rework.md` (harness `tools/verify_stats.tscn`). **C3 (§5–§7: morale
+routing, judgement, guidance, wolf packs) is not built**; C4 and C5 are folded into R5 and R4, not
+built; C6 is retracted. Gear, classes and disease (§9–§11) are unscheduled.
 
 > **Amendment, 2026-08-06 — C2 adopted into the roguelite build order.** Decided with the designer
 > during R2 planning:
@@ -40,7 +45,7 @@ The first combat slice is **built and committed** (`a2dcd65`). Working today:
 - `scripts/combat/CombatSystem.gd` — policy: wolf spawning, targeting, emergent defence, the consequence rules, Throne repair.
 - `scripts/combat/UndeadCommand.gd` + `RallyPoint.gd` — the Command Undead spell.
 - `scripts/world/Wolf.gd`, `Roaming.gd` — the first hostile creature.
-- HP on every `Laborer`, computed as `8 + Might * 2`.
+- HP on every `Laborer`, computed as `8 + Might * 2` *(since C2: `8 + Endurance * 2` — the old stat is gone from code)*.
 
 **This spec does not throw that away.** The layering was correct — `Combat.gd` knows nothing about wolves, and a bounty or a raid can call `Combat.exchange()` without constructing anything. What changes is the *stat vocabulary* those functions read, plus three new rules (profiles, morale routing, judgement) layered on top.
 
@@ -50,7 +55,7 @@ The first combat slice is **built and committed** (`a2dcd65`). Working today:
 |---|---|---|
 | **C1** | HP, the shared resolver, the wolf, emergent defence | **done** |
 | **C1.5** | Command Undead — rally points, the dead as a commandable class | **done** |
-| **C2** | **The stat rework** — §2–§4 of this file | **scheduled** — prompt C2 in `R2_PROMPTS.md`, before R2a |
+| **C2** | **The stat rework** — §2–§4 of this file | **done** — landed 2026-08-26, before R2a (`docs/history/2026-08-stat-rework.md`) |
 | **C3** | Morale routing, judgement, guidance, wolf packs — §5–§7 | post-R2, alongside R3 (amendment note 5) |
 | **C4** | Necromancer combat spells beyond Command Undead | folds into R5 unlocks (`NECROMANCER_SPEC.md` §7) |
 | **C5** | Real raids replacing `ThreatSystem._resolve_crusade()`'s arithmetic | becomes R4's crusade climax |
@@ -186,7 +191,7 @@ Everything the current implementation says about this formula still holds and sh
 
 ### 4.1 Migration from the shipped code
 
-`Combat.gd`'s Combatant contract currently requires `combat_might()`, checked by `Combat.is_combatant()`. That widens:
+`Combat.gd`'s Combatant contract currently requires `combat_might()`, checked by `Combat.is_combatant()`. That widens: *(Done in C2: `is_combatant()` now checks the list below; `combat_might()` survives only in comments and in a `verify_stats` fixture that `is_combatant()` must reject.)*
 
 ```
 combat_name()            -> String
@@ -266,7 +271,7 @@ The Ogre (Tact 2) charges. The Gnome mage (Int 8, Tact 2) casts beautifully and 
 
 A unit with `judgement <= 3` within `LEADERSHIP_RADIUS` (4 cells) of an ally whose **effective Leadership ≥ 6** uses that ally's judgement band instead of its own.
 
-This is the mechanic that makes a low-Tact heavy hitter an asset rather than a liability, and it's a pure expression of the indirect-control pillar: you never order the troll, you recruit someone who can handle him and house them near each other. It's the same *shape* as the auto-assist check already in `CombatSystem._will_fight` (`category == "Warrior" or might >= ASSIST_MIGHT_THRESHOLD`, within `ASSIST_RADIUS_PX`), so it slots into existing machinery. Note `_will_fight`'s Might test needs rewording to Strength as part of C2 regardless.
+This is the mechanic that makes a low-Tact heavy hitter an asset rather than a liability, and it's a pure expression of the indirect-control pillar: you never order the troll, you recruit someone who can handle him and house them near each other. It's the same *shape* as the auto-assist check already in `CombatSystem._will_fight` (`category == "Warrior" or might >= ASSIST_MIGHT_THRESHOLD`, within `ASSIST_RADIUS_PX`), so it slots into existing machinery. Note `_will_fight`'s Might test needs rewording to Strength as part of C2 regardless. *(Done in C2: `l.strength >= ASSIST_STRENGTH_THRESHOLD`.)*
 
 Charming (+1 Leadership) is the trait that plugs into this.
 
@@ -301,7 +306,7 @@ expressed as numbers instead of absences.
 
 Melee profile, always (Str 5 is its highest of Str/Dex/Int). Endurance 5 gives `max_hp` 18, which is exactly the shipped `Wolf.MAX_HP` — the creature needs no rebalancing, only re-expressing. Speed is now on the same 1–10 scale as everyone (the old draft wrote "1.3" in cells/sec — that unit mismatch is exactly why one scale everywhere matters).
 
-**Speed matters more than it looks** — it's what lets a melee-only predator close on an archer, and without it two ranged recruits trivialize the entire creature layer. The wolf already has this: `CHASE_SPEED_PX` is 78, which against `CELL_SIZE` 64 is ~1.22 cells/sec. Express it as a Speed attribute so it reads like every other unit, and raise it to 1.3 (83 px/s) rather than treating it as a new capability. `PROWL_SPEED_PX` (34) stays a separate constant — ambling is a behaviour state, not a stat.
+**Speed matters more than it looks** — it's what lets a melee-only predator close on an archer, and without it two ranged recruits trivialize the entire creature layer. The wolf already has this: `CHASE_SPEED_PX` is 78, which against `CELL_SIZE` 64 is ~1.22 cells/sec. Express it as a Speed attribute so it reads like every other unit, and raise it to 1.3 (83 px/s) rather than treating it as a new capability. *(Done in C2: `Wolf.chase_speed_px()` derives 83 px/s from Speed 8 through `races.json`; the 78 constant is gone.)* `PROWL_SPEED_PX` (34) stays a separate constant — ambling is a behaviour state, not a stat.
 
 ### 7.1 Packs
 
@@ -311,7 +316,7 @@ Pack morale uses the same §5 table. A wolf that routs runs for the map edge and
 
 ### 7.2 Unchanged from C1
 
-The Necromancer's protection, the fed-wolf-stands-down rule, the carcass drop on a kill (`WOLF_CARCASS_BONES` 9, better than a seeded carcass's 5), the guaranteed first-dusk spawn, and the visibility tuning (entry 2 cells out, `TOKEN_SIZE` 46, `z_index` 6) all survive as-is. That tuning came out of playtests where the feature worked perfectly and the player never saw it — don't quietly revert it.
+The Necromancer's protection (now only inside his lair band — see §8 rule 4's 2026-09-26 note), the fed-wolf-stands-down rule, the carcass drop on a kill (`WOLF_CARCASS_BONES` 9, better than a seeded carcass's 5), the guaranteed first-dusk spawn, and the visibility tuning (entry 2 cells out, `TOKEN_SIZE` 46, `z_index` 6) all survive as-is. That tuning came out of playtests where the feature worked perfectly and the player never saw it — don't quietly revert it.
 
 ---
 
@@ -322,7 +327,7 @@ Carried forward from C1, with one addition:
 1. **Skeleton Workers can be destroyed.** No bones refunded, no corpse. Replaceable for 5 Bones.
 2. **Living recruits are never killed by wildlife.** They rout, run home, and are `Injured` (no work) until healed, at −1 morale. True by construction — the rout check pulls them out before 0 hp.
 3. **A deer taken by a wolf is a pure economic loss.** The common case, and the point.
-4. **The Necromancer is untouchable**, and anything in his shadow is invisible to wildlife. Positional, so a worker who wanders off is fair game again.
+4. **The Necromancer is untouchable**, and anything in his shadow is invisible to wildlife. Positional, so a worker who wanders off is fair game again. *(Amended 2026-09-26, recording R2b: the protection now holds only **inside his lair band** — `CombatSystem.aura_protects_villain()`, a position test, no flag. Outside it he is prey, fights with his own Arcane profile, and his death ends the run unless he has a Second Wake. See `NECROMANCER_SPEC.md` §5–§6.)*
 5. **New: raiders can kill.** Rule 2 is a wildlife rule. An endgame raid where nobody can die is toothless, and the asymmetry is legible — a wolf is a hazard, an army is an army.
 
 ### 8.1 Healing
@@ -374,7 +379,7 @@ Recommended approach:
 2. **Derive skill baselines from per-category templates** — `warrior`, `miner`, `forager`, `scholar`, `versatile` — with a handful of per-race overrides. A Gray Dwarf is the `miner` template plus a Crafting override. This replaces 204 hand-picked numbers with five templates and maybe twenty overrides.
 3. Keep the templates **in `races.json`**, not in code, so rebalancing stays a data edit.
 
-`RACES.md`'s table is the input to step 1 and needs rewriting as part of C2 — the current Might/Guile/Influence/Loyalty columns don't survive.
+`RACES.md`'s table is the input to step 1 and needs rewriting as part of C2 — the current Might/Guile/Influence/Loyalty columns don't survive. *(Done: `RACES.md` was re-issued 2026-09-26 from `data/races.json`, nine attributes.)*
 
 ---
 
@@ -397,7 +402,7 @@ C2–C3 count as proven when all of these hold in one unbroken session:
 
 - **Rout recovery.** Does a routed unit return to the fight if morale recovers mid-engagement, or is it out until the fight ends? Out-until-over is simpler and probably reads better.
 - **Ranged in the trip loop.** A Hunting-skilled archer should plausibly take deer faster than a forager finds berries. Does hunting become a combat action against the deer, or stay a gather action? Combat is more consistent; gathering is far less work.
-- **Does the Necromancer have attributes?** He's untouchable and doesn't fight, so he needs none today. C4 spells may change that.
+- **Does the Necromancer have attributes?** He's untouchable and doesn't fight, so he needs none today. C4 spells may change that. *(Answered 2026-08-06, built in C2/R2b: yes — all nine, Arcane profile, `NECROMANCER_SPEC.md` §2.)*
 - **Judgement bands vs a continuous roll.** Three bands are legible and cheap; a roll would be smoother but harder for the player to reason about. Bands until proven insufficient.
 - **Class as a rarity tier or an independent roll** (§10).
 - **Whether `/2` or `/3` is the right derivation divisor** (§2.3) — needs the re-authored roster before it can be judged.

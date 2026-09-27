@@ -58,8 +58,10 @@ signal changed
 enum State { UNEXPLORED, REMEMBERED, VISIBLE }
 
 ## How far the Necromancer sees. **Tunable.** WORLD_MAP_PLAN §12 puts *scouting*
-## reveal at 8-12 cells, but that is the Raven's number (rework §6) and the
-## Raven is R2; a man on foot at night sees less than a bird in daylight.
+## reveal at 8-12 cells, but rework §4 point 3 retired that scouting action in
+## favour of the passive Raven (§6), which pings sites and **never reveals fog**.
+## Clearing fog is his job on foot, and a man on foot at night sees less than a
+## scouting party would.
 const REVEAL_RADIUS_CELLS: float = 7.0
 
 ## How far a friendly unit lights the ground it is standing on -- workers,

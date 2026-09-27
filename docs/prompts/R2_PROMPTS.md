@@ -1,5 +1,10 @@
 # Claude Code Prompts — Roguelite Rework, Stage R2 ("The world is worth exploring")
 
+> **Status (2026-09-26): every prompt below has landed** — P0, U1, F1, C2, P1, P2, R2a–R2e. What is
+> left of R2 is the exit playtest ("After R2", at the foot), which needs a human. Each prompt carries a
+> status line pointing at its write-up in `docs/history/`. The prompt bodies are left as written:
+> they are the record of what was asked, not of what was built.
+
 Run **one at a time, in order**, from `C:\Users\sjodz\Warlords`. Same standing rules as the
 foundation, Core Feel and R1 sets: read `CLAUDE.md` first, leave the game runnable, smoke test,
 update `CLAUDE.md`, **commit with a descriptive message**. Playtest between prompts and feed
@@ -89,6 +94,11 @@ known-good baseline to tune against.
 
 ## Prompt P0 — The travel retune, and three doc corrections
 
+> **Status: landed 2026-08-27.** The harness split is recorded in the correction block of
+> `docs/history/2026-08-world-population-r1.md` and the struck backlog line in
+> `2026-08-pre-slim-file-map-and-backlog.md` (both label the pass "prompt U1"). Item 3's fog
+> correction sits in `2026-08-world-map-r1.md`, dated 2026-08-06. No commit recorded.
+
 ```
 Read CLAUDE.md, docs/history/2026-08-world-population-r1.md (the measured
 travel table and the "one row still out of band" note), and
@@ -139,6 +149,9 @@ row split. Commit.
 ---
 
 ## Prompt U1 — Pointing at the map
+
+> **Status: landed 2026-08-27** — `docs/history/2026-08-27-u2-input-and-visibility.md`, which calls
+> itself "prompt U2". Human-checked the same evening (`2026-08-27-r1-playtest-notes.md`).
 
 *Added 2026-08-27 from the R1 playtest notes (`docs/history/2026-08-27-r1-playtest-notes.md`).
 Map-untouched; runs after P0 and before F1 because every later playtest is nicer with it.*
@@ -216,6 +229,9 @@ workers carry a small lit disc, dots appear. Commit.
 
 ## Prompt F1 — Red numbers
 
+> **Status: landed** — `docs/history/2026-08-combat-feedback.md`. Human-checked 2026-08-27
+> (`2026-08-27-r1-playtest-notes.md`). No commit recorded.
+
 ```
 Read CLAUDE.md and the whole of docs/design/COMBAT_FEEDBACK_SPEC.md first.
 P0 must be done. Safe to run before or after the R1 playtest -- it changes
@@ -257,6 +273,10 @@ README. Commit.
 ---
 
 ## Prompt C2 — The stat rework
+
+> **Status: landed 2026-08-26** — `docs/history/2026-08-stat-rework.md`. Nine attributes; Might is
+> gone from the code. Its follow-ups are in `2026-08-27-r1-playtest-notes.md`. `RACES.md` was
+> re-issued from `data/races.json` on 2026-09-26.
 
 ```
 Read CLAUDE.md, docs/design/COMBAT_SPEC.md IN FULL -- especially its
@@ -341,6 +361,10 @@ README. Commit.
 
 ## Prompt P1 — Seven sheets, and tiles that know their neighbours
 
+> **Status: landed** in two commits: `3b3fdc2` (the atlas) and `c185690` (the connection layer,
+> which also fixed the `verify_combat_feedback` flake). Write-up: `docs/history/2026-08-terrain-tiles.md`.
+> The outcome is recorded 2026-08-27 in `2026-08-27-r1-playtest-notes.md`.
+
 ```
 Read CLAUDE.md, docs/design/TERRAIN_SPEC.md (all of it) and
 docs/history/2026-08-world-map-r1.md (the terrain and performance sections)
@@ -422,6 +446,9 @@ Commit.
 ---
 
 ## Prompt P2 — Roads that lead somewhere
+
+> **Status: landed by 2026-08-27** — `docs/history/2026-08-generated-world.md`, whose title calls it
+> "P1, final". Human-checked 2026-08-27, late (`2026-08-27-r1-playtest-notes.md`). No commit recorded.
 
 ```
 Read CLAUDE.md, docs/design/TERRAIN_SPEC.md (§6-§9 especially) and
@@ -524,6 +551,11 @@ Update CLAUDE.md. Write up docs/history/2026-08-generated-world.md. Commit.
 
 ## Prompt R2a — Sites worth stopping at
 
+> **Status: landed** — `docs/history/2026-08-loot-sites.md`. First playtested at `2845d75`, with fixes
+> on 2026-08-30. Two gaps were closed on 2026-09-26 with R2e: camp occupancy, and ruling 1 applied to
+> the camp. The raised corpse became a real Skeleton Worker the same day
+> (`2026-09-26-run-lifecycle-and-raise-dead.md`).
+
 ```
 Read CLAUDE.md, ROGUELITE_REWORK.md (§8 loot, §13 R2) and the whole of
 docs/design/LOOT_SITES_SPEC.md first. P2 must be done.
@@ -614,6 +646,10 @@ Commit.
 ---
 
 ## Prompt R2b — His own two hands
+
+> **Status: landed** — `docs/history/2026-08-villain-combat.md` (its rulings are dated 2026-08-30; no
+> commit recorded). **Amended 2026-09-26:** step 4's "respawn at Throne" is no longer the default.
+> Death now ends the run (`RunLifecycle`), and waking at the Throne is the Second Wake unlock (level 5).
 
 ```
 Read CLAUDE.md, the comment block at the top of CombatSystem.gd (rules 1-4
@@ -706,6 +742,11 @@ its row to the history README. Commit.
 
 ## Prompt R2c — Getting it home
 
+> **Status: landed** — `docs/history/2026-08-sortie-deposit.md` (approved 2026-08-30; no commit
+> recorded). Two close-out fixes came on 2026-09-26: relic uniqueness now holds through caches
+> (`Necromancer.relics_rolled`), and Collect counts the escort's free arms
+> (`2026-09-26-run-lifecycle-and-raise-dead.md`).
+
 ```
 Read CLAUDE.md, ROGUELITE_REWORK.md §1 (the banking rule) and the whole of
 docs/design/SORTIE_SPEC.md first. R2b must be done.
@@ -755,6 +796,12 @@ Update CLAUDE.md. Write up docs/history/2026-08-sortie-deposit.md. Commit.
 ---
 
 ## Prompt R2d — The dead who walk with him
+
+> **Status: landed** — `docs/history/2026-08-escort.md` (no date or commit recorded;
+> `REVIEW_2026-09-26.md` found it built at `8d02fc4`). The verification line's "a skeleton raised at a
+> grave joins … with no explicit add" was only tested with a hand-added worker. It became true on
+> 2026-09-26, when a raised corpse became a real Skeleton Worker. The same pass made a dismissed
+> escort bank its loads as what they are (`2026-09-26-run-lifecycle-and-raise-dead.md`).
 
 ```
 Read CLAUDE.md, ROGUELITE_REWORK.md §5, the header comments in
@@ -820,8 +867,15 @@ Update CLAUDE.md. Write up docs/history/2026-08-escort.md. Commit.
 
 ## Prompt R2e — The bird that never lies
 
-> **Landed 2026-09-26** (`docs/history/2026-09-26-raven.md`). So have P0, U1, F1, C2, P1, P2 and
-> R2a–R2d, per their history files. What remains is "After R2", below.
+> **Status: landed 2026-09-26** — `docs/history/2026-09-26-raven.md`, not the `2026-08-raven.md` the
+> prompt names. Step 3's occupancy roll was not built by R2a, so it was built in this pass
+> (`abandoned_camp`, 35%, one outlaw).
+>
+> **Step 5, as built:** the minimap already drew your own units as dim dots (U1) and, in debug builds
+> with F3 on, yellow site dots. Its header rule is now "no live *hostile or neutral* contents". The
+> Raven's marks are violet diamonds drawn above the fog through `Minimap.raven_markers_source`
+> (`scripts/ui/Minimap.gd`). They are the one **shipped** exception to that rule, and the comment on
+> `raven_markers_source` records why.
 
 ```
 Read CLAUDE.md, ROGUELITE_REWORK.md §6, and the whole of
@@ -903,3 +957,8 @@ list is two entries and stays that way until R5's unlocks, and the generator can
 but not shuffle between runs (`TERRAIN_SPEC.md` §11 — R4 changes steps 4–5 only).
 
 R3 prompts should be written after that playtest, not now.
+
+> **Amended 2026-09-26:** two of those four are no longer open. The deeds ledger has a reader:
+> `RunLifecycle` pays XP per deed (`docs/design/PROGRESSION.md`). And the spell list grew by one:
+> Raise Dead is his starting spell (ruling C). The playtest now runs with a real failure state,
+> because death ends the run. Whether R3 folds into LIVING_WORLD L2 is recommended, **not ruled**.

@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Undead Empire Prototype"
-config/description="Villain settlement-builder roguelite prototype (Phase 1: Undead Empire class, Frozen Wastes climate)."
+config/description="Villain roguelite settlement builder prototype: you are a Necromancer raising the dead, looting the wilds and building a dark settlement."
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://assets/placeholder/kenney/icon_settlement.png"

@@ -1,5 +1,5 @@
 {
-  "_comment": "Recruitment templates keyed by the 'recruit' / 'recruit_chance' id used in events.json. EventSystem rolls a name + traits + stats from here whenever a choice recruits a follower, instead of the old print-only stub.",
+  "_comment": "Recruitment templates keyed by the 'recruit' / 'recruit_chance' id used in events.json. EventSystem rolls a name + traits + stats from here whenever a choice recruits a follower, instead of the old print-only stub. SUPERSEDED: live recruits come from RecruitGenerator + races.json, and the events.json flavor events that reach these templates are off the timer, so nothing recruits through this file today. Only the nine C2 attribute keys are read; the pre-C2 might and influence ranges below are ignored.",
 
   "orc_warband": {
     "species": "Orc",

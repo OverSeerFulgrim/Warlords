@@ -12,12 +12,13 @@ class_name UndeadCommand
 ## **The cost is the economy.** Bound undead leave the labor pool entirely --
 ## they are soldiers now, not workers, and the priority list stops seeing them.
 ## That is the decision the spell exists to pose: the dead can dig or they can
-## fight, not both. With one starting skeleton it is a total shutdown; with six
+## fight, not both. With one skeleton it is a total shutdown; with six
 ## it is a real allocation question, which is where it starts being interesting.
 ##
-## No resource cost yet. Dark Essence is the obvious candidate and it is locked
-## at 0 for the whole foundation build, so charging for this now would mean the
-## spell could never be cast. Revisit when Stage 4 unlocks the essence loop.
+## No resource cost yet. Dark Essence is the obvious candidate; when this was
+## written it was locked at 0 for the whole foundation build, so charging for it
+## would have meant the spell could never be cast. It is field loot now
+## (LOOT_SITES_SPEC section 5), but the cost has not been revisited.
 ##
 ## Scope note: this deliberately commands **all** undead rather than a chosen
 ## subset. Picking which skeletons to send is a selection UI, and a selection UI

@@ -78,7 +78,8 @@ Scripted playthrough (headless, game-mode, persistent profile): R-key raise → 
 `fresh_grave_hollow`, raise free → escort 2 → clear `wolf_den_valley` (villain down to 2–9 hp across
 two runs) → loot → deposit → dismiss → walk alone into `wolf_den_southwood` → slain → run-end screen
 up, tree paused → "Begin a new run" → 1x, unpaused, 0 workers, 10 bones, XP kept, level 2, chronicle
-1. (Under the first XP table; see the follow-up below for the formulas that replaced it.) Screenshot of the
+1. (Under the first XP table and the old 10 starting bones; see the follow-up below for the formulas
+and the 3 bones that replaced them.) Screenshot of the
 screen taken under Xvfb and checked by eye.
 
 ## Needs a human

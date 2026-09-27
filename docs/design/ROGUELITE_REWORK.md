@@ -1,6 +1,6 @@
 # ROGUELITE REWORK — From Hidden Lair to Rising Legend
 
-**Status:** Design target, agreed in discussion 2026-08-03. Amended 2026-08-06 — see §16 for the post-R1 decisions and corrections. Supersedes the "recruits arrive on a timer" model and the open-ended campaign structure implied by GAME_OUTLINE Stages 4–5. Does **not** invalidate the Stage 1–3 foundation (settlement grid, priority-list economy, Barracks intake, morale/meals, combat primitive) — that foundation becomes the in-run base layer and is a prerequisite for everything here.
+**Status:** Design target, agreed in discussion 2026-08-03. Amended 2026-08-06 — see §16 for the post-R1 decisions and corrections. **Amended 2026-09-26 — see §17** (death ends the run, Second Wake, Raise Dead as the starting spell, timed recruits off). Build status per stage: §13. Supersedes the "recruits arrive on a timer" model and the open-ended campaign structure implied by GAME_OUTLINE Stages 4–5. Does **not** invalidate the Stage 1–3 foundation (settlement grid, priority-list economy, Barracks intake, morale/meals, combat primitive) — that foundation becomes the in-run base layer and is a prerequisite for everything here.
 
 **Companion documents:**
 - `WORLD_MAP_PLAN.md` — the world map spec ("the map doc" throughout). Adopted with three amendments (§4). The original `Warlords_World_Map_Scale_and_Exploration_Plan.docx` is the archived source; the `.md` is the live, tooling-readable version and wins on any divergence.
@@ -32,6 +32,8 @@ The progression in one line: **Hide → Explore → Influence → Rule.**
 | **Flee the region** | Player chooses to abandon the run alive | XP + everything the Necromancer carries banks to the stash. No victory. |
 | **Take the Manor** | Survive the crusade and seize the human lord's manor | XP + all loot banks, victory bonus, chronicle triumph entry. |
 
+**Built 2026-09-26 (R4-lite, §17.1):** `scripts/run/RunLifecycle.gd` owns the endings — `slain`, `throne_fell`, `abandoned` (Surrender, behind a confirm) and `victory` (still the legacy crusade-and-Power placeholder until the manor exists) — and a run-end screen. Flee-the-region and Take the Manor are still R4; there is no stash yet (R5), so nothing but XP and the chronicle line outlives a run today.
+
 The flee option is deliberate: it is the run-scale version of "one more grave, or turn back?" Deaths never feel arbitrary because there was always a door out the player chose not to take.
 
 **Target run length: 1.5–2 hours for a full victory**, with most deaths arriving earlier. All escalation pacing, XP rates, and crusade timing tune against this number.
@@ -50,7 +52,7 @@ Nothing is yours until it is home. This already governs the worker trip loop (re
 
 Explicit, because in a run frame ambiguity here breaks everything.
 
-**Resets every run:** the settlement (Throne + starting skeletons only), all recruits, all resources, the world map layout (reshuffled), reputation (all five axes to zero), relics carried into the run (at risk), day counter, threat/escalation state.
+**Resets every run:** the settlement (**Throne only** — *amended 2026-09-26, §17.3; was "Throne + starting skeletons"*), all recruits, all resources, the world map layout (reshuffled), reputation (all five axes to zero), relics carried into the run (at risk), day counter, threat/escalation state.
 
 **Persists across runs:** villain XP and level, unlocks (spells, unit types, items, encounter-pool entries, relic slots), the stash, Lair decorations and trophies, the chronicle.
 
@@ -62,7 +64,7 @@ Explicit, because in a run frame ambiguity here breaks everything.
 
 The proposal's Eras map onto a single run's escalation, not a campaign. They align with the map doc's §10 escalation bands.
 
-**Era I — Survival (early run).** Unknown. Throne, Raven, a handful of skeletons, thin resources, zero reputation. The base mostly self-manages; the player's primary activity is sorties into the wilderness. Humans blame animals and outlaws for anything odd. No recruits — nobody knows you exist.
+**Era I — Survival (early run).** Unknown. Throne, Raven, no dead yet — the first skeletons come out of the graves by Raise Dead (*amended 2026-09-26, §17.3; was "a handful of skeletons"*) — thin resources, zero reputation. The base mostly self-manages; the player's primary activity is sorties into the wilderness. Humans blame animals and outlaws for anything odd. No recruits — nobody knows you exist. *(`LIVING_WORLD_SPEC.md` §13 amends the eras: Era I gains guild bounties taken in disguise, and "Known" guild standing is one Era II trigger. Design, not built.)*
 
 **Era II — Influence (mid run).** Deeds accumulate into reputation; rumors spread (emptied graves, vanished caravans, travelers' stories). Recruit offers begin — people *seeking you out*, gated by reputation axes (§7), not time. The estate notices patterns; the church investigates; patrols thicken.
 
@@ -79,7 +81,7 @@ Sanity check against code: walk speed is 1.0 = 1 cell/second (`CELL_SIZE` 64px),
 ### Three amendments
 
 1. **The Demonologist's region ships sealed.** The 20×20 territory stays in the map template so the layout never needs rework, but v1 places a dormant/sealed ritual ground there — no AI rival. The Demonologist returns as the second *playable class* (§11), not as an AI first.
-2. **The village is static in v1.** No homes/market/inn routines. Static buildings, one or two scripted patrol loops (reusing `Roaming.gd`), nothing with a daily schedule. Escalation is initially just patrol count and radius growing with notoriety.
+2. **The village is static in v1.** No homes/market/inn routines. Static buildings, one or two scripted patrol loops (reusing `Roaming.gd`), nothing with a daily schedule. Escalation is initially just patrol count and radius growing with notoriety. *(2026-09-26: `LIVING_WORLD_SPEC.md` §13–14 pulls living village routines forward out of the R6 deferral, as a staged build starting alongside R3. The village is still static in code.)*
 3. **Scouting is passive, not directed.** The doc's "8–12 cells per scouting action" model is replaced by the passive Raven (§6). Fog of war clears primarily through the Necromancer's own travel — which is the right dependency, because his physical presence in the world is the whole point.
 
 ---
@@ -98,13 +100,15 @@ gather / fight / choose → carry capacity fills → the return leg → deposit 
 - **The escort behaves automatically** — defend the Necromancer, carry loot, engage nearby enemies, cover the retreat. Built on the Command Undead order model (a standing order on the dead as a class), not per-unit control.
 - **Everything carried is unbanked until home.** A heavy load, an injury, or nightfall turns a safe return into a crisis — that's the design working, not a bug.
 - **Danger comes from choices, not attrition** (map doc §9). The player should rarely die during uneventful movement; failure follows an encounter, pursuit, or deliberate gamble. Distant bands offer clearly better loot to justify the risk.
-- **The Necromancer becomes killable.** His death ends the run (§1). The "untouchable" combat rule from the settlement combat pass is repealed in the world; whether he keeps a protective aura *inside his own lair* is an open tunable (§15).
+- **The Necromancer becomes killable.** His death ends the run (§1). The "untouchable" combat rule from the settlement combat pass is repealed in the world; whether he keeps a protective aura *inside his own lair* is an open tunable (§15). *(Settled in R2b: the aura is geography — `NECROMANCER_SPEC.md` §5.)*
 
-**Code migration note:** `NecromancerToken` currently owns its position with no data object — with the explicitly documented trigger that the moment any other system needs his position, it splits like `Laborer`/`WorkerToken`. That moment is now. He needs a data object (position, hp, carry, escort roster) with the token as a pure view, before any world-map work begins.
+**Code migration note:** `NecromancerToken` currently owns its position with no data object — with the explicitly documented trigger that the moment any other system needs his position, it splits like `Laborer`/`WorkerToken`. That moment is now. He needs a data object (position, hp, carry, escort roster) with the token as a pure view, before any world-map work begins. *(Done in R1: `scripts/villain/Necromancer.gd` is the data object; the token only draws.)*
 
 ---
 
 ## 6. The Raven
+
+**Built 2026-09-26 (R2e)** — `RAVEN_SPEC.md`, `docs/history/2026-09-26-raven.md`: honest dawn pings drawn above the fog, a "Raven ×N" HUD chip whose click centres the camera, never a reveal.
 
 **V1 is a passive ping system.** The Raven is an unseen bird — no token, no directives, no scouting UI. Periodically, a portrait icon appears with a ping on the map: *the Raven found something*. Clicking centers the camera on the ping.
 
@@ -118,7 +122,7 @@ gather / fight / choose → carry capacity fills → the return leg → deposit 
 
 ## 7. Reputation and the recruitment rework
 
-**The timed recruit event is dead.** Recruitment is unlocked by reputation, earned by witnessed deeds during the run. Reputation is in-run only (§2) and also feeds escalation — the same notoriety that attracts followers attracts the church.
+**The timed recruit event is dead** (switched off in code 2026-09-26, §17.4). Recruitment is unlocked by reputation, earned by witnessed deeds during the run. Reputation is in-run only (§2) and also feeds escalation — the same notoriety that attracts followers attracts the church.
 
 Five axes, each moved by deeds and each attracting a different kind of follower:
 
@@ -147,6 +151,8 @@ Five axes, each moved by deeds and each attracting a different kind of follower:
 
 ## 9. Meta-progression: XP, levels, unlocks, chronicle
 
+**Built 2026-09-26 (R5's XP half):** XP per deed, levels and the first unlock — numbers and tables in `PROGRESSION.md`. Spell, unit, item, encounter and relic-slot unlocks are not built.
+
 **XP is banked the instant it is earned** — from discoveries, encounters resolved, buildings raised, battles won, reputation milestones, run endings. Never awarded only at run end: a death two hours in must still feel like a chapter, not a refund.
 
 **Levels unlock variety, not power:**
@@ -158,7 +164,7 @@ Five axes, each moved by deeds and each attracting a different kind of follower:
 
 The hard rule from §2 repeated because it is the whole design: **unlocks widen the option pool; they never raise numbers.** This is Slay the Spire's model, it protects early-run tension forever, and it means multiplayer veterans have more options, not stat advantages.
 
-**The chronicle.** Every run gets an epitaph, win or lose: *"Run 4 — slain by the church's hunters on day 6, having emptied eleven graves."* Cheap to build off the existing log patterns, and it reframes deaths as the legend accumulating. Displayed in the Lair.
+**The chronicle.** Every run gets an epitaph, win or lose: *"Run 4 — slain by the church's hunters on day 6, having emptied eleven graves."* Cheap to build off the existing log patterns, and it reframes deaths as the legend accumulating. Displayed in the Lair. *(Built 2026-09-26 without the Lair: the epitaph is written at run end and the last five show on the run-end screen; the title screen shows the last one.)*
 
 ---
 
@@ -189,15 +195,15 @@ The main-menu home between runs — the Hades-house model. The chronicle made in
 
 | System | Change |
 |---|---|
-| `GameState` win condition | "Survive crusade AND Power threshold" → **Take the Manor** (§1). Power threshold survives as an escalation input, not a win gate. |
-| `ThreatSystem` crusade | Becomes the run's climax event, tuned to the 1.5–2h arc. Throne loss remains a run-ending defeat. |
-| `EventSystem` timed recruit offers | Replaced by reputation-threshold triggers (§7). `RecruitGenerator`, Barracks gate, offer-refresh machinery all survive. |
-| `NecromancerToken` | Splits into data object + view (the documented migration trigger has fired — §5). Becomes directly controllable and killable. |
-| `UndeadCommand` / `RallyPoint` | Basis for the sortie escort's automatic behavior. |
+| `GameState` win condition | "Survive crusade AND Power threshold" → **Take the Manor** (§1). Power threshold survives as an escalation input, not a win gate. *(2026-09-26: still the legacy condition, but `game_won` now ends the run as `victory` through `RunLifecycle`.)* |
+| `ThreatSystem` crusade | Becomes the run's climax event, tuned to the 1.5–2h arc. Throne loss remains a run-ending defeat. *(2026-09-26: `game_lost` ends the run as `throne_fell`; the retune is still R4.)* |
+| `EventSystem` timed recruit offers | Replaced by reputation-threshold triggers (§7). `RecruitGenerator`, Barracks gate, offer-refresh machinery all survive. *(2026-09-26: the timer is off — `EventSystem.TIMED_RECRUIT_OFFERS = false`; the reputation trigger is R3.)* |
+| `NecromancerToken` | Splits into data object + view (the documented migration trigger has fired — §5). Becomes directly controllable and killable. *(Done: R1 split and control, R2b killable.)* |
+| `UndeadCommand` / `RallyPoint` | Basis for the sortie escort's automatic behavior. *(Done: R2d, `ESCORT_SPEC.md`.)* |
 | Priority-list economy, morale/meals, housing | **Unchanged.** This is the self-managing base layer the rework depends on. |
 | `Roaming.gd`, wolf/deer | Reused for world-map wildlife and patrol loops. |
 | Reputation (currently a single value) | Replaced by the five-axis model (§7). |
-| Save/load | **No longer optional.** Meta-persistence (XP, unlocks, stash, chronicle) is required by R5; mid-run save is a separate, later concern. |
+| Save/load | **No longer optional.** Meta-persistence (XP, unlocks, stash, chronicle) is required by R5; mid-run save is a separate, later concern. *(2026-09-26: `MetaProfile` writes XP and the chronicle to `user://meta_profile.json`; unlocks are computed from XP, never stored; no stash yet; no mid-run save.)* |
 | Map generation | New: 144×144 template + shuffle rules per the map doc. `ResourceField`'s fixed seeding becomes the lair-band seeder within it. |
 
 ---
@@ -206,36 +212,36 @@ The main-menu home between runs — the Hades-house model. The chronicle made in
 
 Same philosophy as the foundation reset: each stage is playable and proves something before the next begins. **R1 is blocked on nothing; R2+ each depend on the previous.**
 
-**R1 — The world exists.** 144×144 map template (fixed layout, no shuffle yet), fog of war, the Necromancer as a controllable unit (data/view split first), camera follow, travel between lair and wilderness, sealed rival region, static village shell. *Exit: walk from the lair to the village and back inside the travel-time targets, fog clearing as you go, day/night pressuring the trip.*
+**R1 — The world exists.** **Done** (`docs/history/2026-08-world-map-r1.md`). 144×144 map template (fixed layout, no shuffle yet), fog of war, the Necromancer as a controllable unit (data/view split first), camera follow, travel between lair and wilderness, sealed rival region, static village shell. *Exit: walk from the lair to the village and back inside the travel-time targets, fog clearing as you go, day/night pressuring the trip.*
 
-**R2 — The world is worth exploring.** Danger bands, encounter sites, grave-robbing choices, mundane loot + first relics, carry capacity, the escort (auto-behavior via Command Undead orders), Raven passive pings, sortie deposit-at-lair. *Exit: a full sortie loop — out, choices made, loot home — is tense and repeatable; dying on a sortie is always traceable to a decision.*
+**R2 — The world is worth exploring.** Danger bands, encounter sites, grave-robbing choices, mundane loot + first relics, carry capacity, the escort (auto-behavior via Command Undead orders), Raven passive pings, sortie deposit-at-lair. *Exit: a full sortie loop — out, choices made, loot home — is tense and repeatable; dying on a sortie is always traceable to a decision.* **Built** — P0, U1, F1, C2, P1, P2 and R2a–R2e all landed; R2e (the Raven) on 2026-09-26 (`docs/history/2026-09-26-raven.md`). Next: the R2 exit playtest, which needs a human.
 
-**R3 — The world responds.** Five reputation axes moved by deeds, reputation-gated recruit offers replacing the timer, notoriety feeding patrol escalation. *Exit: a run reaches Era II — first recruit arrives because of something the player did, and the world is visibly more watchful.*
+**R3 — The world responds.** Five reputation axes moved by deeds, reputation-gated recruit offers replacing the timer, notoriety feeding patrol escalation. *Exit: a run reaches Era II — first recruit arrives because of something the player did, and the world is visibly more watchful.* **Not built.** (Folding R3 into `LIVING_WORLD_SPEC.md`'s L2 is recommended, not ruled.)
 
-**R4 — The run is real.** Run start/end lifecycle, death = run over, flee-the-region option, crusade climax retuned, take-the-manor victory, map shuffle between runs. *Exit: a complete run is winnable in ~2h and losable honestly; a second run is recognizably different.*
+**R4 — The run is real.** Run start/end lifecycle, death = run over, flee-the-region option, crusade climax retuned, take-the-manor victory, map shuffle between runs. *Exit: a complete run is winnable in ~2h and losable honestly; a second run is recognizably different.* **R4-lite built 2026-09-26** (§17.1, `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`): the run lifecycle, death = run over, Surrender as an abandon ending, the run-end screen, a clean new run. Not built: flee-the-region, the crusade retune, take-the-manor, the map shuffle.
 
-**R5 — The legend persists.** Meta save file, XP-from-deeds, level unlocks (spells/units/items/encounters/relic slots), the Lair hub with stash, relic carry-in/loss, decoration, chronicle. *Exit: dying mid-run demonstrably wasn't a waste — XP banked, epitaph written, and the next run offers something new.*
+**R5 — The legend persists.** Meta save file, XP-from-deeds, level unlocks (spells/units/items/encounters/relic slots), the Lair hub with stash, relic carry-in/loss, decoration, chronicle. *Exit: dying mid-run demonstrably wasn't a waste — XP banked, epitaph written, and the next run offers something new.* **XP half built 2026-09-26** (`PROGRESSION.md`): the meta save file (XP and chronicle), XP from deeds, levels, epitaphs, and one unlock (Second Wake, level 5). Not built: spell/unit/item/encounter/relic-slot unlocks, the Lair hub, the stash, relic carry-in, decoration.
 
-**R6 — Later (each its own effort):** directed Raven + bounty observation, living village routines, AI rival in the sealed region, the Demonologist as a playable class, multiplayer.
+**R6 — Later (each its own effort):** directed Raven + bounty observation, living village routines (*pulled forward 2026-09-26 by `LIVING_WORLD_SPEC.md` §13–14 into a staged build alongside R3*), AI rival in the sealed region, the Demonologist as a playable class, multiplayer.
 
 ---
 
 ## 14. Explicitly deferred
 
-Demonologist (as class *and* as AI), multiplayer (constraint in §11 only), directed Raven scouting, Raven bounty observation, village daily routines, diplomacy systems, mid-run save, climate (still deferred from before), additional villain classes beyond the second.
+Demonologist (as class *and* as AI), multiplayer (constraint in §11 only), directed Raven scouting, Raven bounty observation, village daily routines (*no longer deferred — `LIVING_WORLD_SPEC.md` §13–14, 2026-09-26*), diplomacy systems, mid-run save, climate (still deferred from before), additional villain classes beyond the second.
 
 ---
 
 ## 15. Open questions / tunables
 
-- Necromancer combat stats, and whether a protective aura applies inside his own lair.
-- Raven ping cadence and pool (per day? per era? capped per run?).
+- Necromancer combat stats, and whether a protective aura applies inside his own lair. *(Settled in R2b: `NECROMANCER_SPEC.md` — his row in `races.json`; the aura is geography.)*
+- Raven ping cadence and pool (per day? per era? capped per run?). *(Settled in R2e: `RAVEN_SPEC.md` — a 70% roll at dawn while fewer than 3 pings are outstanding; the pool is sites flagged `raven_eligible`.)*
 - Reputation threshold numbers per axis, and decay (if any) within a run.
-- XP curve and unlock ordering — which spell/unit is level 2's carrot?
+- XP curve and unlock ordering — which spell/unit is level 2's carrot? *(The curve is in `PROGRESSION.md`, 2026-09-26; the only unlock so far is Second Wake at level 5, so level 2's carrot is still open.)*
 - Flee-the-region mechanics: instant from anywhere, or must he physically reach a map edge? (Recommendation: physically reach the lair, then flee — keeps the return leg tense even when giving up.)
-- Whether escort skeletons brought on sorties fully leave the labor pool (current Command Undead rule says yes — probably correct, "the dead can dig or they can fight").
+- Whether escort skeletons brought on sorties fully leave the labor pool (current Command Undead rule says yes — probably correct, "the dead can dig or they can fight"). *(Built that way in R2d: `ESCORT_SPEC.md`.)*
 - Relic effect design space — in-run passive effects vs. activated items.
-- What the victory bonus for taking the manor actually is (XP multiplier? guaranteed relic? unlock acceleration?).
+- What the victory bonus for taking the manor actually is (XP multiplier? guaranteed relic? unlock acceleration?). *(`data/progression.json` pays a flat 250 XP for any victory as a playtest hypothesis; the question stands.)*
 
 ---
 

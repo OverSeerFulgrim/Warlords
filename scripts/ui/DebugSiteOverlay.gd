@@ -15,10 +15,12 @@ class_name DebugSiteOverlay
 ## read exactly that kind of state, and a debug aid that quietly marked
 ## everything discovered would perjure the bird for the rest of the run.
 ##
-## As of R2b **no such flag exists** — sites carry loot state and nothing about
-## being known — so today this rule costs nothing. It is written down because
-## the moment somebody adds `discovered`, this file is the first place that
-## would silently start setting it.
+## **That flag exists now** (R2e, 2026-09-26): `WorldSite.discovered`, set only
+## by `WorldSites.update_discovery` when the Necromancer or one of his units
+## stands within its sight disc of the site, and read by the Raven through
+## `undiscovered_eligible()`. This file must never set it or call anything that
+## does (`update_discovery` included) — it is the first place that would be
+## tempted to.
 ##
 ## ## Deliberately ugly
 ##

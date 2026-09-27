@@ -2,6 +2,11 @@
 
 Commission brief for replacing placeholder art. Written to be sent to an artist mostly as-is; bracketed notes are for us, cut them before sending.
 
+> **Status note, 2026-09-26.** This is still the reference for *what* to draw. Its size specs
+> (pixel art, 32×32 tokens, 64×64 buildings) predate `SPRITE_SPEC.md`, which now governs *how big,
+> on what canvas, anchored where*. What has been commissioned, and what is still placeholder, is in
+> `docs/history/2026-08-art-provenance.md`.
+
 ---
 
 ## The game in two sentences

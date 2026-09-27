@@ -380,7 +380,8 @@ static func make_grave(pos: Vector2) -> ResourceNode:
 ## The one node that doesn't yield per-unit: FOUNDATION_SPEC section 5 says a
 ## deer is "whole deer on kill" and is "hauled home like any load", so a single
 ## completed action produces all 8 Food at once. That deliberately overrides
-## the carry-capacity-= Might rule in WorkerSystem -- a Might-4 skeleton could
+## the carry-capacity = Endurance rule (Laborer.carry_capacity) -- an
+## Endurance-4 skeleton could
 ## otherwise never bring a deer home at all, which would make the whole
 ## higher-yield-but-longer-trip tradeoff unreachable for undead labor.
 static func make_deer(pos: Vector2, p_roam_rect: Rect2) -> ResourceNode:

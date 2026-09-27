@@ -4,6 +4,13 @@ Reference page for the villain class before we touch code. Pulled from the curre
 
 No code has been changed yet — this is the "what do we actually have" snapshot to plan from.
 
+> **Status note, 2026-09-26: historical snapshot, out of date.** It was taken before the Necromancer
+> had any avatar. Since then he has a commissioned portrait and a map avatar (`Necromancer_Portrait`,
+> `Necromancer_Full_Body`; see `docs/history/2026-08-camera-and-necromancer-avatar.md` and
+> `2026-08-art-provenance.md`). The worker is the Skeleton Worker, with its own token. Might is gone
+> (C2). The Dark Altar and the per-species housing buildings are locked, and the housing recruit gate
+> is gone. Read it for the portrait-pack notes only.
+
 ---
 
 ## 1. The Necromancer (player character)

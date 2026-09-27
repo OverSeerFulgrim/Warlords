@@ -1,7 +1,7 @@
 class_name Worker
 extends Laborer
 ## A Skeleton Worker: the undead labor unit, deliberately NOT a Follower.
-## Followers are the roster/story unit type (traits, Guile/Influence/Loyalty,
+## Followers are the roster/story unit type (traits, rolled attributes, morale,
 ## bounties and missions); Workers only gather. That split is an explicit
 ## design call, not an accident of history -- don't merge them without
 ## re-confirming it.

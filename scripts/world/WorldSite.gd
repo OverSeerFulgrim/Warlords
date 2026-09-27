@@ -297,8 +297,9 @@ func is_dropped_cache() -> bool:
 ## announcing "I found something" about a pile you left twenty seconds ago is
 ## the one thing that would teach players to stop trusting it.
 ##
-## Stated as a method now, before the Raven exists, because R2e is where it
-## would be missed and this is the only place the answer is obvious.
+## Stated as a method before the Raven existed, because R2e was where it would
+## be missed and this is the only place the answer is obvious. The Raven (R2e,
+## built 2026-09-26) reads it through `WorldSites.undiscovered_eligible()`.
 func is_raven_eligible() -> bool:
 	return lootable and raven_eligible and not is_dropped_cache()
 

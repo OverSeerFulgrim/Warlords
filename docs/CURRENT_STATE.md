@@ -1,16 +1,14 @@
 # CURRENT STATE — What Is True Right Now
 
-**Snapshot date: 2026-08-09.** Supersedes and replaces the 2026-08-06 snapshot. Same rules as
-before: this file reconciles every design document into one current picture, records which doc
-wins on each disputed point, and is a snapshot, not a living authority — when it disagrees with a
-doc amended after this date, the newer amendment wins and this file should be refreshed or
-deleted.
+**Refreshed 2026-09-26** (end of day), replacing the 2026-08-09 snapshot, which still read "R2
+unbuilt, P0 next". Same rules as before: this file reconciles every design document into one
+current picture and records which doc wins on each disputed point. It is a snapshot, not a living
+authority — when it disagrees with a doc amended after this date, the newer amendment wins and this
+file should be refreshed or deleted (whether to keep it at all is still unruled; see §4).
 
-**Dating note:** the amendment blocks this pass wrote into the specs are marked "2026-08-06"
-(the working date the pass was run against). Treat every "2026-08-06 amendment" in
-`TERRAIN_SPEC.md`, `LOOT_SITES_SPEC.md`, `COMBAT_SPEC.md`, `NECROMANCER_SPEC.md` and the
-Endurance rewording as belonging to *this* snapshot's changes, not to the morning-of-08-06
-reconciliation the previous snapshot recorded.
+**Dating note (still true):** the 2026-08-09 pass wrote amendment blocks marked "2026-08-06" into
+`TERRAIN_SPEC.md`, `LOOT_SITES_SPEC.md`, `COMBAT_SPEC.md` and `NECROMANCER_SPEC.md`. Treat those as
+that pass's changes.
 
 ---
 
@@ -18,106 +16,125 @@ reconciliation the previous snapshot recorded.
 
 | Date | Document | Standing today |
 |---|---|---|
-| pre-08-03 | `GAME_OUTLINE.md`, `FOUNDATION_SPEC.md`, `RACES.md`, `TRAITS*.md` | Settlement base layer only. GAME_OUTLINE Stages 4–5 superseded by the rework. FOUNDATION §6 reworded: **carry = Endurance**. `RACES.md`'s stat table is dead — prompt C2's export re-authors it. |
-| pre-08-03 | **`COMBAT_SPEC.md`** | **Re-live.** Was shelved with the settlement docs; its 08-06-marked amendment block adopts slice **C2 (the stat rework)** into the build order. C1/C1.5 shipped; C3 waits for R3; C4→R5, C5→R4; **C6 retracted** (off-map premise deleted with commit `3023372`). §7 amended: creatures carry all nine attributes. |
-| pre-08-03 | `stat_rework_roster.xlsx` | **Complete and authoritative** for all statlines: 17 races × 9 attributes, skill templates, overrides, and now the **Necromancer and Wolf rows** (villain: hp 20, walk 1.0, Arcane; wolf: hp 18, chase 1.3, Melee — every shipped number preserved). C2 exports it to `races.json`. |
-| 08-03 | `WORLD_MAP_PLAN.md`, **`ROGUELITE_REWORK.md`**, `ROGUELITE_PROMPTS.md` | Unchanged: the rework is the plan of record; R1 is done to spec. |
-| 08-05 | R1 history: `2026-08-world-map-r1.md`, `2026-08-world-population-r1.md`, `2026-08-villain-split.md` | The record of shipped code. The population file's travel table is the R1-playtest yardstick. |
-| 08-06 | `LOOT_SITES_SPEC.md`, `TERRAIN_SPEC.md`, `SORTIE_SPEC.md`, `ESCORT_SPEC.md`, `RAVEN_SPEC.md` | The five R2 slice specs, drafts for review. All five now exist (the old snapshot predated four of them) and all have been reworded to the nine-attribute language where they touch stats. |
-| this pass | Amendments: forests (`TERRAIN_SPEC.md` §6b), wolf dens (`LOOT_SITES_SPEC.md` §3b), C2 adoption (`COMBAT_SPEC.md` header) | Blocking dense forest with corridors and one-mouth clearings; the first clearable site with the dusk-wolf gate; the stat rework scheduled. |
-| this pass | New: `NECROMANCER_SPEC.md`, `COMBAT_FEEDBACK_SPEC.md` | The villain's combat kit (**Arcane** — engage close at 26px, cast far at 5 cells, no attack button) and floating red damage numbers. Drafts for review. |
-| this pass | **`R2_PROMPTS.md`** | The executable order (§2 below). Written despite `ROGUELITE_PROMPTS.md`'s wait-for-playtest rule — the *gate at its top preserves that rule*: nothing runs before the playtest. |
-| 08-05 (filed 08-09) | `GAME_IMPROVEMENT_REVIEW.md` | Product-level review lens, non-authoritative by its own header. Its §12 "thin slice first" ordering is a live recommendation the prompt set has **not** adopted (R2a builds the full catalog); its §14 criteria are the R2 playtest questionnaire. |
-| 08-09 | Documentation hygiene: `docs/README.md`, `docs/archive/`, banners | The live/dead index; six completed prompt sets + the cleanup plan + the `.docx` original moved to `archive/`; `RACES.md` and `GAME_OUTLINE.md` carry partial-superseded banners. |
+| pre-08-03 | `GAME_OUTLINE.md`, `FOUNDATION_SPEC.md`, `RACES.md`, `TRAITS*.md` | Settlement base layer. GAME_OUTLINE Stages 4–5 superseded by the rework. FOUNDATION: **carry = Endurance**; where it still speaks Might, COMBAT_SPEC §2 and `races.json` win. `RACES.md`'s stat table was **re-issued 2026-09-26** from `data/races.json`. |
+| pre-08-03 | **`COMBAT_SPEC.md`** | **Live.** C1/C1.5 shipped; **C2 (the stat rework) built 2026-08-26** — nine attributes, Might gone from code. C3 (rout, judgement, wolf packs) is post-R2; C4→R5, C5→R4; C6 retracted. |
+| pre-08-03 | `stat_rework_roster.xlsx` | **The authoritative statline source** and editing surface; `tools/export_roster.gd` exports it to `data/races.json`. The export rounded nine races' walk speeds to 0.1 (0.85 → 0.9 etc.). |
+| 08-03 | `WORLD_MAP_PLAN.md`, **`ROGUELITE_REWORK.md`** | The plan of record, amended in §16 (2026-08-06) and **§17 (2026-09-26: death ends the run, Second Wake, Raise Dead, timed recruitment off)**. |
+| 08-05 | R1 history: `2026-08-world-map-r1.md`, `2026-08-world-population-r1.md`, `2026-08-villain-split.md` | The record of R1's shipped code. |
+| 08-05 (filed 08-09) | `GAME_IMPROVEMENT_REVIEW.md` | Product-level review lens, non-authoritative. Its §14 criteria are the **R2 exit playtest questionnaire**. |
+| 08-06 → 08-09 | The seven R2 slice specs: `TERRAIN`, `LOOT_SITES`, `SORTIE`, `ESCORT`, `RAVEN`, `NECROMANCER`, `COMBAT_FEEDBACK` | **Reviewed 2026-08-29 and all built.** Amendment blocks bind over spec bodies. |
+| 08-09 | **`R2_PROMPTS.md`** | **Every prompt has landed** (P0, U1, F1, C2, P1, P2, R2a–R2e). |
+| 08-27 | `2026-08-27-r1-playtest-notes.md` | R1 feel playtest done; the gate opened. |
+| 08-29 | `2026-08-29-r2-spec-review-agenda.md` (moved to `history/` 2026-09-26) | The seven-spec review. Its still-open items are carried in §4. |
+| late 08 | History files for C2, P1, P2, R2a–R2d (see `history/README.md`) | The record of what was built. |
+| 09-26 | `REVIEW_2026-09-26.md` | Fresh-eyes review, a **snapshot**. Its addendum lists what got fixed the same day. |
+| 09-26 | **`LIVING_WORLD_SPEC.md`** | Design target after R2: all rulings issued (1–12, then **13–15**, the L0 model). Not yet prompted; its first pieces are built (§2). |
+| 09-26 | **`PROGRESSION.md`** + `data/progression.json` | **Live.** XP formulas, the level curve, unlocks. |
+| 09-26 | `2026-09-26-run-lifecycle-and-raise-dead.md`, `2026-09-26-raven.md`, `2026-09-26-demo-shell.md` | Today's three passes, in that order. |
 
 **Precedence rule, unchanged:** `ROGUELITE_REWORK.md` wins on design intent; the newest history
-file wins on what the code actually does; `CLAUDE.md` wins on conventions — its stats line now
-points at COMBAT_SPEC §2 and says plainly that the *code* speaks Might until C2 runs.
+file wins on what the code actually does; `CLAUDE.md` wins on conventions.
 
 ---
 
 ## 2. Where the project stands
 
-- **Built and verified:** Stage 1–3 settlement loop and R1 (144×144 fixed world, terrain/fog,
-  directly-controlled killable Necromancer, static village, sealed rival ground, travel in band).
-  Unchanged since the last snapshot — **no code has been written since; this pass was all design.**
-- **Next milestone: R2 — "The world is worth exploring"**, now fully specced across seven specs
-  plus two adopted COMBAT_SPEC slices. Nothing in R2 is implemented.
-- **The prompt order** (`R2_PROMPTS.md`, gate intact):
+- **Built and verified:** the Stage 1–3 settlement loop, R1, and **all of R2** — the generated
+  world with forests, fifteen lootable sites and wolf dens, his Arcane kit, deposit at the Throne,
+  the escort, and **the Raven** (honest dawn pings, camp occupancy, discovery as its own flag).
+- **Also built 2026-09-26, ahead of the roadmap:**
+  - **Death ends the run** (R4-lite + the XP half of R5, `scripts/run/`). Endings: slain,
+    abandoned (behind a confirm), throne_fell, victory (still the legacy placeholder). A run-end
+    screen with epitaph, stats, XP, level and next unlock. XP is banked per deed in
+    `user://meta_profile.json`; harness runs never write it. **Second Wake** (level 5, once per
+    run) is the only way he wakes at the Throne.
+  - **Raise Dead is his starting spell:** a grave's corpse is free and becomes a real Skeleton
+    Worker; otherwise 5 bones, anywhere. **No free starting skeleton; 3 starting bones**, so the
+    first dead come from a grave. Timed recruitment is off.
+  - **The demo shell:** every key an InputMap action by physical key, pause menu, title screen,
+    Surrender confirm, dev tools out of release builds, Windows/Linux export presets built and run.
+- **Harnesses, all green:** verify_stats 505, verify_loot_tables 515, verify_terrain 278,
+  check_sprite_scales 122, verify_sortie 67, verify_villain_combat 65, verify_escort 58,
+  check_fog_and_minimap 50, verify_run_lifecycle 49, verify_raven 39, verify_demo_shell 38,
+  verify_combat_feedback 31, verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows
+  in band; headless boot clean.
+- **Not built:** flee-the-region, the manor victory, map shuffle, the Lair hub; R3's reputation
+  axes; LIVING_WORLD L0 onward; C3; audio; a settings/rebinding screen; mid-run save.
+- **The prompt order** (`R2_PROMPTS.md`), all landed:
 
   ```
-  playtest R1 → P0 (travel harness + doc fixes) → U1 (minimap click, right-click move, friendly fog/dots) → F1 (damage numbers) → C2 (stat rework)
-              → P1 (tilesheets) → P2 (generated world + forests)
-              → R2a (sites + dens) → R2b (villain combat) → R2c (deposit)
-              → R2d (escort) → R2e (raven)
+  playtest R1 → P0 → U1 → F1 → C2 → P1 → P2 → R2a → R2b → R2c → R2d → R2e
   ```
-
-  F1 was briefly named C1 and was renamed to avoid colliding with COMBAT_SPEC's slice names.
-- **Debts owed before anything runs:** all paid as of 2026-08-27 — R1 feel playtest done, six
-  foundation-checklist boxes ticked (`docs/history/2026-08-foundation-exit-criteria.md`), CRLF
-  normalization committed (19fc078). Gate is open. Feel answer was *no* (no reason to leave yet) — that is R2's job; playtest notes and
-  the new U1 prompt (minimap click, right-click-to-move, friendly fog/minimap) in
-  `docs/history/2026-08-27-r1-playtest-notes.md`.
 
 ---
 
-## 3. Decisions made this pass (the designer ruled on each)
+## 3. Decisions made (2026-09-26 rulings)
 
-1. **The stat rework is adopted, scheduled as prompt C2.** Nine attributes, one governing
-   attribute per skill, profiles (Melee Str/End, Ranged Dex/Speed, Arcane Int/Int). **Carry
-   moves to Endurance** — reworded through FOUNDATION §6, SORTIE, LOOT_SITES; no shipped number
-   moves (skeleton End 4, wolf End 5 equal their old Might; villain End 6 keeps hp 20 / carry 6).
-2. **The Necromancer is Arcane** (Int 7). Fights open only at 26px or on being hit; once engaged
-   he casts at 5 cells. Kiting is real but bounded (wolf chase outruns him). Command Undead stays
-   his real weapon; no attack button, ever. `NECROMANCER_SPEC.md` is the detail.
-3. **Creatures use the same nine attributes as characters** — COMBAT_SPEC §7's reduced set is
-   superseded; wolf Int 2 is the arcane-vs-beast tuning knob. Behaviour stays hardcoded profiles.
-4. **Forests are the third wall.** Dense forest blocks; open woodland fringes at 0.85; corridors
-   are carved, not paved; every interior clearing has exactly one mouth. Bigger trees: canopy
-   pines at 1.9–2.6 tiles (one MultiMesh, zero nodes), lair pines 1.5 → 2.0 tiles.
-5. **Wolf dens are the first clearable site**, living in forest clearings. 2–3 wolf-statted
-   guardians; clearing the last den ends dusk raids for the run; best wolfhide-cloak odds; Power
-   deed on clearing.
-6. **Damage is shown as red floating numbers** in real time (`COMBAT_FEEDBACK_SPEC.md`), fed by
-   one `damage_shown` signal from the policy layer. Views only; Combat/Engagement untouched.
-7. **Relic effects generalize to attribute deltas** (`{"attribute": ..., "delta": ...}`);
-   `sermon_of_ash` is now +1 Intelligence.
+1. **Death ends the run.** Waking at the Throne is the **Second Wake** unlock (level 5 = 1,000 XP,
+   once per run), not the default (ROGUELITE_REWORK §17).
+2. **Raise Dead is the starting spell.** Raised corpses are ordinary Skeleton Workers; Raise Dead
+   for 5 bones replaced the "Recruit Worker" buttons. **No starting skeletons on any run**
+   (LIVING_WORLD ruling 9); starting bones = 3.
+3. **R4-lite before R2e** (review ruling 7.9) — done in that order.
+4. **XP comes from formulas** (`PROGRESSION.md`): deed = base × band; flat XP for wolves, buildings
+   and banked loot; 25 per full day survived; level *L* needs 100 × L × (L−1) / 2; cap 20.
+5. **Timed recruitment is switched off** (`EventSystem.TIMED_RECRUIT_OFFERS = false`); the offer
+   machinery stays for R3.
+6. **LIVING_WORLD L0 model (rulings 13–15, not built):** each settlement has its own stockpile, and
+   `GameState` becomes a façade over the player's (this changes CLAUDE.md's "single source of
+   truth" convention at L0); production keeps the worker trip loop, with job slots and integrity
+   multiplying each trip's yield (the player's Throne: unlimited slots, 100% integrity); NPCs get
+   attention ranges, and the Necromancer gets a **Hidden / Hunting stance**, never an attack button.
+7. **Built as a deliberate reading, awaiting confirmation:** a site is "undiscovered" until he or
+   one of his units stands within fog-sight of it (not the fog state); the wolf den's gold weight
+   went 26 → 30.
+
+The 2026-08-09 decisions (stat rework, the Arcane Necromancer, creatures on the nine, forests as the
+third wall, wolf dens, red damage numbers, relic attribute deltas) are all built; the history files
+are the record.
 
 ---
 
-## 4. Known rough edges
+## 4. Known rough edges and open questions
 
-1. ~~ESCORT_SPEC §9 stale aura-flag line~~ — **fixed 08-09**: the line now records that R2b makes
-   the aura positional and deletes the flag.
-2. ~~SORTIE_SPEC §1.5 "send an escort back"~~ — **ruled and struck 08-09**: no independent
-   delivery; if it ever exists it is a spell (R5 material). The strikeout note sits in the spec.
-3. ~~The seven R2 specs are still marked "draft for review."~~ — **done 2026-08-29**: all seven
-   reviewed by the designer; five carry dated amendment blocks (LOOT_SITES five rulings,
-   SORTIE three, NECROMANCER two, ESCORT one, RAVEN one), TERRAIN and COMBAT_FEEDBACK accepted
-   as-built. Amendment blocks are binding over spec bodies; the R2a–R2e prompts point at them.
-4. **This pass's amendments are date-stamped 08-06 inside the files** (see the dating note up
-   top). Cosmetic, but worth knowing before trusting a date over this table.
-5. ~~`GAME_IMPROVEMENT_REVIEW.md` §12 recommends a thin-slice R2~~ — **ruled 2026-08-29: R2a
-   stays whole.** The thin slice would defer only catalog data while still needing all of R2a's
-   code, and would re-sequence R2a–R2c; §12's concern is carried by the playtest-between-prompts
-   gates and the After-R2 tuning knobs (tier ratios, capacity vs yield) instead.
-6. **Repo `README.md` (root) still describes the pre-rework game** per the review's §11 — small,
-   still owed.
+**Still open — not decided:**
+1. **R3 folded into LIVING_WORLD L2** — recommended by the review, not ruled.
+2. **CURRENT_STATE.md** delete vs refresh — not ruled (this refresh follows the ask that every doc
+   match today).
+3. **The unused addons** (`limboai`, `ziva_agent`) still load as GDExtensions on the designer's
+   machine, which a clean clone does not.
+4. **`court_infiltration`'s stat** (mercantile vs leadership), and **`_imgtmp_ui_kit/`** (move or
+   delete; it is the only copy of the menu art).
+5. **LIVING_WORLD:** every ruling is issued (1–15); only druids calming dens is left for playtest.
+6. From the 2026-08-29 agenda: a third field action, and the deposit's audiovisual payoff.
+
+**Known, left alone on purpose:**
+- The HUD placeholders ("Future roadmap goal", "Bounty board -- unlocks in Stage 4", "Upgrades --
+  coming soon") stay, on the designer's own instruction.
+- The legacy crusade and power win still exist; they now end the run properly.
+- A raised skeleton walks home in a straight line through terrain, like every worker.
+- "Might" survives in some code comments and as unread keys in `data/followers.json`; the dead Stage-4
+  helpers in `Main.gd` (`_forge_equipment`, `_train_followers`, `_dispatch_random_mission`) are
+  never called.
 
 ---
 
 ## 5. What happens next, in order
 
-1. ~~**Play R1**~~ (done 2026-08-27) — twenty minutes, human at keyboard: does leaving the lair feel like a decision?
-   Tick the six foundation-checklist boxes in the same session. Everything is gated on this.
-2. ~~Review the seven R2 specs~~ (done 2026-08-29 — see rough edge 3; amendment blocks binding).
-3. Run P0, then U1, then F1, then C2 — safe, map-untouched, and every later prompt builds on them.
-4. Run P1 → P2, re-running `measure_travel` until every row is back in band.
-5. Run R2a → R2e in order, playtesting between prompts.
-6. Check R2's exit ("one more grave, or turn back?" is a real question), then write R3 prompts —
-   not before.
+1. **The R2 exit playtest — a human at the keyboard.** Is "one more grave, or turn back?" a real
+   question? Use `GAME_IMPROVEMENT_REVIEW.md` §14 as the questionnaire, plus the deferred feel
+   questions: is walking into 26px a decision or an accident, and is a lost escort the right sting?
+2. In the same session, the things only a human can check:
+   - the run-end screen, the level line in his panel, the title, the pause menu and the controls
+     list at the real window size and font; whether Space as pause fights anything;
+   - whether a Raven ping mid-sortie invites or interrupts, whether 70% a day is generous or
+     noisy, whether the "stood within sight of it" reading of *discovered* is right, and the
+     mark's look;
+   - the XP numbers, the curve and Second Wake's level (`data/progression.json`);
+   - whether the wolf den should stay leaner than its new gold weight.
+3. **Then LIVING_WORLD L0 / R3** (`LIVING_WORLD_SPEC.md` §14): `Settlement` with an owner and its
+   own stockpile behind the `GameState` façade, job slots and integrity on the trip loop, a
+   population pool, named owners, click-to-assign — and a second, human-owned settlement that
+   ticks. How R3 fits (alongside, or folded into L2) is the open ruling above.
 
-Housekeeping: the CRLF normalization commit (or a `.gitattributes` line) is **still owed** so
-`git status` becomes honest again — the improvement review's §11 asks for the same thing. The
-documentation side is now clean: `docs/README.md` is the live/dead index, `docs/archive/` holds
-everything completed or superseded, and one commit should capture this whole pass.
+Housekeeping: CRLF normalization was committed long ago (`19fc078`); nothing is owed there.

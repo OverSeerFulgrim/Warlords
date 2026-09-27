@@ -5,8 +5,8 @@ class_name RavenMarker
 ## nothing -- it is a pointer, not a window (`RAVEN_SPEC.md` sections 3 and 5).
 ##
 ## Inspectable through the ordinary `get_inspect_data()` contract: "The Raven's
-## Word", the site's name and band, and the distance from the Throne as the
-## raven flies. The route is the player's problem; the bird vouches for the
+## Word", the site's name and band, the day found, and the distance from the
+## Necromancer's current position (not the Throne) as the raven flies. The route is the player's problem; the bird vouches for the
 ## destination, never the road (section 4).
 
 const HIT_RADIUS: float = 22.0

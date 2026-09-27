@@ -9,11 +9,10 @@ class_name DayNightCycle
 ## foundation cycle: the lighting tint shift is now here, and the clock reads
 ## out in the HUD.
 ##
-## **Still not here:** the dawn/dusk *meal ticks* that feed living recruits.
-## Those need the food/morale system (GAME_OUTLINE gap #3) and there are no
-## living recruits to feed yet. They hang off `EventBus.dawn_started` /
-## `dusk_started` when built -- which is why this emits signals rather than
-## calling ResourceField._on_dawn() directly.
+## **Not here:** the dawn/dusk *meal ticks* that feed living recruits. Those
+## live in `MoraleSystem` (FOUNDATION_SPEC section 8), which hangs off
+## `EventBus.dawn_started` / `dusk_started` -- which is why this emits signals
+## rather than calling ResourceField._on_dawn() directly.
 ##
 ## Timings are FOUNDATION_SPEC section 7: day 30 min, night 20 min, 50 min
 ## full cycle. Long on purpose -- "tune after feel-testing", which is exactly

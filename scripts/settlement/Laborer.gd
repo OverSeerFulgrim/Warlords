@@ -4,8 +4,8 @@ extends RefCounted
 ## labor stats plus the trip-loop state machine WorkerSystem drives.
 ##
 ## **Why this exists.** Skeleton Workers and recruited Followers are still two
-## deliberately different unit types -- Followers have traits, Guile/Influence/
-## Loyalty, and take bounties and missions; Workers have none of that and never
+## deliberately different unit types -- Followers have traits, morale, rolled
+## attributes, and take bounties and missions; Workers have none of that and never
 ## will (that separation is an explicit design call, see Worker.gd). But once
 ## recruits could be put to work, both needed the *same* trip loop, and a
 ## settled Gray Dwarf out-mining every skeleton you own is the whole point of
@@ -13,7 +13,7 @@ extends RefCounted
 ## rather than merging the two classes or duplicating the state machine.
 ##
 ## Read that boundary as: **this class is the job, not the person.** Anything
-## about who someone is (traits, loyalty, race identity, bounty appetite)
+## about who someone is (traits, morale, race identity, bounty appetite)
 ## belongs on Worker/Follower, not here.
 ##
 ## `position` is authoritative simulation state -- see CLAUDE.md's convention
@@ -329,8 +329,8 @@ func inspect_description() -> String:
 	return ""
 
 ## Colour-coded so a hurt unit is legible at a glance, the same way morale is.
-## The "8 + Might x2" note is deliberate: Might driving durability is the single
-## thing a player needs to understand about this combat system.
+## The max is `8 + Endurance x2` (see max_hp()): Endurance driving durability is
+## the single thing a player needs to understand about this combat system.
 func _hp_row() -> Dictionary:
 	var row := {"label": "Health", "value": "%d / %d hp" % [hp, max_hp()]}
 	if is_injured:

@@ -1,10 +1,10 @@
 # RAVEN SPEC — The Bird That Never Lies (R2)
 
-**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
-`LOOT_SITES_SPEC.md` put out of scope. **Implemented 2026-09-26 (R2e)** — see
-`docs/history/2026-09-26-raven.md`, including one deliberate reading: "undiscovered" is a per-site
-flag set by his (and his units') sight discs, not the fog state, because the lair band is revealed
-from the start.
+**Status:** **built** — R2e landed 2026-09-26, see `docs/history/2026-09-26-raven.md` (harness
+`tools/verify_raven.tscn`). Reviewed and amended 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §6 and covers the R2 piece
+`LOOT_SITES_SPEC.md` put out of scope. Built with one deliberate reading: "undiscovered" is a
+per-site flag set by his (and his units') sight discs, not the fog state, because the lair band is
+revealed from the start (amended in place in §4 and §8).
 
 > **Correction, load-bearing.** `docs/history/2026-08-world-map-r1.md` said, in its fog-of-war
 > section, that *"the map doc's 8–12 is the Raven's scouting number, rework §6, and that's R2."*
@@ -96,6 +96,11 @@ because it only ever names things the world already has.
 | `abandoned_camp` **only when its occupancy roll came up empty** | any site the player has already discovered | a ping is news |
 | | `cemetery`, `crypt`, `outlaw_cave`, `cursed_battlefield` | Era-III and deep-danger business |
 
+*(Amended 2026-09-26: as built, the pool is authored by the `raven_eligible` flag (§7) — today on
+both fresh graves (`fresh_grave_hollow`, `fresh_grave_scree`), the `hidden_cache` and the
+`abandoned_camp` — and §4's five checks run on top of it. The camp's occupancy is built: 35%, one
+outlaw guardian, rolled once at activation.)*
+
 `LOOT_SITES_SPEC.md` §2 already calls `small_cache` "Raven-ping fodder" — this is the rule behind
 that line. The camp exception is the interesting one: occupancy is rolled at *activation*, so the
 Raven can honestly know the camp is empty in a way the player cannot. **That asymmetry is the
@@ -144,6 +149,18 @@ Stated as a rule a harness can assert, because it is the one thing that must nev
 If no site satisfies all five, **the Raven says nothing that day.** It does not relax a condition to
 produce content. A silent day is a correct day.
 
+> **Amended 2026-09-26 — what "undiscovered" means, as built.** It is the per-site flag
+> `WorldSite.discovered`, set by `WorldSites.update_discovery()` when the Necromancer or one of his
+> units stands within **the same sight disc that lights the fog** — 7 cells for him, 3 for a unit
+> (plus the Barrow Lantern) — checked every 0.25 s. It is **not** the fog state: the lair band is
+> revealed from the first frame, so reading the fog would make both fresh graves and the hidden
+> cache unpingable and leave the bird at most one site (the camp) per run. The flag is read-only
+> over the fog (the harness asserts the fog byte-identical across 1,000 pings). The five checks
+> live in `WorldSites.raven_checks()`; reachability is one flood fill from the lair,
+> `WorldSites.is_reachable()`, which the F3 overlay also uses. Whether "somebody of his stood within
+> sight of it" matches the designer's intent is still a question for the human
+> (`docs/history/2026-09-26-raven.md`, *Needs a human*).
+
 The one thing a ping does not promise is *safety of the route*. The Raven vouches for the
 destination, never the road — the wolf, the dusk, and the ridge are all still yours. That distinction
 is worth putting in the flavour text.
@@ -166,6 +183,9 @@ minimap's header comment when adding it, so the next reader doesn't "fix" it.
 **The panel.** The ping is inspectable through the existing `get_inspect_data()` contract:
 title (*"The Raven's Word"*), the site's name, its band, distance and rough travel time from the
 lair (`TravelLog` already computes in game-seconds), and a flavour line. No new panel.
+*(Amended 2026-09-26: as built, the panel shows site, band ("Danger"), the day found, and the
+distance in cells **from him**, as the raven flies, with a rough on-foot time "more by the long
+way" — not a routed distance from the lair.)*
 
 **The log.** One History line per ping. Pings are pacing information, not alerts — same call
 `TravelLog` made about milestones.
@@ -225,6 +245,15 @@ The §4 invariant is still enforced in code at ping time — the flag says *may*
 | `Minimap.gd` | Ping markers above fog, with a header comment recording why this is the one live-contents exception. |
 | `InspectionPanel` | Ping payload via the existing contract. No new panel. |
 | `Main.gd` | Wiring only. |
+
+**Amended 2026-09-26 — the table as built** (see §4's note for why): `Raven.gd` holds `villain`,
+`world_sites`, `fog` and `marker_parent`; `RavenMarker.gd` is the new view (a violet sigil at z 110,
+above the fog's 100, inspectable as "The Raven's Word"). `WorldSites.undiscovered_eligible()` takes
+**no fog argument** — it reads `WorldSite.discovered`, which `WorldSites.update_discovery()` sets from
+the fog *sources* (sight discs), not from `FogOfWar.state_at()`; the fog is never read or written for
+discovery. `discovered` is set by standing within sight, not "when first inspected in reach". The
+ping is claimed when anything spends the site's last charge, looting included. Silence is delivered:
+`raven_silent` flickers the HUD chip and writes the log line.
 
 ---
 

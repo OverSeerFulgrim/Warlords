@@ -2,10 +2,26 @@
 
 Design outline for the core game structure, v4 — adds relationships/loyalty, execution-quality grudges, bounty board thresholds, and the Dark Altar body-conversion loop.
 
+> **Status, 2026-09-26.** The roadmap is `ROGUELITE_REWORK.md` §13: R1 done, **R2 fully built**
+> (R2a–R2e), and **death ends the run** (R4-lite plus the XP half of R5 — its §17, and
+> `PROGRESSION.md`). Stages 4–5 below stay superseded by the rework. What changed in the Stage 0–3
+> settlement layer this file still describes:
+> - **Stage 0 is the Throne only.** No starting skeleton on any run, and **3 bones** — below the 5
+>   that Raise Dead costs — so the first dead are raised from a grave. Raise Dead is his starting
+>   spell and replaced "recruit a worker for bones" (`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`).
+> - **Timed recruitment is OFF in code** (`EventSystem.TIMED_RECRUIT_OFFERS = false`). Building the
+>   Barracks starts no recruit timer; offers come back in R3, triggered by reputation. The offer
+>   machinery (`RecruitGenerator`, the Barracks gate) is kept for that.
+> - **The Dark Altar is locked** — it stays in `data/buildings.json` but out of the build menu, and it
+>   is not a starting building.
+> - **Stats are the nine attributes** of `COMBAT_SPEC.md` §2 (C2, 2026-08-26). Might and Influence are
+>   gone; Guile and Loyalty survive as two of the nine. Read "Might" below as the retired model.
+
 > **PARTIALLY SUPERSEDED, 2026-08-03 (recorded 2026-08-06).** **Stages 4–5 and the open-ended
 > campaign structure are superseded by `ROGUELITE_REWORK.md`** — the game is now discrete runs
 > (Hide → Explore → Influence → Rule), recruitment is reputation-gated, and the roadmap is the
-> rework's §13 (R1 done, R2 next, per `docs/prompts/R2_PROMPTS.md`). Timed recruit events are
+> rework's §13 (R1 done, R2 next, per `docs/prompts/R2_PROMPTS.md` — *R2 is now built; see the
+> 2026-09-26 status above*). Timed recruit events are
 > dead. **Still live here:** the concept, the design pillars, and the Stage 1–3 settlement loop
 > description, which remains the in-run base layer. Read "this file is the target" as scoped to
 > the settlement layer only; for everything about the run frame, the rework wins.
@@ -82,7 +98,7 @@ Races are categorized by what they offer so recruitment events can be balanced �
 
 | Act | Player experience | Systems in play |
 |---|---|---|
-| **1. Arrival** | Throne built, one skeleton worker, a starting pool. Set the resource priority list. | Workers, priority-driven gathering |
+| **1. Arrival** | Throne built, one skeleton worker, a starting pool. Set the resource priority list. *(Amended 2026-09-26: Throne only, no skeleton — raise the first dead from a grave.)* | Workers, priority-driven gathering |
 | **2. Foundation** | Build the **Barracks** early — recruit intake. Economy + food buildings follow. | Building placement, prerequisites |
 | **3. Recruitment & settling** | Events bring category-balanced recruits to the Barracks. Feed them, fund their houses, watch rivalries. | Events, intake, food/morale, organic housing, race unlocks |
 | **4. Villainy & economy** | Harvest bounties for Dark Essence (choosing whom to cross), missions, training, market, trade. | Bounties, missions, training centers, market/trade, grudges begin |
@@ -94,13 +110,15 @@ Races are categorized by what they offer so recruitment events can be balanced �
 
 ### Stage 0 — Arrival (automatic)
 Throne of Bones (main building, hp — the raid's target), **1 skeleton worker**, starting resource pool.
+*(Amended 2026-09-26: no skeleton worker and 3 bones — the first dead come from a grave by Raise Dead. See the status banner.)*
 
 ### Stage 1 — Collect resources (priority list)
 - **Global priority list, not per-worker orders.** Bottom-bar menu ranks resources; each has a player-settable **threshold** — once stock ≥ threshold, workers fall through to the next priority, returning whenever spending dips it back under.
-- Recruit more workers (Bones cost). Undead workers need no food.
+- Recruit more workers (Bones cost). Undead workers need no food. *(2026-09-26: this is Raise Dead — 5 bones wherever he stands, or free from a grave's corpse.)*
 - *(Per-worker manual override is a possible later add.)*
 
 **Gate → Stage 2:** afford your first building (economy-enforced: starting pool covers the Barracks *or* one cheap economy building, not both).
+*(Amended 2026-09-26, designer ruling: the starting pool no longer needs to cover a building. It is 8 wood / 5 stone / 3 bones and buys nothing on minute one; the first build comes from what the first raised dead gather. The gate is still "afford your first building".)*
 
 ### Stage 2 — Build
 1. **Barracks** — recruit intake. **Only one, ever — but upgradeable** to raise its population cap (base 5 → upgrade tiers).
@@ -109,7 +127,7 @@ Throne of Bones (main building, hp — the raid's target), **1 skeleton worker**
 
 Every building adds **Power** (the win stat).
 
-**Gate → Stage 3:** Barracks built → recruitment-event timer turns on.
+**Gate → Stage 3:** Barracks built → recruitment-event timer turns on. *(Off in code since 2026-09-26 — the timer is switched off until R3's reputation trigger.)*
 
 ### Stage 3 — Recruit & settle
 - Events deliver recruits into the Barracks, **category-balanced** (first run guaranteed warrior + economy + research offers). Each recruit: name, race, traits, Might/Guile/Influence/Loyalty seeded from race baselines.
@@ -167,7 +185,7 @@ Every building adds **Power** (the win stat).
 10. **Bounty board thresholds** — per-bounty minimum stat requirements; eligibility filter in follower evaluation (`Follower.evaluate_bounty`).
 11. **Relationship system** — pairwise relationship values updated by shared activity; race rivalry sets initial value; party assembly checks relationships, with Loyalty as the override that suppresses friction.
 12. **Training centers, market, trade missions** — new systems per Stage 4.
-13. **Remove the 3 seeded starting followers**; start with 1 skeleton worker.
+13. **Remove the 3 seeded starting followers**; start with 1 skeleton worker. *(Amended 2026-09-26: start with no skeleton at all.)*
 14. **Faction refactor of GameState** — incremental, but all new systems written per-faction from day one.
 
 Suggested order: **1 → 2/4 (intake loop) → 13 → 3 (food/morale) → 5 → 8 → 7+9+10 (essence/grudge/board — one loop) → 11 → 6 → 12 → 14 ongoing.**

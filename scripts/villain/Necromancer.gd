@@ -1,6 +1,6 @@
 class_name Necromancer
 extends RefCounted
-## **The villain, as data.** Position, hit points, Might, what he is carrying,
+## **The villain, as data.** Position, hit points, attributes, what he is carrying,
 ## who walks with him. `NecromancerToken` is a pure view over this object and
 ## owns nothing -- the same contract `Laborer`/`WorkerToken` already follow.
 ##
@@ -437,8 +437,8 @@ func carry_space() -> int:
 
 ## Takes as much of `amount` as will fit and returns how much was actually
 ## taken, so the caller can log the real number and leave the rest on the
-## ground. Nothing calls this until R2's loot; the capacity exists now so the
-## field and the panel agree from the start.
+## ground. Called by site looting (`WorldSite`, and
+## `SortieSystem.take_into_party`, which fills him first).
 func add_carried(kind: String, amount: int) -> int:
 	var taken: int = mini(maxi(0, amount), carry_space())
 	if taken > 0:
@@ -614,10 +614,10 @@ func escort_count() -> int:
 # only thing that treats him differently is CombatSystem's lair-aura rule, and
 # that is a named flag rather than a hole in this contract.
 
-## `max_hp = 8 + Might * 2`. **Computed, never stored**, same as every other
-## combatant -- a stored copy goes stale the moment anything changes Might, and
-## the run frame will change it (levels grant options rather than numbers, but
-## relics and the Blacksmith already touch Might). The constants come from
+## `max_hp = 8 + Endurance * 2`. **Computed, never stored**, same as every other
+## combatant -- a stored copy goes stale the moment anything changes Endurance,
+## and the run frame will change it (levels grant options rather than numbers,
+## but relics already move his attributes through `attribute()`). The constants come from
 ## `Laborer` rather than being restated, so there is exactly one hp formula in
 ## the project.
 func max_hp() -> int:

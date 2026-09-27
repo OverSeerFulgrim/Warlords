@@ -1,8 +1,9 @@
 # ESCORT SPEC — The Dead Who Walk With Him (R2)
 
-**Status:** Reviewed and amended, 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §5 (the escort behaves
+**Status:** **built** — R2d landed, see `docs/history/2026-08-escort.md` (harness
+`tools/verify_escort.tscn`), stances included. Reviewed and amended 2026-08-29 (designer) — the dated amendment block below governs where it differs from the body. Originally drafted 2026-08-06. Details `ROGUELITE_REWORK.md` §5 (the escort behaves
 automatically, built on the Command Undead order model) and covers the R2 piece
-`LOOT_SITES_SPEC.md` put out of scope. Nothing here is implemented.
+`LOOT_SITES_SPEC.md` put out of scope.
 
 **Scope:** who joins a sortie and how, the standing-order model that drives them, their four
 behaviours (follow, haul, engage, cover), what they cost the settlement, and how they die.
@@ -35,6 +36,17 @@ indirect-control pillar, which this spec exists to not break), and the header co
 > line. Toggling is an input on the spell surface, not a unit order — and it may later live on
 > the hot-slot row (`NECROMANCER_SPEC.md` 2026-08-29 amendment, ruling 2) with the rest of the
 > spells-as-tools.
+
+> **Amended 2026-09-26 — pointers to later rulings.**
+>
+> - **Hunting puts the escort Aggressive** (`LIVING_WORLD_SPEC.md` ruling 15, §8.7) — **not
+>   built**, scheduled with LIVING_WORLD L2. When the Necromancer's stance is Hunting the escort
+>   goes Aggressive; in Hidden (his default) the escort keeps its own stance, unchanged.
+> - **Death ends the run** (`scripts/run/RunLifecycle.gd`): the escort's loads are cleared with his
+>   (§6, `SORTIE_SPEC.md` §6), and he wakes at the Throne only with the Second Wake unlock (level 5,
+>   once per run).
+> - **A raised corpse is now a real unit** (ruling C, `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`):
+>   see §3's last row.
 
 ---
 
@@ -109,7 +121,11 @@ system:
 That last row matters: **`raise the corpse` at a grave produces an escort member with no extra
 code**, because the standing order is on the dead as a class and the `_process` loop re-binds every
 frame. `LOOT_SITES_SPEC.md` §4 anticipates this ("dormant until escort lands, then retroactively
-live") — this is the landing.
+live") — this is the landing. *(Amended 2026-09-26: at R2d the grave still produced an inert
+raised-corpse view (`RaisedDead.gd`), so this row was true only of skeletons added by other means.
+Since ruling C, "Raise the corpse" calls `WorkerSystem.raise_skeleton_at` — a real, free Skeleton
+Worker at the graveside that joins an active escort the next frame, otherwise walks home to work.
+`RaisedDead.gd` is deleted.)*
 
 **Escort radius:** `ESCORT_RADIUS_PX = 2.5 cells`, between DEFEND's 1.2 and PATROL's 3.0. Tight
 enough that the party reads as a group on screen at world zoom, loose enough that they don't
@@ -257,7 +273,10 @@ like protection or like a tether. Simulated input reaches neither `_unhandled_in
 - whether covering should also slow the villain (currently no — that is a control-removal, and the
   pillar carve-out is that *he* is always the player's to drive)
 - whether a whole-escort wipe should force anything (currently no)
-- when `LAIR_AURA_PROTECTS_VILLAIN` flips: at the band edge, or on the first sortie
+- ~~when `LAIR_AURA_PROTECTS_VILLAIN` flips: at the band edge, or on the first sortie~~ —
+  *settled (R2b): the flag is deleted; the aura is the position test
+  `CombatSystem.aura_protects_villain()`, which reads `Necromancer.is_in_lair_band()` — it holds
+  inside the lair band and nowhere else (`NECROMANCER_SPEC.md` §5).*
 
 **Exit criterion for this slice** (feeds R2's overall exit): a sortie leaves with three skeletons,
 loses one to a site guardian, comes home with the other two hauling loot the villain had no room

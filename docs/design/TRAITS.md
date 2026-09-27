@@ -3,6 +3,8 @@
 Companion to `RACES.md`. Traits are the *individual* personality layer on top of race: race sets your baselines, traits set who you are. They affect daily settlement life now, and combat, bounty, mission and relationship behavior as those systems land. This table should become `data/traits.json`.
 
 > **Stat model.** This file was rewritten against the reworked stat system (attributes / condition / skills — see "Stat targets" below). The previous version targeted the retired Might/Guile/Influence/Loyalty four-stat model; two traits changed what they modify as a result, and four had their combat effects redefined. `TRAITS_IMPLEMENTATION_PLAN.md` owns the build order and marks which effects are buildable today versus blocked on the stat rework.
+>
+> **Status, 2026-09-26: not built.** The stat rework this file targets is live (C2, 2026-08-26 — Might and Influence are gone; Perception and Leadership exist), but the trait system is not: there is no `data/traits.json`, and a recruit still rolls one trait from the old five-name pool in `RecruitGenerator` (Loyal, Greedy, Bloodthirsty, Cowardly, Fanatic). Read the table's "live now" column as *the systems it hooks exist* (meals, morale, the trip loop), not as wired; the "needs the stat rework" column now waits on **C3** (morale routing), which is not built.
 
 ## Rules
 

@@ -43,7 +43,7 @@ class_name InspectionPanel
 ##
 ## ## Actions are the exception
 ##
-## Buildings that already had menus (the Keep's Recruit Worker / Surrender, the
+## Buildings that already had menus (the Keep's -- now the Throne's -- Surrender, the
 ## Barracks roster's Fund House buttons) keep them, but those buttons call
 ## *Main's* handlers -- so they can't live on Building without handing every
 ## building a reference to Main. Instead `inspect()` takes an optional

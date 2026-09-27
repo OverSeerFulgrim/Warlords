@@ -1,206 +1,137 @@
 # Warlords (working title: Undead Empire Prototype)
 
 Villain-power-fantasy roguelite settlement builder (Against the Storm / RimWorld lineage, inverted:
-you're the villain). Godot 4.7.1, GDScript, GL Compatibility. Local-only, no external deps.
+you're the villain). Godot 4.7.1, GDScript, GL Compatibility. Local-only, no runtime deps; the
+godot_mcp dev bridge's three autoloads are freed at startup in release builds.
 Repo: https://github.com/OverSeerFulgrim/Warlords (branch `main`).
 
-**This file is orientation only, hard budget ~8KB.** Detailed design lives in `docs/design/`,
-graphics rules in `docs/art/SPRITE_SPEC.md`, and the full development narrative in `docs/history/`
-(dated files, indexed in `docs/history/README.md` — read the relevant one only when a task touches
-that system). Session write-ups append to `docs/history/`, NEVER here.
+**Orientation only, budget ~10KB.** Design lives in `docs/design/`, graphics rules in
+`docs/art/SPRITE_SPEC.md`, what the code actually does in `docs/history/` (dated files, indexed in
+its `README.md` — read the one for the system you touch). Session write-ups go there, NEVER here.
 
 ## Current phase
 
-Roguelite rework, **R2 built — R2a-R2e done, the R2 exit playtest next** (`docs/design/ROGUELITE_REWORK.md` §13
-is the roadmap; it supersedes GAME_OUTLINE stages 4–5). R2a shipped the lootable-site layer — 15
-placed sites, channelled looting, the grave choice sheet, loot/relics/gold, dens gating the dusk
-raid, the deeds ledger R3 reads (`docs/history/2026-08-loot-sites.md`). R2b gave him his own
-fight — engage close / cast far, the lair aura as geography, out-of-combat regen, and a death that
-costs the haul (`docs/history/2026-08-villain-combat.md`). R2c closed the loop — the haul banks at
-the Throne (not the band edge), relics wake on deposit, and a dropped load leaves a cache
-(`docs/history/2026-08-sortie-deposit.md`). R2d gave him an escort with no unit orders — one enum
-member and one field on the rally point (`docs/history/2026-08-escort.md`). R2e gave him the Raven —
-honest dawn pings drawn above the fog, never a reveal, plus camp occupancy (`docs/history/2026-09-26-raven.md`).
-R1 is done: directly-controlled killable Necromancer (WASD,
-camera follow), 144×144 fixed world with terrain/blocking/roads/fog, static village, sealed rival
-ground, travel times tuned to WORLD_MAP_PLAN §3. The Stage 1–3 settlement loop (priority-list
-economy, Barracks intake, generated recruits, meals/morale/desertion, fund-a-house, wolf combat,
-Command Undead) is built and verified. **Death ends the run** (2026-09-26): `scripts/run/`
-holds RunLifecycle (endings, XP banked per deed, Second Wake unlock) and MetaProfile
-(`user://meta_profile.json`, written only when Main is the running scene); Raise Dead is his
-first spell and there is no free starting skeleton (`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`).
-The win condition is still the legacy placeholder.
-Climate: deliberately not implemented. One villain class (Undead Empire) for now — but **no system
-may assume exactly one villain on the map** (per-villain state on the villain object, never in an
-autoload/global).
+Roguelite rework (`docs/design/ROGUELITE_REWORK.md` §13 roadmap, §17 amendments). **R1 done; R2
+fully built** (P0, U1, F1, C2, P1, P2, R2a–R2e). **Next: the R2 exit playtest (a human), then
+LIVING_WORLD L0 / R3** (`docs/design/LIVING_WORLD_SPEC.md` §14–15). Also built: **death ends the
+run** (R4-lite + the XP half of R5, `docs/design/PROGRESSION.md`), Raise Dead as his first spell
+with no free starting skeleton, and the demo shell. Where each landed: the newest rows of
+`docs/history/README.md`. The win condition is still the legacy placeholder. Climate: not
+implemented. One villain class for now — but **no system may assume exactly one villain on the
+map** (per-villain state on the villain object, never in an autoload/global).
 
 ## Architecture conventions (the load-bearing ones)
 
-- `GameState` (autoload) — single source of truth for resources/threat/power/followers. Reputation
-  is per-villain (ROGUELITE_REWORK §7/§11, decided 2026-08-06): today's `GameState.reputation` int
-  is legacy, replaced in R3 by five axes on the villain object — never extend it. Threat stays
-  global (world state). `EventBus` (autoload) — ALL cross-system communication is signals here,
-  not direct references.
+- `GameState` (autoload) — single source of truth for resources/threat/power/followers **today**;
+  LIVING_WORLD ruling 13 makes it a façade over the player's settlement at L0 (not built yet).
+  `GameState.reputation` is legacy — never extend it (R3: five axes on the villain). Threat stays
+  global. `EventBus` (autoload) — ALL cross-system communication is signals here.
 - **Sim state lives on data objects (RefCounted); tokens are pure views.** `Worker`/`Follower`
-  (extend `Laborer`), `Necromancer` own position/hp/state; `*Token` nodes only draw. Never put
-  timers or state on a token — that drift has been unwound twice already.
-- `ResourceNode` is a Node2D on purpose (its position/appearance IS its gameplay content).
-- **Content is data-driven:** `data/*.json` (races, buildings, events, missions, recruitment,
-  world_map, world_sites). New content = JSON edit; new *effect types* = extend the relevant system.
-- Combat: `Combat.gd` is THE damage formula (knows nothing); `CombatSystem.gd` is policy.
-  Duck-typed contracts: `get_inspect_data()` (inspectables), Combatant methods (fighters).
-- Stats: the nine-attribute model of `docs/design/COMBAT_SPEC.md` §2. **Live since C2** —
-  Might is gone. `stat_rework_roster.xlsx` is the editing surface; `tools/export_roster.gd` derives
-  `data/races.json` from it, templates and overrides included. Carry = Endurance, max_hp =
-  8 + End×2, walk speed derives from Speed. One governing attribute per skill; effective =
-  skill + floor((attr−5)/2), clamped 1–10 and **computed at use time, never stored**. Attack
-  profile (Melee/Ranged/Arcane) falls out of highest Str/Dex/Int — a unit needing a hand-written
-  profile means the rule is wrong, not the unit special. Creatures and villains use the same nine.
-- Indirect control is a pillar: no unit orders. The exceptions are the Necromancer (driven
-  directly) and Command Undead (binds the dead as a class, via `alignment: "Undead"`).
-  **His casting is proximity-engaged, not ordered** (NECROMANCER_SPEC §3): walking within 26px
-  of a hostile opens a fight, walking past his 5-cell Arcane reach ends it, there is no attack
-  button, and he is never rooted — his engagement membership lives in `CombatSystem`.
-  **The escort is that same spell anchored to a man** (ESCORT_SPEC §3): `RallyPoint.follow` plus
-  one enum member, all the dead and never a chosen subset, and a whole-escort stance that is a
-  policy on the spell rather than an order to a unit.
-- The Necromancer is NOT a Laborer and not in any labor pool — keep the exclusion structural.
-- Timers must be delta-accumulators or SceneTreeTimers so `Engine.time_scale` (debug 1x/10x/60x)
-  scales everything together. Never `Time.get_ticks_msec()` for gameplay.
+  (extend `Laborer`), `Necromancer` own position/hp/state; `*Token` nodes only draw — never put
+  timers or state on a token. `ResourceNode` is a Node2D on purpose.
+- **Content is data-driven** (`data/*.json`): new content = JSON edit; new *effect types* = extend
+  the system.
+- `Combat.gd` is THE damage formula (knows nothing); `CombatSystem.gd` is policy. Duck-typed
+  contracts: `get_inspect_data()` (inspectables), Combatant methods (fighters).
+- Stats: nine attributes, `docs/design/COMBAT_SPEC.md` §2 (Might is gone). `stat_rework_roster.xlsx`
+  is the editing surface; `tools/export_roster.gd` derives `data/races.json`. Carry = Endurance,
+  max_hp = 8 + End×2. Walk speed is a **per-race constant** in `races.json`, derived from Speed at
+  export only: a recruit's rolled Speed never changes it, and the Necromancer moves at
+  `MOVE_SPEED_CELLS` (1.0), not his row. Effective skill = skill + floor((attr−5)/2), clamped
+  1–10, **computed at use time, never stored**. Attack profile falls out of highest Str/Dex/Int —
+  a unit needing a hand-written profile means the rule is wrong. Creatures and villains use the
+  same nine.
+- **No unit orders.** Exceptions: the Necromancer (driven directly) and Command Undead (binds the
+  dead as a class, via `alignment: "Undead"`). His casting is proximity-engaged — 26px engage,
+  5-cell reach, no attack button, never rooted (NECROMANCER_SPEC §3). The escort is that spell
+  anchored to him: `RallyPoint.follow`, all the dead, stance as policy (ESCORT_SPEC §3). He is NOT
+  a Laborer — keep that structural.
+- Timers are delta-accumulators or SceneTreeTimers so `Engine.time_scale` scales everything. Never
+  `Time.get_ticks_msec()` for gameplay.
 
 ## Graphics rules
 
-`docs/art/SPRITE_SPEC.md` is the ONE authority for **characters and buildings** (256px canvas,
-y=224 baseline, body families). **Terrain sheets are explicitly outside it** — full-res 4x4
-tilesheets in `assets/official/terrain/`, sliced to 64px at load; `TERRAIN_SPEC.md` §2 governs
-them and `tools/dump_atlas.gd` is how you read one.
-In code: sizes are **content heights** via `Anchoring.scale_for_content_height()` (never divide
-by texture width; never use `CELL_SIZE` as a sprite size). `Anchoring.foot()` / `cell_base()`
-anchor the drawn alpha box. Click radii come from `Anchoring.drawn_content_size()` × 0.45.
-Exception: the wolf is width-scaled (quadruped rule); `WorldSite`/`Patrol` still use the old
-canvas-width math — convert them only together with re-tuning `data/world_sites.json`.
-`assets/official/` is commissioned art (masters in `_originals/`, .gdignore'd — leave alone);
-`assets/placeholder/` is stand-ins (delete each in the commit that replaces it);
-`assets/vendor/` is cold storage — nothing there is wired. New art lands in the right subfolder,
-named per SPRITE_SPEC, in the same commit that wires it. Never at repo root.
+`SPRITE_SPEC.md` is the ONE authority for characters and buildings; terrain sheets (4x4 in
+`assets/official/terrain/`) are outside it — `TERRAIN_SPEC.md` §2; read one with `dump_atlas.gd`.
+Sizes are **content heights** via `Anchoring.scale_for_content_height()` — never texture width,
+never `CELL_SIZE`. `Anchoring.foot()` / `cell_base()` anchor; click radii =
+`drawn_content_size()` × 0.45. Exceptions: the wolf is width-scaled; `WorldSite`/`Patrol` keep
+canvas-width math until `world_sites.json` is re-tuned. `assets/official/` is commissioned
+(`_originals/` untouched), `placeholder/` stand-ins (delete in the replacing commit), `vendor/` cold
+storage. New art is named per SPRITE_SPEC and wired in the same commit. Never at repo root.
 
 ## File map
 
 ```
-scripts/Main.gd            wiring root + input-mode arbitration (placement > demolish > rally > inspect)
-scripts/ui/                InspectionPanel (the one inspect panel), Minimap, HudTopBar, BuildMenu,
-                           EconomyTab, EventPanelUI, InspectorActions, TokenLayer,
-                           CombatFeedback (pooled floating damage numbers)
-scripts/autoload/          GameState, EventBus, BuildingCatalog, RaceCatalog, LootCatalog (load-once
-                           JSON catalogs; LootCatalog also owns THE loot roll)
-scripts/settlement/        SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
-                           MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
-scripts/villain/           Necromancer (data), VillainController (WASD+camera follow),
-                           SortieSystem (party capacity, the deposit, dropping, death)
-scripts/combat/            Combat (formula), Engagement, CombatSystem (policy), UndeadCommand, RallyPoint
-scripts/world/             WorldMap (ONE TileMapLayer, 7-sheet atlas + connection tiles + ONE
-                           MultiMeshInstance2D canopy),
-                           FogOfWar (one 144×144 image), DayNightCycle,
-                           WorldSite(s) (loot state on the node), Raven/RavenMarker, SiteGuardian, Patrol, Wolf,
-                           Roaming, TravelLog
-scripts/bounty|events|missions|threat/   Stage-4 systems, built but mostly unsurfaced in UI
-data/                      the JSON content (races/buildings/events/missions/recruitment/world_*,
-                           loot_tables/relics/site_choices)
-tools/                     generators + verification harnesses (KEEP: they re-derive every number),
-                           make_world_map.gd (GENERATES the layout by rule -- 9-step pipeline,
-                           TERRAIN_SPEC §8; re-run and commit the JSON after editing),
-                           export_roster.gd (stat_rework_roster.xlsx → data/races.json),
-                           dump_atlas.gd (READ ITS OUTPUT before wiring a terrain sheet)
-docs/design|art|prompts|history/         specs, art rules, prompt libraries, dated dev narrative
-assets/official|placeholder|vendor/      see Graphics rules
+scripts/Main.gd      wiring root + input arbitration (placement > demolish > rally > inspect)
+scripts/             Controls (InputMap, physical keys), Anchoring, GameCamera
+scripts/autoload/    GameState, EventBus, Building/Race/LootCatalog (LootCatalog owns THE loot roll)
+scripts/run/         RunLifecycle (endings, XP per deed, Second Wake), MetaProfile (XP save)
+scripts/ui/          InspectionPanel, Minimap, HudTopBar, BuildMenu, EconomyTab, EventPanelUI,
+                     InspectorActions, TokenLayer, CombatFeedback, DebugSiteOverlay (F3),
+                     RunSummary, PauseMenu, TitleScreen
+scripts/settlement/  SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
+                     MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
+scripts/villain/     Necromancer (data), VillainController, SortieSystem (capacity/deposit/death)
+scripts/combat/      Combat, Engagement, CombatSystem, UndeadCommand, RallyPoint
+scripts/world/       WorldMap (one TileMapLayer + one canopy MultiMesh), FogOfWar, DayNightCycle,
+                     WorldSite(s), Raven/RavenMarker, SiteGuardian, Patrol, Wolf, Roaming, TravelLog
+scripts/bounty|events|missions|threat/  Stage-4 systems, built, mostly unsurfaced
+data/                JSON content, incl. loot_tables, relics, site_choices, progression, followers
+tools/               generators + harnesses (KEEP). make_world_map.gd GENERATES the layout
+                     (TERRAIN_SPEC §8: re-run, commit the JSON); export_roster.gd; dump_atlas.gd
 ```
 
-## Verification harnesses (run after touching the related system)
+## Verification harnesses (`godot --headless --path . res://tools/<name>.tscn`)
 
-- `godot --headless --path . --import` — required after adding any `class_name`
-- headless boot: `godot --headless --path . --quit-after 200` — clean start check
-- `tools/check_sprite_scales.tscn` — 122 assertions: everything draws at its claimed size, and
-  every looted-state sprite shares its unlooted partner's canvas
-- `tools/measure_travel.tscn` — travel bands vs WORLD_MAP_PLAN §3. **The gate on any map change**
-  (TERRAIN_SPEC §9): every row must be back in band, and walk speed is not a knob
-- `tools/verify_terrain.tscn` — 278 assertions: per-file sheet slicing, 112 distinct atlas tiles
-  with none all-black, every legend char and all 80 mask entries resolving, the flipped
-  alternatives, **and the generated layout** — road network connected to every landmark, no path
-  every active site reachable from the lair within its own interaction reach,
-  within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill sealing off no
-  region, clearings with exactly one mouth, canopy within budget. Terrain-only draw calls (run
-  windowed for that gate)
-- `tools/verify_loot_tables.tscn` — 515 assertions: every table rolled 10k times against
-  LOOT_SITES_SPEC §5's bands (four per-column authored exceptions), relics unique, the grave
-  sheet's gating, remainder charges, the notice-vs-deeds split, relic effects waking only on
-  deposit, Dark Essence unprintable at home, and the dusk gate (1,000 dusks each way)
-- `tools/smoke_site_actions.tscn` — 26 assertions: presses the site action buttons **as buttons**,
-  through `Main._inspect_at` and the real panel, checking no later sibling Control covers them.
-  The only cover on the click→`begin_action` chain; a human mouse is still the last word
-- `tools/verify_villain_combat.tscn` — 65 assertions: the aura band edge from both sides, engage
-  at 26px / cast to 5 cells / disengage by walking, retaliation, bounded kiting, regen halting
-  under engagement, death clearing the haul before any later handler, and the 1,000-fight bands
-  (one wolf: a costly win; a three-wolf pack alone: never)
-- `tools/verify_sortie.tscn` — 67 assertions: party capacity (6 alone, 14 with two skeletons) and
-  the villain-first filling order, overflow leaving an exact remainder, the automatic deposit
-  emptying villain AND escort in one frame, **the band edge banking nothing**, the two drop paths,
-  a dropped cache behaving as an ordinary site, relics waking only on deposit, and death clearing
-  the haul before any later handler
-- `tools/verify_escort.tscn` — 58 assertions: binding covers undead and ONLY undead, bound escorts
-  leave the labour pool and return on dismiss, the point tracks him through a terrain slide, a
-  skeleton raised at a grave joins with no explicit add, both stances, the interpose firing in
-  both, and guardian targeting going through `hostiles()` rather than `wolves`
-- `tools/verify_stats.tscn` — 505 assertions: nine attributes, the derivation formula against the
-  workbook's Effective skills sheet, profiles, hp/carry, no identifier named Might (after ANY
-  roster or stat change)
-- `tools/verify_combat_feedback.tscn` — 31 assertions: one emit per landed swing both ways,
-  the 32-float cap, no leak over 1000 exchanges, and Combat/Engagement still signal-free
-- `tools/verify_raise_dead.tscn` — 26 assertions: no free skeleton, Raise Dead for bones at his
-  feet, a grave's corpse as a free live Worker (through `_resolve_choice`, never `add_worker`),
-  dismissed loads banking, relic uniqueness through caches, Collect counting the escort
-- `tools/verify_run_lifecycle.tscn` — 49 assertions: the XP and level formulas (docs/design/PROGRESSION.md), profile round trip, harness
-  profiles never persisted, XP per deed, owner checks, Second Wake, death ending the run (deferred
-  a frame), the run-end screen, and the new run's 1x clock
-- `tools/verify_raven.tscn` — 39 assertions: the five honesty conditions counted separately over
-  1,000 scrambled dawns, camp occupancy, the cap, delivered silence, ~70% cadence, fog byte-identical
-  after 1,000 pings, claiming clears the mark, the chip drops follow
-- `tools/verify_demo_shell.tscn` — 38 assertions: every key a named action bound by physical key,
-  no raw keycode reads outside `Controls.gd`, pause and Esc-then-pause, Surrender's confirm, the
-  title, and dev tools gated to debug builds
-- `tools/check_fog_and_minimap.tscn` — 50 assertions: multi-source fog (villain 7 cells, friendly
-  units 3, lit-while-present), the cell-boundary early-out, minimap dots and the two click paths
-- `tools/capture_settlement.gd` — seeded windowed screenshot for before/after eyeballs
+`--import` after adding any `class_name`; `--quit-after 200` is the boot check (it sits paused on
+the title — expected). Assertion counts as of 2026-09-26:
+- `measure_travel` — **the gate on any map change**: every row back in band; walk speed is no knob
+- `verify_terrain` 278 — sheets, atlas, masks, and the generated layout: roads reach every
+  landmark, no path within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill
+  seals no region, every active site reachable from the lair within its interaction reach, every
+  dirt dead end leads to loot, one-mouth clearings, canopy budget (run windowed for draw calls)
+- `verify_loot_tables` 515 — every table rolled 10k times against LOOT_SITES_SPEC §5's bands,
+  relic uniqueness, the grave sheet, remainders, relics waking only on deposit, the dusk gate
+- `verify_stats` 505 — nine attributes vs the workbook, profiles, hp/carry, no identifier named
+  Might (after ANY roster/stat change)
+- `check_sprite_scales` 122 — everything draws at its claimed size; looted sprites share a canvas
+- `verify_sortie` 67 — party capacity, the deposit at the Throne (not the band edge), drops,
+  caches, death clearing the haul first
+- `verify_villain_combat` 65 — aura band edge, engage 26px / cast 5 cells, regen, 1,000-fight bands
+- `verify_escort` 58 — undead-only binding, labour pool in/out, a grave-raised skeleton joining,
+  both stances, the interpose
+- `check_fog_and_minimap` 50 — fog sources (him 7 cells, units 3), minimap dots and clicks
+- `verify_run_lifecycle` 49 — XP/level formulas (PROGRESSION.md), profile never written by a
+  harness, owner checks, Second Wake, death ending the run, the run-end screen
+- `verify_raven` 39 — the five honesty conditions over 1,000 dawns, cap, silence, fog untouched
+- `verify_demo_shell` 38 — physical-key actions, no raw keycodes, pause/Esc, Surrender's confirm,
+  the title, dev tools debug-only
+- `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
+- `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
+- `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)
+- `capture_settlement.gd` — seeded windowed screenshot for before/after
 
-## Gotchas (one line each; details in docs/history/)
+## Gotchas (details in docs/history/)
 
-- **F3 = dev site overlay** (`scripts/ui/DebugSiteOverlay.gd`): labels every active site through
-  the fog, plus minimap dots. Debug builds only (`OS.is_debug_build()`), default off, read-only —
-  it must never reveal, write fog, or set a discovery flag, or it perjures the Raven. Marks any
-  site it cannot path to UNREACHABLE in red.
-- The lair aura is a POSITION, not a flag: `CombatSystem.aura_protects_villain()` reads
-  `Necromancer.is_in_lair_band()`. One test, three consumers (aura, prey membership, regen rate).
-- A global signal carrying a villain needs an owner check: `villain_died` fires for every villain,
-  so a handler must ignore one that is not its own (it healed simulated villains mid-fight).
-- Keys are InputMap actions registered by `Controls.ensure()` (physical keycodes). Never read a raw
-  keycode; add a row to `Controls.ACTIONS` instead. The title shows only when Main is the running
-  scene, so the headless boot check sits paused on it -- that is expected.
-- godot-mcp simulated input NEVER reaches the game (`_unhandled_input`/`Input.is_key_pressed`);
-  only `click_button_by_text` works. Real mouse/keyboard QA needs a human.
-- The debug game window may eat its first real click (OS focus) — click once, then test.
-- `-s` scripts compile before autoloads exist → run harnesses as scenes
-  (`godot --headless --path . res://tools/x.tscn`); `load()` in `_init()` hangs headless.
-- Headless viewport is 64×64 — set `root.size` before any geometry assertion.
-- Signal arity: a handler missing the signal's args connects fine and fails silently at emit.
-- GDScript lambdas capture locals by value — mutate through an Array or member.
-- `_set` is an Object virtual — don't name helpers that.
-- `project.godot` keys are section-relative; verify with `ProjectSettings.get_setting()` at runtime.
-- `get_process_delta_time()` is already time-scaled — don't multiply again in harnesses.
-- Some `Icons/Food/` files are really named `*.png.png` — check disk before "fixing" paths.
-- Keep repo paths short — a 260-char path once broke git entirely (MAX_PATH).
-- Y-sort: opt-outs by higher z_index are deliberate (Necromancer 5, wolf 6, fog 100).
+- F3 overlay (`DebugSiteOverlay`): debug builds only, read-only — it must never reveal, write fog
+  or set a `discovered` flag, or it perjures the Raven.
+- The lair aura is a POSITION: `CombatSystem.aura_protects_villain()` reads `is_in_lair_band()`.
+- A global signal carrying a villain needs an owner check (`villain_died` fires for every villain).
+- Never read a raw keycode: add a row to `Controls.ACTIONS`.
+- Harness runs never write `user://meta_profile.json` (only when Main is the running scene).
+- godot-mcp simulated input never reaches the game; only `click_button_by_text` works. Real
+  mouse/keyboard QA needs a human. The debug window may eat its first click.
+- Run harnesses as scenes (`-s` compiles before autoloads); `load()` in `_init()` hangs headless;
+  the headless viewport is 64×64 — set `root.size` first.
+- A handler missing a signal's args connects fine and fails silently. Lambdas capture locals by
+  value. `_set` is an Object virtual. `project.godot` keys are section-relative.
+  `get_process_delta_time()` is already time-scaled.
+- Some `Icons/Food/` files are `*.png.png`. Keep repo paths short (MAX_PATH). Y-sort opt-outs by
+  z_index are deliberate (Necromancer 5, wolf 6, fog 100).
 
 ## Maintaining this file
 
-Orientation only. If you're writing more than ~10 lines about a pass you just finished, it goes in
-`docs/history/YYYY-MM-topic.md` (and a row in that folder's `README.md`) and this file gets at most
-a one-line pointer. Budget ~8KB.
+Orientation only. More than ~10 lines about a pass goes in `docs/history/YYYY-MM-topic.md` (plus a
+row in its `README.md`); this file gets at most a one-line pointer. Budget ~10KB
+(raised from 8KB on 2026-09-26): accuracy first, then size.

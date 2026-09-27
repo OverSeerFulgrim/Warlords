@@ -6,6 +6,13 @@
 
 > **See §12 (Addendum).** The reference document was revised on August 3, 2026 in response to this review. It accepts the verdict and corrects three claims made below — all three corrections are right and have been verified. **§4, §6 and §7 of this document should be read through the addendum**, which supersedes their overstated parts.
 
+> **Status note, 2026-09-26.** This is a dated review, left as written. Since then, §7's A–C have
+> been done. The commissioned art was resampled to 128px runtime copies, with the masters in
+> `_originals/`. The folder is now `assets/official/`, not `Official Sprites/`. `project.godot` sets
+> `default_texture_filter` deliberately (Linear Mipmap). `NecromancerToken` draws
+> `Necromancer_Full_Body` (see `docs/history/2026-08-art-provenance.md`). §7 D and the §8 proof of
+> concept have **not** been built: nothing in `scripts/` plays an animation sheet.
+
 ---
 
 ## 1. Verdict
