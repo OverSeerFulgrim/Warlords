@@ -698,7 +698,7 @@ anything; **that boundary was built 2026-09-26**, so the dependency is met.
 | **L1 — One village, three jobs** | Farm, Woodcutter+Mill, Guardhouse; re-staff priority with **Randy rule** and Guardhouse training (§5.3); workers walk out and back; **jobless foragers** (§5.8) — **built 2026-09-26** (Harrowdale, `data/village.json`), with bodies to raise and an alarm the guards answer | Kill a woodcutter, watch the village react. Nothing scripted. |
 | **L2 — The Guild** | Guild building + faction; standing tiers; generated board with the den bounty; road spawn + first-run popup; **roadside graves**; **Altar blueprint in the den**; **attention ranges** (day/night) and witness runners with destinations (§8.1); the **Hidden / Hunting stance** (§8.7) — **built 2026-09-26**; not yet: Known's bounty on him, "strange sightings" as board entries | First run: walk the road, raise your first dead, clear the den, come home with the Altar. Get seen once, watch standing drop *when the runner arrives*. |
 | **L3 — Downed and prisoners** | §11 downed/bleed-out/rescue/batch; capture → prisoner; **the Cell** (§10.4) with food upkeep; Necromancer uses 2–3 (trade, search); **burial parties and growing graveyards** (§5.7) — **built 2026-09-27** (`history/2026-09-27-living-world-l3.md`): villagers and outlaws down, guards carry their own home, Bind all / Finish all, prisoners on a rope, the Cell (the first search teaches it), meals and starving, Search, Summon Ghoul, a new raisable grave per burial. Not yet: **trade** (needs the bandits, L6), sleeping units as downed (caravans, L5), rescue by other factions, a fixed grave set that fills before it grows | Capture-or-slay is a real choice because prisoners do something corpses don't. Bodies you leave come back as graves. |
-| **L4 — Goblin camp and adventurers** | Camp on the template; raiding job; prisoners-as-food; bounties generated from raids; adventurers taking bounties; **the six classes with rarity and party composition** (§4.5); **due dates, MIA, badges, the finder** (§4.4); forage bounties | A bounty appears because goblins hit a farm. An adventurer walks out to it and doesn't come back. A recovery bounty follows. |
+| **L4 — Goblin camp and adventurers** | Camp on the template; raiding job; prisoners-as-food; bounties generated from raids; adventurers taking bounties; **the six classes with rarity and party composition** (§4.5); **due dates, MIA, badges, the finder** (§4.4); forage bounties; **R3, folded in (ruling 17):** the five reputation axes on the villain, moved when a witness runner arrives (the same arrival that already moves standing), recruit offers on axis thresholds through the existing `RecruitGenerator`, and notoriety feeding adventurer parties and patrols | A bounty appears because goblins hit a farm. An adventurer walks out to it and doesn't come back. A recovery bounty follows. **A recruit arrives because of something he was seen doing.** |
 | **L5 — Caravans** | Trade caravan two-leg loop; gold spend; response to loss; escort posting; **night camps with a sentry** (§7.4) | Materials-or-gold is a visible choice; the escort-and-rob play and the sentry kill both work with no special code. |
 | **L6 — Bandits, growth, immigrants** | Bandit hold with ransom economy and camp-move; slot cap + settler caravans to **generator-placed hamlet sites**; immigrant caravans on regional prosperity | The map's shape changes over a long run; the world can be exhausted. |
 | **L7 — Market, Tower, Church, blueprints** | Market (potions from red mushrooms, guides, blueprints, badge finder, **mask** §8.6); Wizard Tower + Church as detectors (§8.4); blueprint-on-flip; persistent blueprint ledger | A dead run still banked a blueprint. Hitting order of a village's buildings matters. |
@@ -744,8 +744,18 @@ anything; **that boundary was built 2026-09-26**, so the dependency is met.
 16. **Druids calm a beast, not a den.** A druid can calm a single beast; the calm wears off, so it
     never clears a den and never solves the den bounty (§4.5).
 
-**No open rulings.** L0–L2 built 2026-09-26; next step: L3 (downed, prisoners, the Cell — and so
-Summon Ghoul's sacrifice).
+**Issued 2026-09-27:**
+
+17. **R3 folds into LIVING_WORLD.** `ROGUELITE_REWORK.md`'s R3 is no longer a separate stage. "The
+    world noticed" is built once: the witness runner (§8.1). When a runner arrives it moves the
+    guild standing (built, L2) **and** records the deed on the villain's five reputation axes
+    (`ROGUELITE_REWORK.md` §7). Standing and the axes stay two different things — standing is what
+    one faction will do with him, the axes are what the whole region says about him — but they share
+    one feed, so an unwitnessed deed moves neither. The axes live on the villain, never in
+    `GameState` (`GameState.reputation` stays legacy). Axis thresholds then drive recruit offers and
+    escalation. The work lands with L4, whose adventurers are the first thing that reads it.
+
+**No open rulings.** L0–L3 built (L3 on 2026-09-27); next step: the human playtest, then L4.
 
 ---
 

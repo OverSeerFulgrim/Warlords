@@ -148,4 +148,5 @@ the title — expected). Assertion counts as of 2026-09-27:
 
 Orientation only. More than ~10 lines about a pass goes in `docs/history/YYYY-MM-topic.md` (plus a
 row in its `README.md`); this file gets at most a one-line pointer. Budget ~10KB
-(raised from 8KB on 2026-09-26): accuracy first, then size.
+(raised from 8KB on 2026-09-26): accuracy first, then size. Every pass also updates
+`docs/CURRENT_STATE.md` (what is built, still undecided, and next).

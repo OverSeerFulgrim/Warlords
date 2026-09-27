@@ -453,7 +453,7 @@ the carry, and produces a TravelLog line per §6 — before the deposit step eve
 - **Ruling 1 now covers the camp too**, as it always said it did: gold-first, wood and food as
   garnish. The harness asserts gold-dominance for it as it does for the cache.
 - **Wolf den gold weight 26 → 30:** the mean sat exactly on Band 2's gold floor and the harness passed
-  or failed on noise. Now ≈2.25 per den.
+  or failed on noise. Now ≈2.25 per den. **Confirmed by the designer 2026-09-27:** it stays at 30.
 
 ## Implementation notes, 2026-09-26 (run lifecycle and Raise Dead pass)
 

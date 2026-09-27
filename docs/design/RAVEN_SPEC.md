@@ -157,9 +157,8 @@ produce content. A silent day is a correct day.
 > cache unpingable and leave the bird at most one site (the camp) per run. The flag is read-only
 > over the fog (the harness asserts the fog byte-identical across 1,000 pings). The five checks
 > live in `WorldSites.raven_checks()`; reachability is one flood fill from the lair,
-> `WorldSites.is_reachable()`, which the F3 overlay also uses. Whether "somebody of his stood within
-> sight of it" matches the designer's intent is still a question for the human
-> (`docs/history/2026-09-26-raven.md`, *Needs a human*).
+> `WorldSites.is_reachable()`, which the F3 overlay also uses. **Confirmed by the designer
+> 2026-09-27:** "somebody of his stood within sight of it" is the intended reading.
 
 The one thing a ping does not promise is *safety of the route*. The Raven vouches for the
 destination, never the road — the wolf, the dusk, and the ridge are all still yours. That distinction

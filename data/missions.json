@@ -33,7 +33,7 @@
     "id": "court_infiltration",
     "title": "Court Infiltration",
     "description": "Plant influence inside a nearby noble's court.",
-    "relevant_stat": "mercantile",
+    "relevant_stat": "leadership",
     "difficulty": 7,
     "reward": { "reputation": 2, "food": 5 },
     "complication_effects": { "threat": 2 },
