@@ -24,6 +24,7 @@ func _ready() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiKit.menu_theme()
 	add_child(root)
 
 	_dim = ColorRect.new()
@@ -39,21 +40,19 @@ func _ready() -> void:
 
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(PANEL_WIDTH, 0)
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.04, 0.08, 0.96)
-	style.border_color = Color(0.55, 0.42, 0.75, 0.9)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
-	style.content_margin_left = 22
-	style.content_margin_right = 22
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
-	_panel.add_theme_stylebox_override("panel", style)
+	_panel.add_theme_stylebox_override("panel", PauseMenu.panel_style())
+	UiKit.add_crest(_panel)
 	center.add_child(_panel)
 
+	# A long run's chronicle can outgrow a short window: the body scrolls
+	# inside the frame rather than pushing the buttons off-screen.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_panel.add_child(scroll)
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 8)
-	_panel.add_child(_body)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(_body)
 	visible = false
 
 func is_showing() -> bool:
@@ -74,7 +73,7 @@ func show_summary(s: Dictionary) -> void:
 	_body.add_child(title)
 
 	_body.add_child(_wrapped(String(s.get("epitaph", "")), 13, Color(0.86, 0.82, 0.92)))
-	_body.add_child(HSeparator.new())
+	_body.add_child(UiKit.divider())
 
 	# ---- The run ----
 	_body.add_child(_heading("This run"))
@@ -114,7 +113,7 @@ func show_summary(s: Dictionary) -> void:
 	if int(st.get("wakes_used", 0)) > 0:
 		_body.add_child(_wrapped("Second Wake used %d× this run." % int(st.get("wakes_used", 0)), 11, Color(0.75, 0.7, 0.85)))
 
-	_body.add_child(HSeparator.new())
+	_body.add_child(UiKit.divider())
 
 	# ---- The legend ----
 	_body.add_child(_heading("The Necromancer"))
@@ -129,20 +128,10 @@ func show_summary(s: Dictionary) -> void:
 	lvl_label.text = "Level %d" % lvl
 	lvl_label.add_theme_font_size_override("font_size", 16)
 	xp_line.add_child(lvl_label)
-	var bar := ProgressBar.new()
-	bar.custom_minimum_size = Vector2(260, 16)
+	var bar := UiKit.bar(260)
 	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.show_percentage = false
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.62, 0.45, 0.92)
-	fill.set_corner_radius_all(3)
-	bar.add_theme_stylebox_override("fill", fill)
-	var track := StyleBoxFlat.new()
-	track.bg_color = Color(0.16, 0.13, 0.22)
-	track.set_corner_radius_all(3)
-	bar.add_theme_stylebox_override("background", track)
-	bar.max_value = maxi(1, span)
-	bar.value = into if span > 0 else 1
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	UiKit.set_bar(bar, float(into) / float(span) if span > 0 else 1.0)
 	xp_line.add_child(bar)
 	var xp_num := Label.new()
 	xp_num.text = ("%d / %d XP" % [into, span]) if span > 0 else "max level"
@@ -164,17 +153,17 @@ func show_summary(s: Dictionary) -> void:
 	# ---- The chronicle ----
 	var chron: Array = s.get("chronicle", [])
 	if chron.size() > 1:
-		_body.add_child(HSeparator.new())
+		_body.add_child(UiKit.divider())
 		_body.add_child(_heading("The chronicle"))
 		var shown: Array = chron.duplicate()
 		shown.reverse()
 		for c in shown.slice(0, 5):
 			_body.add_child(_wrapped(String(c.get("epitaph", "")), 11, Color(1, 1, 1, 0.7)))
 
-	_body.add_child(HSeparator.new())
+	_body.add_child(UiKit.divider())
 	new_run_button = Button.new()
 	new_run_button.text = "Begin a new run"
-	new_run_button.custom_minimum_size = Vector2(0, 34)
+	new_run_button.custom_minimum_size = Vector2(0, 38)
 	new_run_button.pressed.connect(func(): new_run_requested.emit())
 	_body.add_child(new_run_button)
 	var lair := Button.new()
@@ -188,6 +177,7 @@ func show_summary(s: Dictionary) -> void:
 	_body.add_child(quit)
 
 	visible = true
+	UiKit.fit_scroll(_body.get_parent() as ScrollContainer, _body)
 	new_run_button.grab_focus.call_deferred()
 
 func _heading(text: String) -> Label:

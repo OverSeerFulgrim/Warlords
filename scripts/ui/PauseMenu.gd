@@ -26,6 +26,7 @@ func _ready() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiKit.menu_theme()
 	add_child(root)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.5)
@@ -39,23 +40,17 @@ func _ready() -> void:
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(WIDTH, 0)
 	_panel.add_theme_stylebox_override("panel", PauseMenu.panel_style())
+	UiKit.add_crest(_panel)
 	center.add_child(_panel)
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 8)
 	_panel.add_child(_body)
 	visible = false
 
-static func panel_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.04, 0.08, 0.96)
-	style.border_color = Color(0.55, 0.42, 0.75, 0.9)
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(6)
-	style.content_margin_left = 22
-	style.content_margin_right = 22
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
-	return style
+## Every menu dialog's panel: the kit's popup frame (UiKit, 2026-09-27). Pair
+## it with `UiKit.add_crest(panel)` and `root.theme = UiKit.menu_theme()`.
+static func panel_style() -> StyleBox:
+	return UiKit.panel_style()
 
 func is_open() -> bool:
 	return visible
@@ -98,7 +93,7 @@ func _show_main() -> void:
 	_body.add_child(PauseMenu.heading("Paused", 22))
 	_button("Resume", close)
 	_button("Controls", _show_controls)
-	_body.add_child(HSeparator.new())
+	_body.add_child(UiKit.divider())
 	var flee := _button("Flee the region…", func():
 		close()
 		flee_requested.emit())
@@ -125,6 +120,7 @@ func _show_confirm() -> void:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size = Vector2(WIDTH - 44.0, 0)
 	l.add_theme_font_size_override("font_size", 12)
+	l.add_theme_color_override("font_color", HudStyle.TEXT)
 	_body.add_child(l)
 	var yes := _button("Abandon the run", func():
 		close()
@@ -136,7 +132,7 @@ func _show_confirm() -> void:
 func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 32)
+	b.custom_minimum_size = Vector2(0, 36)
 	b.pressed.connect(cb)
 	_body.add_child(b)
 	return b

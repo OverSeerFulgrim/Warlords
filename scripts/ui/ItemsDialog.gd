@@ -31,6 +31,7 @@ func _ready() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiKit.menu_theme()
 	add_child(root)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.5)
@@ -44,6 +45,7 @@ func _ready() -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(WIDTH, 0)
 	panel.add_theme_stylebox_override("panel", PauseMenu.panel_style())
+	UiKit.add_crest(panel)
 	center.add_child(panel)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(WIDTH - 20.0, 0)
@@ -76,9 +78,7 @@ func _render() -> void:
 	if villain == null:
 		return
 	# The scroll box sizes to its content, capped to the window.
-	var sc := _body.get_parent() as ScrollContainer
-	if sc:
-		sc.custom_minimum_size.y = minf(560.0, get_viewport().get_visible_rect().size.y - 120.0)
+	UiKit.fit_scroll(_body.get_parent() as ScrollContainer, _body, 560.0)
 	_body.add_child(PauseMenu.heading("Items", 20))
 	var line := _note("Bag: %d / %d slots. Resources take no room: %s." % [villain.carried_total(),
 		villain.carry_capacity(), LootCatalog.describe(villain.carried) if not villain.carried.is_empty() else "none"])

@@ -16,6 +16,10 @@
 export_presets.cfg
 
 # ---- Third-party addon binaries ----
+# 2026-09-27: limboai and ziva_agent were REMOVED from the designer's working
+# copy too (ruling 7.10), so his machine runs what a clean clone runs. The
+# ignore lines stay so a reinstall can never be committed by accident.
+#
 # addons/ziva_agent is ~1.4 GB of prebuilt CEF libraries and per-platform
 # `zivacode` binaries (linux x86_64/arm64, macos, windows x86_64/arm64). Seven
 # of its files are over GitHub's 100 MB hard limit, so the repo physically

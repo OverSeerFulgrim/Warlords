@@ -22,23 +22,48 @@ func _ready() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiKit.menu_theme()
 	add_child(root)
 	var dim := ColorRect.new()
 	dim.color = Color(0.02, 0.01, 0.04, 0.88)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	root.add_child(dim)
+	# The kit's main-menu frame, as large as the window allows at its own
+	# shape; the menu sits in its inside and scrolls if the window is short.
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 16)
+	root.add_child(margin)
+	var fit := AspectRatioContainer.new()
+	fit.ratio = float(UiKit.TITLE_FRAME.get_width()) / float(UiKit.TITLE_FRAME.get_height())
+	fit.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	fit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(fit)
+	var frame := TextureRect.new()
+	frame.texture = UiKit.TITLE_FRAME
+	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	frame.stretch_mode = TextureRect.STRETCH_SCALE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fit.add_child(frame)
+	var inside := ScrollContainer.new()
+	inside.anchor_left = UiKit.TITLE_INSIDE.position.x
+	inside.anchor_top = UiKit.TITLE_INSIDE.position.y
+	inside.anchor_right = UiKit.TITLE_INSIDE.end.x
+	inside.anchor_bottom = UiKit.TITLE_INSIDE.end.y
+	inside.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	frame.add_child(inside)
 	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(WIDTH, 0)
-	panel.add_theme_stylebox_override("panel", PauseMenu.panel_style())
-	center.add_child(panel)
+	inside.add_child(center)
 	_body = VBoxContainer.new()
-	_body.add_theme_constant_override("separation", 10)
-	panel.add_child(_body)
+	_body.custom_minimum_size = Vector2(WIDTH, 0)
+	_body.add_theme_constant_override("separation", 8)
+	center.add_child(_body)
 	visible = false
 
 func is_showing() -> bool:
@@ -61,7 +86,7 @@ func show_title(info: Dictionary) -> void:
 	sub.add_theme_font_size_override("font_size", 15)
 	sub.modulate = Color(1, 1, 1, 0.7)
 	_body.add_child(sub)
-	_body.add_child(HSeparator.new())
+	_body.add_child(UiKit.divider())
 
 	var runs: int = int(info.get("runs", 0))
 	var line := Label.new()
@@ -79,7 +104,7 @@ func show_title(info: Dictionary) -> void:
 		ep.text = last
 		ep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		ep.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		ep.custom_minimum_size = Vector2(WIDTH - 44.0, 0)
+		ep.custom_minimum_size = Vector2(WIDTH, 0)
 		ep.add_theme_font_size_override("font_size", 11)
 		ep.modulate = Color(1, 1, 1, 0.6)
 		_body.add_child(ep)
@@ -101,7 +126,7 @@ func _show_controls() -> void:
 	var hint := Label.new()
 	hint.text = "He has no dead yet. Open a grave and raise what is inside; bones raise more. Bring what you find home to the Throne. If he dies, the run is over."
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(WIDTH - 44.0, 0)
+	hint.custom_minimum_size = Vector2(WIDTH, 0)
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.modulate = Color(1, 1, 1, 0.7)
 	_body.add_child(hint)
@@ -115,7 +140,8 @@ func set_info(info: Dictionary) -> void:
 func _button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 34)
+	b.custom_minimum_size = Vector2(300, 40)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.pressed.connect(cb)
 	_body.add_child(b)
 	return b

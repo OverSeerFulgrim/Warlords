@@ -56,7 +56,8 @@ exactly one villain on the map** (per-villain state on the villain, never in an 
 Sizes are **content heights** via `Anchoring.scale_for_content_height()` — never texture width,
 never `CELL_SIZE`. `Anchoring.foot()` / `cell_base()` anchor; click radii =
 `drawn_content_size()` × 0.45. Exceptions: the wolf is width-scaled; `WorldSite`/`Patrol` keep
-canvas-width math until `world_sites.json` is re-tuned. `assets/official/` is commissioned
+canvas-width math until `world_sites.json` is re-tuned. Menus wear the UI kit (`UiKit.gd`;
+pieces cut by `tools/make_ui_kit.py`); the HUD stays `HudStyle`. `assets/official/` is commissioned
 (`_originals/` untouched), `placeholder/` stand-ins (delete in the replacing commit), `vendor/` cold
 storage. New art is named per SPRITE_SPEC and wired in the same commit. Never at repo root.
 
@@ -70,7 +71,8 @@ scripts/run/         RunLifecycle (endings, items kept, carry-in, XP, Second Wak
                      (XP, stash, blueprints)
 scripts/ui/          InspectionPanel, Minimap, HudTopBar, BuildMenu, EconomyTab, EventPanelUI,
                      InspectorActions, TokenLayer, CombatFeedback, DebugSiteOverlay (F3),
-                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen, ItemsDialog;
+                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen, ItemsDialog
+                     (all framed by UiKit);
                      the HUD: HudStyle (palette), DeadRoster, ActionBar, HudWindow, LogTicker, MapScreen
 scripts/settlement/  Settlement, SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                      MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
@@ -114,11 +116,11 @@ the title — expected). Assertion counts as of 2026-09-27:
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
 - `verify_inspect` 17 — every clickable's `get_inspect_data()` answers (guardians in every state)
 - `verify_hud` 42 — the HUD shows nothing until its mechanic does, windows/keys, map names only the seen
-- `verify_demo_shell` 46 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
+- `verify_demo_shell` 52 — physical keys, pause/Esc, Surrender's confirm, title, the UI kit, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
 - `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
 - `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)
-- `capture_settlement.gd` — seeded windowed screenshot for before/after
+- `capture_settlement.gd` / `capture_menus.gd` — windowed screenshots (the world / every menu)
 
 ## Gotchas (details in docs/history/)
 

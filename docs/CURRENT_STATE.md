@@ -28,6 +28,9 @@ If this file disagrees with any of those, they win. Fix this file.
   release builds. Export presets exist for Windows and Linux.
 - **The HUD redo:** there is no bottom bar, and each piece appears the first time its mechanic
   does.
+- **The UI kit on the menus** (2026-09-27): the commissioned frames, buttons, tick boxes, divider
+  and bar dress the title, pause, flee picker, Lair, Items and run-end screens. The icon sheet is
+  committed but not wired yet (`history/2026-09-27-ui-kit.md`).
 - **LIVING_WORLD L0–L3:** settlements with `GameState` as a façade over the player's, Harrowdale,
   the Hidden / Hunting stance, the Guild and standing, witnesses, blueprints and the roadside
   opening. L3 added downed and bleed-out, bind and finish, prisoners, the Cell, Search, Summon
@@ -44,11 +47,7 @@ settings/rebinding screen and mid-run saves.
 
 ## 2. Still undecided
 
-1. **The unused addons** (`limboai`, `ziva_agent`) still load as GDExtensions on the designer's
-   machine. A clean clone does not load them. Keep them or remove them?
-2. **`_imgtmp_ui_kit/`** is the only copy of the menu art. It needs a home under `assets/`
-   (SPRITE_SPEC naming) or an archive.
-3. From the 2026-08-29 agenda: a third field action, and the deposit's audio and visual payoff.
+1. From the 2026-08-29 agenda: a third field action, and the deposit's audio and visual payoff.
 
 **Known, and left alone on purpose:** the HUD placeholders ("Future roadmap goal", "Bounty board --
 unlocks in Stage 4", "Upgrades -- coming soon") stay on the designer's instruction. The legacy
@@ -58,8 +57,12 @@ keys in `data/followers.json`. The dead Stage-4 helpers in `Main.gd` are never c
 
 **Settled 2026-09-27** (recorded where each one lives):
 - R3 folds into LIVING_WORLD (LIVING_WORLD ruling 17).
+- The unused `limboai` and `ziva_agent` addons are **removed** from the designer's working copy
+  (about 1.5 GB) and from `.godot/extension_list.cfg`. His machine now runs what a clean clone runs.
 - `court_infiltration` uses **leadership**.
 - This file stays, under the update rule above.
+- The menu art is moved to `assets/official/` and wired onto the menus; `_imgtmp_ui_kit/` is
+  deleted.
 - "Discovered" means one of his stood within sight of the site (RAVEN_SPEC §4). The designer
   confirmed this reading.
 - The wolf den's gold weight stays at 30 (LOOT_SITES_SPEC). The designer confirmed it.
@@ -73,9 +76,10 @@ keys in `data/followers.json`. The dead Stage-4 helpers in `Main.gd` are never c
    check:
    - **Combat feel:** is walking into 26px a decision or an accident? Is a lost escort the right
      sting?
-   - **Screens at the real window size and font:** the run-end screen, his level line, the title,
-     the pause menu, the controls list, the flee picker and the Lair. Does Space as pause clash
-     with anything?
+   - **Screens at the real window size and font**, now in the UI kit: the run-end screen, his
+     level line, the title, the pause menu, the controls list, the flee picker and the Lair. Does
+     the title frame crowd the menu? Is the always-lit focused button a help? Does Space as pause
+     clash with anything?
    - **The Raven:** does a ping mid-sortie invite or interrupt? Is 70% a day generous or noisy? Does
      the mark read?
    - **Numbers:** the XP amounts, the level curve and Second Wake's level (`data/progression.json`).

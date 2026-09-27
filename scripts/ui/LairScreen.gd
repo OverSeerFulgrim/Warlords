@@ -30,6 +30,7 @@ func _ready() -> void:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.theme = UiKit.menu_theme()
 	add_child(root)
 	var dim := ColorRect.new()
 	dim.color = Color(0.02, 0.01, 0.04, 0.94)
@@ -43,6 +44,7 @@ func _ready() -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(WIDTH, 0)
 	panel.add_theme_stylebox_override("panel", PauseMenu.panel_style())
+	UiKit.add_crest(panel)
 	center.add_child(panel)
 	_body = VBoxContainer.new()
 	_body.add_theme_constant_override("separation", 8)
