@@ -450,115 +450,76 @@ func _choice(site: WorldSite, id: String) -> Dictionary:
 
 # ---------------- Remainder charges (SORTIE_SPEC §4) --------------------------
 
-## The rule the whole "one more grave, or turn back?" question rests on: loot
-## that does not fit **stays at the site**, the site keeps its actions and its
-## unlooted sprite, and its payload says what is still there. No ground piles.
+## **Since 2026-09-26 (designer ruling, first playtest): resources take no
+## space, and items land on the ground for him to choose from.** So a pull
+## never leaves resources behind, and what stays at a site is what he chose to
+## leave (or dropped there). The site keeps its actions and its unlooted sprite
+## while anything is there, and its payload says what.
 func _remainder_charges_stay_at_the_site() -> void:
-	print("-- Remainder charges (SORTIE_SPEC §4) --")
+	print("-- What stays at a site: items he did not take (2026-09-26) --")
 	var site: WorldSite = _site("cursed_battlefield")
 	if site == null:
-		_check("the battlefield is placed to test overflow with", false)
+		_check("the battlefield is placed to loot", false)
 		return
 	var v := Necromancer.new()
-	# Standing at it: `begin_action` enforces reach, and it should -- no remote
-	# looting, and no remote collecting either.
 	v.position = site.position
-	# Fill his hands to one slot short, so the next pull cannot possibly fit.
-	v.add_carried("bones", v.carry_capacity() - 1)
+	for id in ["tarnished_locket", "grave_coins", "noble_seal", "ledger_of_names", "sermon_of_ash", "barrow_lantern"]:
+		v.relics_carried.append(id)
+	_check("his bag is full", v.carry_space() == 0)
 	var before_charges: int = site.charges_left
 	site._resolve_loot(v, 1.0, "", {}, 0.0)
-	_check("he is full", v.carry_space() == 0, "%d free" % v.carry_space())
-	_check("the overflow stayed at the site as a remainder", site.has_remainder(),
-		str(site.remainder))
-	_check("...and the site is NOT spent while it holds one", not site.is_spent())
-	_check("...and still offers actions", not site.actions_for(v).is_empty())
+	_check("a full bag still takes every resource -- nothing stays behind", site.remainder.is_empty()
+		and not v.carried.is_empty(), "left %s, carrying %s" % [site.remainder, v.carried])
+	_check("the pull still cost a charge", site.charges_left == before_charges - 1)
+	# Put an item down here, the way he would in the pick-up window.
+	_check("he can leave an item at the site", site.leave_item(v, "grave_coins"))
+	_check("...which keeps the site from being spent", not site.is_spent())
+	_check("...and still offers actions", _ids_of(site.actions_for(v)).has("pick_up"))
 	_check("...and its payload says what is still there",
 		_details_mention(site, "You left"), "no 'You left' row")
-	_check("the pull still cost a charge", site.charges_left == before_charges - 1)
-
-	# Empty his hands and come back: a legitimate, time-taxed play.
-	v.carried.clear()
-	var left: Dictionary = site.remainder.duplicate()
-	site.begin_action(v, "collect")
-	_check("coming back with empty hands collects the remainder",
-		not site.has_remainder() or v.carried_total() > 0, str(site.remainder))
-	_check("...and he is holding what he left", v.carried_total() > 0,
-		"collected %s of %s" % [str(v.carried), str(left)])
-	# Nothing is created or destroyed by a collect, kind by kind: what he is
-	# holding plus what is still lying there equals what was left. Stated this
-	# way rather than as "he collected all of it" because a remainder can be
-	# larger than his hands -- this battlefield leaves ten units against a
-	# capacity of six, and a partial collect is the correct outcome.
-	var conserved: bool = true
-	for kind in left.keys():
-		if int(v.carried.get(kind, 0)) + int(site.remainder.get(kind, 0)) != int(left[kind]):
-			conserved = false
-	_check("...and a collect neither creates nor destroys anything", conserved,
-		"left %s, holding %s, still there %s" % [str(left), str(v.carried), str(site.remainder)])
-	_check("...he took as much as would fit",
-		v.carry_space() == 0 or not site.has_remainder(),
-		"%d free, remainder %s" % [v.carry_space(), str(site.remainder)])
-
-	# Empty him out and finish the job: the action must disappear with the
-	# remainder rather than lingering as a row that does nothing.
-	v.carried.clear()
-	while site.has_remainder() and site.begin_action(v, "collect"):
-		v.carried.clear()
-	_check("...and repeated trips empty it entirely", not site.has_remainder(),
-		str(site.remainder))
-	_check("...after which the action is gone",
-		not _ids_of(_actions_at(site, v)).has("collect"),
+	v.relics_carried.append("chipped_censer")    # full again
+	_check("with the bag full he cannot pick it back up", not site.pick_up_item(v, "grave_coins")
+		and site.relic_remainder.has("grave_coins"))
+	v.relics_carried.erase("noble_seal")
+	_check("...with a free slot he can", site.pick_up_item(v, "grave_coins") and v.relics_carried.has("grave_coins"))
+	site.relic_remainder.clear()
+	_check("...after which the pick-up is gone", not _ids_of(_actions_at(site, v)).has("pick_up"),
 		str(_ids_of(_actions_at(site, v))))
 
-## Playtest 2026-08-30, symptom 1: the collect was offered lit while his hands
-## were full, `add_carried()` refused, and the click did nothing at all -- no
-## panel change, no log line, no reason. The top bar shows banked GameState
-## resources only, so a successful collect and a silent refusal looked identical.
-## Both halves are asserted here: a refusal says so, a success is visible.
+## Playtest 2026-08-30, symptom 1 was a collect that did nothing when his hands
+## were full. Resources take no space now, so a collect always works -- and the
+## thing a full bag refuses is picking up an item, which the pick-up window
+## greys out with the reason and never swallows silently.
 func _a_refused_collect_says_why() -> void:
-	print("-- A refused collect is never a silent no-op (playtest 2026-08-30) --")
+	print("-- Collect always works; a full bag refuses items, never silently --")
 	var site: WorldSite = _site("marked_grave_treeline")
 	if site == null:
 		_check("a grave is placed to leave a remainder at", false)
 		return
 	var v := Necromancer.new()
 	v.position = site.position
-	# Fill him, then rob it: the overflow is the remainder, and this is exactly
-	# the state the screenshot showed.
-	v.add_carried("bones", v.carry_capacity())
-	site._resolve_choice(v, _choice(site, "steal"))
-	_check("a full villain robbing a grave leaves a remainder", site.has_remainder(),
-		str(site.remainder))
-
+	site.remainder["bones"] = 3        # something dropped here earlier
 	var row: Dictionary = _action(site, v, "collect")
-	_check("the collect is still offered", not row.is_empty())
-	_check("...but DISABLED, because it cannot possibly work",
-		not bool(row.get("enabled", true)))
-	_check("...and it carries the reason the panel prints",
-		String(row.get("reason", "")).findn("full") >= 0, String(row.get("reason", "")))
-
-	var before: Dictionary = v.carried.duplicate()
-	var remainder_before: Dictionary = site.remainder.duplicate()
-	_check("pressing it refuses rather than reporting success",
-		not site.begin_action(v, "collect"))
-	_check("...and changes nothing", v.carried == before and site.remainder == remainder_before)
-
-	# Empty his hands: the same row must come back live, with no reason on it.
-	v.carried.clear()
-	row = _action(site, v, "collect")
-	_check("with room, the collect is enabled again", bool(row.get("enabled", false)))
-	_check("...and says nothing about why not", String(row.get("reason", "")) == "")
-
+	_check("the collect is offered", not row.is_empty())
+	_check("...and enabled: resources take no space", bool(row.get("enabled", false)))
 	var logged: Array = []
 	var conn := func(text: String, _s: float): logged.append(text)
 	EventBus.travel_noted.connect(conn)
-	_check("...and now it works", site.begin_action(v, "collect"))
+	_check("...and it works", site.begin_action(v, "collect") and int(v.carried.get("bones", 0)) == 3)
 	EventBus.travel_noted.disconnect(conn)
-	# Lambdas capture by value; the Array is the documented way round it
-	# (docs/history/2026-08-hud-layering-and-playtest-bugs.md).
 	var line: String = "" if logged.is_empty() else String(logged[logged.size() - 1])
 	_check("a successful collect writes a log line", line.findn("Collected") >= 0, line)
-	_check("...naming the load he is now carrying", line.findn("carrying") >= 0, line)
+	_check("...naming what he picked up", line.findn("Bones") >= 0, line)
+	for id in ["tarnished_locket", "grave_coins", "noble_seal", "ledger_of_names", "sermon_of_ash", "barrow_lantern"]:
+		v.relics_carried.append(id)
+	site.relic_remainder.append("wolfhide_cloak")
+	var before: Array = v.relics_carried.duplicate()
+	_check("a full bag refuses to pick up an item", not site.pick_up_item(v, "wolfhide_cloak"))
+	_check("...and changes nothing", v.relics_carried == before and site.relic_remainder.has("wolfhide_cloak"))
+	_check("...but gear can be WORN straight off the ground", site.wear_item(v, "wolfhide_cloak")
+		and v.is_wearing("wolfhide_cloak") and v.relics_carried == before)
+	site.relic_remainder.clear()
+	site.remainder.clear()
 
 ## Playtest 2026-08-30, symptom 2: raising a corpse was a pure ledger entry --
 ## per LOOT_SITES_SPEC §4, and completely invisible. The dormancy is about what
@@ -609,25 +570,25 @@ func _raising_a_corpse_is_visible() -> void:
 	var line: String = "" if logged.is_empty() else String(logged[logged.size() - 1])
 	_check("...and it is written down", line.findn("climbs out") >= 0, line)
 
-## A grave holding only a remainder offers Collect and nothing else -- no sheet,
-## because there is no grave left to open. Confirmed from the screenshot; here
-## so it stays true.
+## A finished grave with only items left on the ground offers the pick-up and
+## nothing else -- no sheet, because there is no grave left to open.
 func _a_spent_grave_with_a_remainder_offers_only_collect() -> void:
-	print("-- Remainder-only: Collect, and no choice sheet --")
+	print("-- A finished grave with items left: the pick-up, and no choice sheet --")
 	var site: WorldSite = _site("fresh_grave_hollow")
 	var v := Necromancer.new()
 	v.position = site.position
-	v.add_carried("bones", v.carry_capacity())
-	# Raise AND steal, which finishes the one grave this site has.
 	site._resolve_choice(v, _choice(site, "raise"))
 	site._resolve_choice(v, _choice(site, "steal"))
 	_check("the grave is finished", site.charges_left == 0)
-	_check("...and left a remainder, his hands being full", site.has_remainder())
+	site.relic_remainder.clear()
+	v.relics_carried.append("tarnished_locket")
+	site.leave_item(v, "tarnished_locket")
 	var ids: Array = _ids_of(site.actions_for(v))
-	_check("it offers the collect", ids.has("collect"), str(ids))
+	_check("it offers the pick-up", ids.has("pick_up"), str(ids))
 	_check("...and NOT the four-way sheet -- there is no grave left to open",
 		not ids.has("open_sheet"), str(ids))
 	_check("...and nothing else at all", ids.size() == 1, str(ids))
+	site.relic_remainder.clear()
 
 func _ids_of(actions: Array) -> Array:
 	var out: Array = []
@@ -685,28 +646,32 @@ func _last_deed_axis(v: Necromancer, axis: String) -> int:
 
 # ---------------- Relics ------------------------------------------------------
 
-## Section 7: a relic in hand grants nothing, and effects activate on deposit.
-## Every live effect is asserted as a *change*, before and after banking, so an
-## effect that silently stopped being read fails here rather than in a playtest
-## nobody can attribute.
+## **Gear works when worn; everything else wakes once banked** (designer ruling
+## 2026-09-26; LOOT_SITES_SPEC §7 as amended). Every live effect is asserted as
+## a *change*, so an effect that silently stopped being read fails here.
 func _relic_effects_wake_on_deposit() -> void:
-	print("-- Relics: nothing in hand, everything banked (§7) --")
+	print("-- Items: gear works when worn, the rest once banked (§7 as amended) --")
 	var v := Necromancer.new()
 	var carry_before: int = v.carry_capacity()
 	v.add_relic("pallbearers_gloves")
-	_check("a relic occupies a carry slot", v.carried_total() == 1)
-	_check("...and in his hands it does nothing", v.carry_capacity() == carry_before,
+	_check("an item occupies a bag slot", v.carried_total() == 1)
+	_check("...and in the bag it does nothing", v.carry_capacity() == carry_before,
 		"%d -> %d" % [carry_before, v.carry_capacity()])
-	v.bank_relics()
-	_check("...and banked it is +2 carry", v.carry_capacity() == carry_before + 2,
+	v.equip("pallbearers_gloves")
+	_check("...worn, the gloves are +2 slots at once", v.carry_capacity() == carry_before + 2,
 		"%d" % v.carry_capacity())
-	_check("...and it left his hands", v.relics_carried.is_empty())
+	_check("...and left the bag", v.relics_carried.is_empty())
+	var vh := Necromancer.new()
+	vh.relics_banked.append("pallbearers_gloves")
+	_check("gear sitting in the hoard does nothing until worn", vh.carry_capacity() == carry_before)
 
 	var v2 := Necromancer.new()
 	var hp_before: int = v2.max_hp()
 	var int_before: int = v2.attribute("intelligence")
-	v2.relics_banked.append("sermon_of_ash")
-	_check("the Sermon of Ash is +1 Intelligence, computed at use time",
+	v2.add_relic("sermon_of_ash")
+	_check("the Sermon of Ash is not gear, and does nothing in the bag", v2.attribute("intelligence") == int_before)
+	v2.bank_relics()
+	_check("banked, it is +1 Intelligence, computed at use time",
 		v2.attribute("intelligence") == int_before + 1)
 	_check("...and it reaches his casting profile, with no second code path",
 		String(v2.combat_profile()["profile"]) == "Arcane")
@@ -715,14 +680,18 @@ func _relic_effects_wake_on_deposit() -> void:
 
 	var v3 := Necromancer.new()
 	_check("no censer, no dawn healing", v3.dawn_heal() == 0)
-	v3.relics_banked.append("chipped_censer")
-	_check("the censer mends 2 at dawn", v3.dawn_heal() == 2)
-	v3.relics_banked.append("barrow_lantern")
-	_check("the lantern is +2 cells of fog reveal", v3.fog_reveal_bonus() == 2)
+	v3.relics_carried.append("chipped_censer")
+	v3.equip("chipped_censer")
+	_check("the censer, held, mends 2 at dawn", v3.dawn_heal() == 2)
+	v3.relics_carried.append("barrow_lantern")
+	v3.equip("barrow_lantern")
+	_check("the lantern, held instead, is +2 cells of fog reveal", v3.fog_reveal_bonus() == 2 and v3.dawn_heal() == 0)
+	_check("...and the censer went back in the bag", v3.relics_carried.has("chipped_censer"))
 	_check("a grave channel is unchanged without the ring",
 		is_equal_approx(v3.channel_multiplier(["grave"]), 1.0))
-	v3.relics_banked.append("sextons_ring")
-	_check("the Sexton's Ring is 25% off a grave channel",
+	v3.relics_carried.append("sextons_ring")
+	v3.equip("sextons_ring")
+	_check("the Sexton's Ring, worn, is 25% off a grave channel",
 		is_equal_approx(v3.channel_multiplier(["grave"]), 0.75),
 		"%.2f" % v3.channel_multiplier(["grave"]))
 	_check("...and does nothing to a crypt pull, because it is tagged",

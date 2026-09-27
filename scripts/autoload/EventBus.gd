@@ -248,3 +248,12 @@ signal guild_board_changed(guild)
 signal guild_bounty_paid(villain, bounty: Dictionary, gold: int)
 ## A blueprint is known for good (LIVING_WORLD section 9.1 / 12).
 signal blueprint_learned(blueprint_id: String, source: String)
+## He put gear on or took it off (designer ruling 2026-09-26: gear works when
+## worn). Carries the villain; listeners owner-check.
+signal gear_changed(villain)
+## A site handed him the plans for a building (2026-09-26: every building is
+## unlocked by a blueprint found in the world). RunLifecycle learns it.
+signal blueprint_found(villain, blueprint_id: String, where: String)
+## A site put items on the ground in front of him (a pull paid out, or he asked
+## to look). Main opens the pick-up window for its own villain.
+signal items_on_ground(villain, site, relic_ids: Array)

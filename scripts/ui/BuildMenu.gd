@@ -101,7 +101,7 @@ func populate() -> void:
 	var ids: Array = BuildingCatalog.buildable_ids(_settlement)
 	if ids.is_empty():
 		var lbl := Label.new()
-		lbl.text = "(nothing available)"
+		lbl.text = "No plans yet — every building is learned from a blueprint found out in the world."
 		build_row.add_child(lbl)
 	else:
 		for id in ids:

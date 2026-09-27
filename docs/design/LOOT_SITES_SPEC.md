@@ -322,6 +322,12 @@ archaeology later.
 
 ## 7. Relics
 
+> **Amended 2026-09-26 (designer, after the first playtest; `docs/history/2026-09-26-items-and-gear.md`):**
+> items with a `slot` are **gear** — worn anywhere, working the moment they are worn, taking no bag
+> slot (one per slot: cloak, hands, ring, neck, held). Items without a slot still work once banked,
+> as below. **Resources take no carry space**; the six Endurance slots are for items only, and
+> items a pull turns up land on the ground for the player to take, wear or leave.
+
 **Rarity tiers:** `trinket`, `uncommon`, `rare`, `legendary`. Trinkets are pure treasure —
 no effect, gold value only, they exist so Band 1 can pay off without power. Legendary does not
 drop from loot tables in R2 (reserved for feats: the crypt guardian, the manor, R4+).

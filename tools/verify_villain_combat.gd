@@ -352,7 +352,7 @@ func _death_clears_before_anything_else_reads() -> void:
 	v.add_carried("gold", 4)
 	v.add_relic("grave_coins")
 	_check("he is carrying something worth losing",
-		v.carried_total() == 5, "%d" % v.carried_total())
+		v.resources_carried_total() == 4 and v.carried_total() == 1, "%d + %d" % [v.resources_carried_total(), v.carried_total()])
 
 	# Death ends the run since 2026-09-26; a Second Wake is what gets him up.
 	# Granted here so the respawn half is still tested and the run survives for

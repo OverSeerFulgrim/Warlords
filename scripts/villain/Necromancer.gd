@@ -105,8 +105,12 @@ var hp: int = 1
 ## What he is hauling, `resource kind -> amount`. A Dictionary rather than the
 ## single kind/amount pair a Laborer carries, because a sortie brings back a
 ## mixed load (ROGUELITE_REWORK section 8) while a worker trip is one resource
-## by construction. Nothing banks it yet -- that is R2's deposit-at-the-lair
-## step -- but the capacity is real and the inspection panel reads it.
+## by construction.
+##
+## **Resources take no space** (designer ruling 2026-09-26, first playtest): the
+## item slots are reserved for items. There is no limit on this Dictionary; the
+## banking rule still applies -- none of it is his until it reaches the Throne,
+## and death costs all of it.
 var carried: Dictionary = {}
 
 ## Who is walking with him.
@@ -124,19 +128,25 @@ var carried: Dictionary = {}
 ## individually commanded).
 var escort: Array = []
 
-## Relics in his hands, by id. A **separate list from `carried`** because
-## identity matters for a relic and does not for a unit of bones -- the
-## Dictionary is for fungibles (LOOT_SITES_SPEC section 7). Each one occupies a
-## carry slot like any resource unit.
+## Items in his bag, by id. A **separate list from `carried`** because
+## identity matters for an item and does not for a unit of bones. **Each one
+## occupies one item slot** -- and since 2026-09-26 only items do.
 var relics_carried: Array = []
 
-## Relics that made it home. **This is the list the effects read.** A relic in
-## hand grants nothing; effects activate on deposit at the lair -- the banking
-## rule (ROGUELITE_REWORK section 1) applied to power, and what keeps "drop it
-## and run" a live choice on the return leg rather than a pure loss. The deposit
-## step itself is `SORTIE_SPEC.md`'s (R2c); this list and every reader below are
-## here so that pass has nothing to invent.
+## Items that made it home: the hoard at the Throne.
 var relics_banked: Array = []
+
+## **Gear he is wearing**, `slot -> item id` (designer ruling 2026-09-26, first
+## playtest). An item with a `slot` in `relics.json` is gear: it can be worn
+## anywhere, **works the moment it is worn**, and takes no bag slot. Items
+## without a slot (the trinkets, the Ledger, the Sermon) still work once banked.
+## One item per slot.
+var equipped: Dictionary = {}
+const GEAR_SLOTS := ["cloak", "hands", "ring", "neck", "held"]
+const GEAR_SLOT_NAMES := {"cloak": "Cloak", "hands": "Hands", "ring": "Ring", "neck": "Neck", "held": "Held"}
+## Worn items found this sortie that have not been home yet. The banking rule
+## still applies to what he wears: die before the Throne and these are gone.
+var _worn_unbanked: Array = []
 
 ## **The ledger R3 will read** (LOOT_SITES_SPEC section 6). Ordered and stamped
 ## in game-days, per-villain, and never in an autoload -- R3 reads notoriety
@@ -251,11 +261,12 @@ func move_speed_px() -> float:
 	return MOVE_SPEED_CELLS * float(SettlementGrid.CELL_SIZE) * _relic_speed_multiplier()
 
 func _relic_speed_multiplier() -> float:
-	if relics_banked.is_empty():
+	var active: Array = active_relic_ids()
+	if active.is_empty():
 		return 1.0
 	var on_road: bool = terrain_speed() > 1.0
 	var mult: float = 1.0
-	for id in relics_banked:
+	for id in active:
 		for effect in LootCatalog.relic(id).get("effects", []):
 			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "move_speed_mult":
 				continue
@@ -413,37 +424,34 @@ func _move_by(motion: Vector2) -> void:
 
 # ---------------- Carrying ---------------------------------------------------
 
-## Carry capacity = **Endurance**, the same rule every other unit follows
-## (COMBAT_SPEC section 2.1). One rule, not two: giving the villain a bespoke
-## carry stat would mean two places to look when a sortie comes home light. His
-## Endurance 6 keeps the carry 6 that R1 shipped.
-## Endurance plus whatever the Pallbearer's Gloves are worth, once they are
-## home. Capacity is a **rule** (`SORTIE_SPEC.md` section 10: tune the yield,
-## not the capacity), and a banked relic is the one sanctioned way to move it.
+## **Item slots** = Endurance, the same rule every other unit's carry follows
+## (COMBAT_SPEC section 2.1), plus whatever worn gear adds (the Pallbearer's
+## Gloves). Since 2026-09-26 **only items use them**: resources take no space
+## (designer ruling), so six slots is six things worth choosing between.
 func carry_capacity() -> int:
 	return maxi(1, attribute("endurance") + _relic_sum("carry_delta"))
 
-## Resource units plus relics: **a relic occupies one carry slot** like any
-## other unit (LOOT_SITES_SPEC section 7), which is what makes arriving at a
-## crypt with full hands a real problem and `Drop` (R2c) a real answer.
+## Items in the bag. Worn gear is not in the bag and uses no slot.
 func carried_total() -> int:
-	var total: int = 0
-	for amount in carried.values():
-		total += int(amount)
-	return total + relics_carried.size()
+	return relics_carried.size()
 
 func carry_space() -> int:
 	return maxi(0, carry_capacity() - carried_total())
 
-## Takes as much of `amount` as will fit and returns how much was actually
-## taken, so the caller can log the real number and leave the rest on the
-## ground. Called by site looting (`WorldSite`, and
-## `SortieSystem.take_into_party`, which fills him first).
+## Resources go straight into his pack, however much: they take no slot. The
+## return value is kept (always `amount`) because callers log what was taken.
 func add_carried(kind: String, amount: int) -> int:
-	var taken: int = mini(maxi(0, amount), carry_space())
+	var taken: int = maxi(0, amount)
 	if taken > 0:
 		carried[kind] = int(carried.get(kind, 0)) + taken
 	return taken
+
+## Total resource units in his pack -- for the panel, never a limit.
+func resources_carried_total() -> int:
+	var total: int = 0
+	for amount in carried.values():
+		total += int(amount)
+	return total
 
 ## Hands the whole load over and empties him -- the deposit half of the banking
 ## rule (ROGUELITE_REWORK section 1). Returns what he was holding.
@@ -463,6 +471,109 @@ func carried_label() -> String:
 		return "nothing"
 	return ", ".join(parts)
 
+# ---------------- Gear (designer ruling 2026-09-26) ---------------------------
+
+static func gear_slot(id: String) -> String:
+	return String(LootCatalog.relic(id).get("slot", ""))
+
+static func is_gear(id: String) -> bool:
+	return gear_slot(id) != ""
+
+## Everything whose effects apply right now: **worn gear, plus banked items that
+## are not gear** (gear in the hoard does nothing until it is worn).
+func active_relic_ids() -> Array:
+	var out: Array = equipped.values().duplicate()
+	for id in relics_banked:
+		if not is_gear(String(id)):
+			out.append(id)
+	return out
+
+## Every item of his this run, wherever it is: bag, hoard, or worn.
+func owned_relic_ids() -> Array:
+	var out: Array = relics_banked.duplicate()
+	out.append_array(relics_carried)
+	for id in equipped.values():
+		if not out.has(id):
+			out.append(id)
+	return out
+
+func is_wearing(id: String) -> bool:
+	return equipped.values().has(id)
+
+## Puts an item on. From the bag anywhere; from the hoard (`from_hoard`) only
+## where the hoard is -- the caller checks he is at the Throne. Whatever was in
+## that slot goes back where the new one came from, so there is always room.
+func equip(id: String, from_hoard: bool = false) -> bool:
+	var slot: String = gear_slot(id)
+	if slot == "":
+		return false
+	var source: Array = relics_banked if from_hoard else relics_carried
+	if not source.has(id):
+		return false
+	source.erase(id)
+	var old: String = String(equipped.get(slot, ""))
+	if old != "":
+		source.append(old)
+		if from_hoard:
+			_worn_unbanked.erase(old)
+	equipped[slot] = id
+	if not from_hoard:
+		_worn_unbanked.append(id)
+	EventBus.gear_changed.emit(self)
+	return true
+
+## Takes an item off: into the bag (needs a free slot), or into the hoard
+## (`to_hoard`, only at the Throne -- the caller checks).
+func unequip(slot: String, to_hoard: bool = false) -> bool:
+	var id: String = String(equipped.get(slot, ""))
+	if id == "":
+		return false
+	# Taking off the Gloves takes their two slots with them: check against the
+	# capacity he will have once they are off.
+	if not to_hoard:
+		var cap_after: int = maxi(1, attribute("endurance") + _relic_sum("carry_delta") - _carry_delta_of(id))
+		if relics_carried.size() + 1 > cap_after:
+			return false
+	equipped.erase(slot)
+	if to_hoard:
+		relics_banked.append(id)
+		_worn_unbanked.erase(id)
+	else:
+		relics_carried.append(id)
+		_worn_unbanked.erase(id)
+	EventBus.gear_changed.emit(self)
+	return true
+
+func _carry_delta_of(id: String) -> int:
+	var total: int = 0
+	for effect in LootCatalog.relic(id).get("effects", []):
+		if not bool(effect.get("dormant", false)) and String(effect.get("kind", "")) == "carry_delta":
+			total += int(effect.get("value", 0))
+	return total
+
+## Death before the Throne: the bag is already the sortie's loss; this is the
+## worn half -- only what he found and put on this sortie.
+func lose_unbanked_gear() -> Array:
+	var lost: Array = []
+	for slot in equipped.keys().duplicate():
+		var id: String = String(equipped[slot])
+		if _worn_unbanked.has(id):
+			equipped.erase(slot)
+			lost.append(id)
+	_worn_unbanked.clear()
+	if not lost.is_empty():
+		EventBus.gear_changed.emit(self)
+	return lost
+
+## Removes an item from wherever it is (the carry-in being changed in the Lair).
+func remove_item(id: String) -> void:
+	relics_banked.erase(id)
+	relics_carried.erase(id)
+	for slot in equipped.keys().duplicate():
+		if String(equipped[slot]) == id:
+			equipped.erase(slot)
+	_worn_unbanked.erase(id)
+
 # ---------------- Relics (LOOT_SITES_SPEC section 7) -------------------------
 
 ## Everything this run has already turned up, in hand or banked. Handed to
@@ -480,6 +591,9 @@ func drawn_relic_ids() -> Array:
 		if not out.has(id):
 			out.append(id)
 	for id in relics_banked:
+		if not out.has(id):
+			out.append(id)
+	for id in equipped.values():
 		if not out.has(id):
 			out.append(id)
 	return out
@@ -501,19 +615,22 @@ func note_relics_rolled(ids: Array) -> void:
 ## rolled before, because a rolled relic lying in a cache is exactly the one he
 ## is walking back to collect.
 func add_relic(id: String) -> bool:
-	if id == "" or relics_carried.has(id) or relics_banked.has(id):
+	if id == "" or relics_carried.has(id) or relics_banked.has(id) or is_wearing(id):
 		return false
 	if carry_space() <= 0:
 		return false
 	relics_carried.append(id)
 	return true
 
-## The deposit half, for R2c to call. Banking is what turns a relic from cargo
-## into an effect.
+## The deposit half. The bag goes into the hoard; what he is wearing stays on
+## him but is **safe** from now on. Returns every item that came home this
+## trip -- worn ones included, so they still count for XP and the log.
 func bank_relics() -> Array:
 	var banked: Array = relics_carried.duplicate()
 	relics_banked.append_array(banked)
 	relics_carried.clear()
+	banked.append_array(_worn_unbanked)
+	_worn_unbanked.clear()
 	return banked
 
 ## Sum of one numeric effect kind across banked relics. Effects are additive and
@@ -521,7 +638,7 @@ func bank_relics() -> Array:
 ## cannot drop and there is nothing to stack.
 func _relic_sum(kind: String) -> int:
 	var total: int = 0
-	for id in relics_banked:
+	for id in active_relic_ids():
 		for effect in LootCatalog.relic(id).get("effects", []):
 			if bool(effect.get("dormant", false)):
 				continue
@@ -534,7 +651,7 @@ func _relic_sum(kind: String) -> int:
 ## code knows what a sexton is, which is the test a relic effect has to pass.
 func channel_multiplier(tags: Array) -> float:
 	var mult: float = 1.0
-	for id in relics_banked:
+	for id in active_relic_ids():
 		for effect in LootCatalog.relic(id).get("effects", []):
 			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "channel_mult":
 				continue
@@ -670,10 +787,11 @@ func _base_attribute(key: String) -> int:
 			return RaceCatalog.REFERENCE_VALUE
 
 func _relic_attribute_delta(key: String) -> int:
-	if relics_banked.is_empty():
+	var active: Array = active_relic_ids()
+	if active.is_empty():
 		return 0
 	var total: int = 0
-	for id in relics_banked:
+	for id in active:
 		for effect in LootCatalog.relic(id).get("effects", []):
 			if bool(effect.get("dormant", false)) or String(effect.get("kind", "")) != "attribute":
 				continue
@@ -818,24 +936,27 @@ func activity_label() -> String:
 		return "Surveying his domain"
 	return "Standing still"
 
-## The two relic rows, and only when there is something to say. A relic in hand
-## says out loud that it is doing nothing yet -- section 7's deposit rule is a
-## real trade-off on the return leg, and the panel has to be honest about it or
-## the player never feels it.
+## The item rows, and only when there is something to say. Worn gear first
+## (it is working); the bag says out loud that it is doing nothing yet.
 func _relic_rows() -> Array:
 	var rows: Array = []
+	for slot in GEAR_SLOTS:
+		if equipped.has(slot):
+			var id: String = String(equipped[slot])
+			rows.append({"label": GEAR_SLOT_NAMES[slot], "value": String(LootCatalog.relic(id).get("name", id))
+				+ ("  (not home yet)" if _worn_unbanked.has(id) else ""), "color": Color(0.7, 0.9, 0.7)})
 	if not relics_carried.is_empty():
 		var names: Array = []
 		for id in relics_carried:
 			names.append(String(LootCatalog.relic(id).get("name", id)))
-		rows.append({"label": "In hand", "value": ", ".join(names),
+		rows.append({"label": "In the bag", "value": ", ".join(names),
 			"color": Color(0.95, 0.85, 0.45)})
-		rows.append({"label": "", "value": "Carried relics do nothing. They wake when you get them home.", "muted": true})
+		rows.append({"label": "", "value": "Gear works once worn. Anything else in the bag wakes when you get it home.", "muted": true})
 	if not relics_banked.is_empty():
 		var names: Array = []
 		for id in relics_banked:
 			names.append(String(LootCatalog.relic(id).get("name", id)))
-		rows.append({"label": "Banked", "value": ", ".join(names)})
+		rows.append({"label": "At the Throne", "value": ", ".join(names)})
 	return rows
 
 func get_inspect_data() -> Dictionary:
@@ -852,7 +973,8 @@ func get_inspect_data() -> Dictionary:
 		{"label": "Stance", "value": "Hunting — anything living he walks up to is fair game" if is_hunting()
 			else "Hidden — he never starts a fight with the living",
 			"color": Color(1.0, 0.55, 0.45) if is_hunting() else Color(0.75, 0.72, 0.9)},
-		{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
+		{"label": "Items", "value": "%d / %d slots" % [carried_total(), carry_capacity()]},
+		{"label": "Carrying", "value": LootCatalog.describe(carried) if not carried.is_empty() else "no resources"},
 	]
 	rows.append_array(_relic_rows())
 	rows.append({"label": "Escort", "value": "None — he walks alone" if escort.is_empty()

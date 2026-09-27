@@ -10,6 +10,7 @@
   "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (docs/history/2026-07-foundation-reset.md) for the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: Building.gd still reads their housing_species field, and these entries are the reference for whatever replaces them. 'blueprint': true is the other gate (LIVING_WORLD L2, 2026-09-26): the entry shows only once its blueprint is known in the meta profile -- the Dark Altar, whose blueprint is inside the first wolf den.",
 
   "bone_pile": {
+    "blueprint": true,
     "display_name": "Bone Pile",
     "description": "A heap of gathered bone, sorted and stacked. Yields a slow trickle of Bones with nobody tending it.",
     "category": "resource",
@@ -95,6 +96,7 @@
   },
 
   "workshop": {
+    "blueprint": true,
     "display_name": "Workshop",
     "description": "Benches, tools, and someone who knows the use of them. Unlocks the Blacksmith line.",
     "category": "functional",
@@ -105,6 +107,7 @@
   },
 
   "blacksmith": {
+    "blueprint": true,
     "display_name": "Blacksmith",
     "description": "Forge and anvil. Turns Dark Essence into gear for your followers.",
     "category": "functional",
@@ -115,6 +118,7 @@
   },
 
   "barracks": {
+    "blueprint": true,
     "display_name": "Barracks",
     "description": "Where new arrivals sleep until you fund them a house of their own. No Barracks, no recruits.",
     "category": "housing_intake",

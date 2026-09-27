@@ -169,11 +169,10 @@ func _rolls_relic(v: Necromancer, id: String) -> bool:
 # ---------------- Collect ------------------------------------------------------
 
 func _collect_counts_the_escort() -> void:
-	print("-- Collect is offered when his hands are full but the escort has room --")
+	print("-- Collect never needs room; items wait for a free slot (2026-09-26) --")
 	var v := Necromancer.new()
-	var s1 := Worker.new("Arms A")
-	v.escort.append(s1)
-	v.add_carried("bones", v.carry_capacity())
+	for id in ["tarnished_locket", "noble_seal", "ledger_of_names", "sermon_of_ash", "barrow_lantern", "chipped_censer"]:
+		v.relics_carried.append(id)
 	var site: WorldSite = _site("hidden_cache")
 	if site == null:
 		_check("a cache to leave things in", false)
@@ -183,17 +182,12 @@ func _collect_counts_the_escort() -> void:
 	for a in site.actions_for(v):
 		if String(a.get("id", "")) == "collect":
 			row = a
-	_check("his hands are full", v.carry_space() == 0)
-	_check("...but Collect is enabled, because the escort has arms",
-		bool(row.get("enabled", false)), str(row))
+	_check("his bag is full", v.carry_space() == 0)
+	_check("...but Collect is enabled: resources take no space", bool(row.get("enabled", false)), str(row))
 	site.remainder.erase("gold")
 	site.relic_remainder.append("grave_coins")
-	row = {}
-	for a in site.actions_for(v):
-		if String(a.get("id", "")) == "collect":
-			row = a
-	_check("a relic only goes in HIS hands, so a relic-only remainder stays disabled",
-		not bool(row.get("enabled", true)), str(row))
+	var ids: Array = site.actions_for(v).map(func(a): return String(a.get("id", "")))
+	_check("an item on the ground is offered through the pick-up window", ids.has("pick_up"), str(ids))
 	site.relic_remainder.clear()
 
 # ---------------- Recruitment timer ---------------------------------------------

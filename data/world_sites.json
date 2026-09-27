@@ -247,7 +247,7 @@
 			"details": [
 				{"label": "", "value": "Sometimes there are weapons in the packs. Somebody stopped needing them.", "muted": true}
 			],
-			"lootable": {
+			"lootable": { "blueprint": "workshop",
 				"type": "abandoned_camp",
 				"raven_eligible": true,
 				"occupancy": {"chance": 0.35, "kind": "outlaw", "count": 1, "_comment": "LOOT_SITES_SPEC section 3: rolled once at activation, hidden by the fog until approached. A third of camps are not abandoned; the Raven honestly knows which (RAVEN_SPEC section 2)."},
@@ -324,7 +324,7 @@
 			"details": [
 				{"label": "", "value": "Nobody comes here. Nobody would know. This is where you learn what a grave is worth.", "muted": true}
 			],
-			"lootable": {
+			"lootable": { "blueprint": "bone_pile",
 				"type": "derelict_graveyard",
 				"band": 2,
 				"charges": 3,
@@ -347,7 +347,7 @@
 			"sprite": "res://assets/placeholder/generated/site_graveyard.png",
 			"description": "Out past the last field, where the ground is cheap and the wind gets at it. Someone walks out here most weeks with flowers.",
 			"details": [],
-			"lootable": {
+			"lootable": { "blueprint": "bone_pile",
 				"type": "village_graveyard",
 				"band": 3,
 				"charges": 3,
@@ -422,7 +422,7 @@
 				{"label": "Inside", "value": "Two of them, and they were put there to stay awake"},
 				{"label": "", "value": "Guaranteed relic, heavy Dark Essence, and a fight with no way around it.", "muted": true}
 			],
-			"lootable": {
+			"lootable": { "blueprint": "blacksmith",
 				"type": "crypt",
 				"band": 4,
 				"charges": 1,
@@ -448,7 +448,7 @@
 				{"label": "Inside", "value": "Two, and they have been up here a long time"},
 				{"label": "", "value": "The hoard, and weapons you did not have to buy from the Workshop.", "muted": true}
 			],
-			"lootable": {
+			"lootable": { "blueprint": "barracks",
 				"type": "outlaw_cave",
 				"band": 4,
 				"charges": 1,

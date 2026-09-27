@@ -95,6 +95,7 @@ func _ready() -> void:
 	EventBus.deed_committed.connect(_on_deed)
 	EventBus.villain_engaged.connect(_on_engaged)
 	EventBus.site_looted.connect(_on_site_looted)
+	EventBus.blueprint_found.connect(_on_blueprint_found)
 	EventBus.sortie_deposited.connect(_on_deposited)
 	EventBus.skeleton_raised.connect(_on_skeleton_raised)
 	EventBus.wolf_killed.connect(_on_wolf_killed)
@@ -151,9 +152,18 @@ func _on_deed(v, deed_id: String, _axes: Dictionary) -> void:
 	# **Blueprints** (LIVING_WORLD section 9.1): clearing a den teaches the Dark
 	# Altar -- the first thing he learns out in the world rather than at home.
 	# Kept on the profile, so it is his for every run after.
-	if deed_id == "cleared_a_den" and profile and not profile.knows_blueprint("dark_altar"):
-		profile.learn_blueprint("dark_altar")
-		EventBus.blueprint_learned.emit("dark_altar", "clearing a den")
+	if deed_id == "cleared_a_den":
+		_learn("dark_altar", "clearing a den")
+
+## Plans found at a site (2026-09-26). Owner-checked like every villain signal.
+func _on_blueprint_found(v, blueprint_id: String, where: String) -> void:
+	if v != villain or ended:
+		return
+	_learn(blueprint_id, "searching %s" % where)
+
+func _learn(blueprint_id: String, how: String) -> void:
+	if profile and profile.learn_blueprint(blueprint_id):
+		EventBus.blueprint_learned.emit(blueprint_id, how)
 
 func _on_engaged(v, foe_name: String) -> void:
 	if _mine(v):
@@ -247,9 +257,12 @@ func _carry_in() -> void:
 			e["carry"] = false
 			continue
 		var id: String = String(e.get("id", ""))
-		if id == "" or villain.relics_banked.has(id):
+		if id == "" or villain.owned_relic_ids().has(id):
 			continue
 		villain.relics_banked.append(id)
+		# Gear he brings in, he wears -- if the slot is free (2026-09-26).
+		if Necromancer.is_gear(id) and not villain.equipped.has(Necromancer.gear_slot(id)):
+			villain.equip(id, true)
 		# Never drop a second copy of something he walked in with.
 		if not villain.relics_rolled.has(id):
 			villain.relics_rolled.append(id)
@@ -261,7 +274,7 @@ func reapply_carry_in() -> void:
 	if ended or run_seconds > 0.0 or villain == null:
 		return
 	for id in _carried_ids():
-		villain.relics_banked.erase(id)
+		villain.remove_item(id)
 		villain.relics_rolled.erase(id)
 	carried_in.clear()
 	_carry_in()
@@ -276,7 +289,7 @@ func run_items() -> Array:
 		return []
 	var brought: Array = _carried_ids()
 	var out: Array = []
-	for id in villain.relics_banked + villain.relics_carried:
+	for id in villain.owned_relic_ids():
 		if brought.has(id):
 			brought.erase(id)
 			continue

@@ -62,6 +62,8 @@ signal villain_stance_toggle_requested
 signal flee_requested
 ## A button on the guild's board: "take", "deliver" or "collect" bounty `id`.
 signal guild_action_requested(guild, action: String, id: int)
+## The Items window (2026-09-26).
+signal items_requested
 ## Asked each time his panel is built: can he flee from where he stands?
 var flee_available: Callable = Callable()
 
@@ -166,30 +168,16 @@ func _stance_rows(box: VBoxContainer) -> void:
 func _drop_rows(box: VBoxContainer) -> void:
 	if _sortie_system == null or _villain == null:
 		return
-	if _villain.carried.is_empty() and _villain.relics_carried.is_empty():
-		return
+	# **Items, not loads** (designer ruling 2026-09-26): resources take no
+	# space, so there is nothing to drop but items -- and wearing, dropping and
+	# swapping all happen in the Items window.
 	box.add_child(HSeparator.new())
-	var here: WorldSite = _world_sites.lootable_in_reach(_villain) if _world_sites else null
-	_note(box, "Party carry: %s" % _sortie_system.carry_label())
-	_note(box, "Dropping here returns it to %s." % here.display_name if here != null
-		else "Dropping here leaves a cache on the ground. It stays until you come back for it.")
-
-	for kind in _villain.carried.keys():
-		var amount: int = int(_villain.carried[kind])
-		var b := Button.new()
-		b.text = "Drop %d %s" % [amount, String(kind).capitalize().replace("_", " ")]
-		var k: String = kind    # explicit re-bind for the closure
-		b.pressed.connect(func(): drop_requested.emit(k, amount))
-		box.add_child(b)
-
-	for relic_id in _villain.relics_carried:
-		var r: Dictionary = LootCatalog.relic(relic_id)
-		var b := Button.new()
-		b.text = "Drop %s" % r.get("name", relic_id)
-		b.tooltip_text = "It does nothing until it is banked -- and nothing once it is on the ground."
-		var id: String = relic_id
-		b.pressed.connect(func(): drop_relic_requested.emit(id))
-		box.add_child(b)
+	_note(box, "Bag: %d / %d item slots.  Resources: %s." % [_villain.carried_total(), _villain.carry_capacity(),
+		LootCatalog.describe(_villain.carried) if not _villain.carried.is_empty() else "none"])
+	var b := Button.new()
+	b.text = "Items — wear, drop, swap  [%s]" % Controls.label_for("items")
+	b.pressed.connect(func(): items_requested.emit())
+	box.add_child(b)
 
 func _note(box: VBoxContainer, text: String) -> void:
 	var label := Label.new()

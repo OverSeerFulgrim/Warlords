@@ -70,6 +70,8 @@ func _the_road() -> void:
 	_check("...not at the Throne", v.position.distance_to(_main._throne_world_centre()) > 8.0 * SettlementGrid.CELL_SIZE)
 	_check("...and still under the lair's protection", v.is_in_lair_band())
 	_check("no skeleton at the start, on any run", _main.worker_system.workers.is_empty())
+	_check("run one builds nothing: every building waits for its blueprint (2026-09-26)",
+		BuildingCatalog.buildable_ids(_main.settlement).is_empty(), str(BuildingCatalog.buildable_ids(_main.settlement)))
 	var grave: WorldSite = _site("fresh_grave_scree")
 	_check("a fresh grave stands beside the road past the guild", grave != null and _guild != null
 		and grave.position.y > _guild.position.y
@@ -164,14 +166,10 @@ func _jobs_pay_into_his_hands() -> void:
 	_check("with them it can", _guild.deliver(v, id))
 	_check("...the goods leave his stores", GameState.food == 15 - int(job["amount"]))
 	_check("...and arrive in the village's", s.amount("food") == village_food0 + int(job["amount"]))
-	var fits: int = mini(int(job["gold"]), v.carry_capacity())
-	_check("...and the pay is in his hands, not his treasury, at full rate while Unknown",
-		int(v.carried.get("gold", 0)) - gold0 == fits and int(job["owed"]) == int(job["gold"]) - fits,
+	_check("...and the pay is in his hands, not his treasury, all of it, at full rate while Unknown",
+		int(v.carried.get("gold", 0)) - gold0 == int(job["gold"]) and int(job["owed"]) == 0,
 		"%d gold in hand, %d owed" % [int(v.carried.get("gold", 0)), int(job["owed"])])
-	v.carried.clear()
-	if int(job["owed"]) > 0:
-		_guild.turn_in(v, id)
-	_check("...and the job is paid off once he has room for the rest", String(job["state"]) == "paid")
+	_check("...and the job is paid off", String(job["state"]) == "paid")
 	v.carried.clear()
 	s.set_amount("food", 30)
 	_guild.refresh_board()
@@ -205,26 +203,26 @@ func _the_den_teaches_the_altar() -> void:
 	_check("...and the build menu offers it now", BuildingCatalog.buildable_ids(_main.settlement).has("dark_altar"))
 	_guild.refresh_board()
 	_check("the bounty is ready to collect", String(job["state"]) == "done")
-	# Hands full: nothing is paid, and nothing is lost.
+	# A full bag of items does not stop gold: resources take no space (2026-09-26).
 	v.carried.clear()
-	v.add_carried("wood", v.carry_capacity())
-	_check("with full hands the clerk holds the pay", not _guild.turn_in(v, int(job["id"]))
-		and int(job["owed"]) == int(job["gold"]) and String(job["state"]) == "done")
+	for rid in ["tarnished_locket", "grave_coins", "noble_seal", "ledger_of_names", "sermon_of_ash", "barrow_lantern"]:
+		v.relics_carried.append(rid)
+	_check("a full bag of items still takes the whole pay", _guild.turn_in(v, int(job["id"]))
+		and int(v.carried.get("gold", 0)) == int(job["gold"]) and String(job["state"]) == "paid")
+	v.relics_carried.clear()
 	v.carried.clear()
-	v.add_carried("wood", v.carry_capacity() - 3)
-	_guild.turn_in(v, int(job["id"]))
-	_check("...room for three: three paid, the rest still owed", int(v.carried.get("gold", 0)) == 3
-		and int(job["owed"]) == int(job["gold"]) - 3, "owed %d" % int(job["owed"]))
-	v.carried.clear()
-	var rest: int = int(job["gold"]) - 3
-	_check("...and collected on the next visit (as much as he can carry)", _guild.turn_in(v, int(job["id"]))
-		and int(v.carried.get("gold", 0)) == mini(rest, v.carry_capacity()))
-	while String(job["state"]) != "paid":
+	# Plans found at a site (2026-09-26): the abandoned camp holds the Workshop's.
+	var camp: WorldSite = _site("abandoned_camp")
+	if camp != null:
+		_check("a site with plans says so on its panel", _panel_rows(camp).has("Plans"))
+		v.place_at(camp.position)
+		camp.charges_left = maxi(camp.charges_left, 1)
+		camp._resolve_loot(v, 1.0, "", {}, 0.0)
+		_check("searching it teaches the Workshop", profile.knows_blueprint("workshop")
+			and BuildingCatalog.buildable_ids(_main.settlement).has("workshop"))
+		_check("...and the hint is gone", not _panel_rows(camp).has("Plans"))
+		camp.relic_remainder.clear()
 		v.carried.clear()
-		if not _guild.turn_in(v, int(job["id"])):
-			break
-	_check("...until it is paid off", String(job["state"]) == "paid")
-	v.carried.clear()
 	var second: MetaProfile = MetaProfile.open("")
 	second.learn_blueprint("dark_altar")
 	_check("a blueprint is kept for good (it is on the profile)", second.knows_blueprint("dark_altar"))
@@ -381,6 +379,9 @@ func _the_panels() -> void:
 
 func _at_the_door() -> void:
 	_main.villain.place_at(_guild.position + Vector2(0, float(SettlementGrid.CELL_SIZE)))
+
+func _panel_rows(site: WorldSite) -> Array:
+	return site.get_inspect_data().get("details", []).map(func(r): return String(r.get("label", "")))
 
 func _first(pred: Callable) -> Dictionary:
 	for b in _guild.bounties:

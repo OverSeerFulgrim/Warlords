@@ -89,6 +89,12 @@ var notice: Dictionary = {}
 var signposted: bool = false
 ## Specified now, honoured in R4 (section 8) -- the shuffle needs somewhere to
 ## write, and reopening the schema then would be the expensive version.
+## **The plans for a building** that are found here (designer ruling
+## 2026-09-26: every building is unlocked by a blueprint found in the world).
+## Handed over on the first pull or grave choice that resolves, once per run;
+## `RunLifecycle` puts it on the profile for good.
+var blueprint_id: String = ""
+var _blueprint_given: bool = false
 var pool_id: String = ""
 var active_count: int = 1
 
@@ -223,6 +229,7 @@ func _setup_lootable(block: Dictionary) -> void:
 	looted_sprite_path = String(block.get("looted_sprite", ""))
 	notice = block.get("notice", {})
 	pool_id = String(block.get("pool", ""))
+	blueprint_id = String(block.get("blueprint", ""))
 	active_count = int(block.get("active_count", 1))
 	guardian_roll = block.get("guardian_roll", {})
 	guardian_spec = {}
@@ -323,29 +330,19 @@ func actions_for(villain) -> Array:
 		return out
 	if is_guarded():
 		return out
-	if has_remainder():
-		# **Enabled only if it can actually do something.** A remainder exists
-		# because his hands were full when the site paid out -- so the single
-		# most likely moment to press this is the moment it cannot work, and
-		# offering it lit was a silent no-op on click (playtest, 2026-08-30).
-		# The reason travels with the row; the panel renders it.
-		# Resources can go to the escort's arms (the filling order); a relic
-		# only ever goes into *his* hands. Checking his hands alone greyed the
-		# button out while two empty skeletons stood beside him (review
-		# 2026-09-26).
-		var can: bool = false
-		if villain:
-			can = (not remainder.is_empty() and SortieSystem.party_space_of(villain) > 0) \
-				or (not relic_remainder.is_empty() and villain.carry_space() > 0)
-		var space: int = 1 if can else 0
+	if not relic_remainder.is_empty():
+		# The pick-up window: take, wear or leave each item (2026-09-26).
 		out.append({
-			"id": "collect", "label": "Collect what you left",
-			"blurb": "Still here: %s." % _remainder_label(),
-			"seconds": 0.0,
-			"enabled": space > 0,
-			"reason": "" if space > 0 else "His hands are full — %d / %d. Empty them at the lair and come back; it stays here." % [
-				villain.carried_total() if villain else 0,
-				villain.carry_capacity() if villain else 0],
+			"id": "pick_up", "label": "Look through the items here (%d)" % relic_remainder.size(),
+			"blurb": LootCatalog.describe_relics(relic_remainder) + ".",
+			"seconds": 0.0, "enabled": true, "reason": "",
+		})
+	if not remainder.is_empty():
+		# Resources take no space (2026-09-26), so this always works.
+		out.append({
+			"id": "collect", "label": "Pick up %s" % LootCatalog.describe(remainder),
+			"blurb": "Resources take no room in his bag.",
+			"seconds": 0.0, "enabled": true, "reason": "",
 		})
 	if charges_left <= 0:
 		return out
@@ -422,6 +419,11 @@ func begin_action(villain, action_id: String, choice: Dictionary = {}) -> bool:
 		# Returns what it actually managed, so a refusal reaches the caller as
 		# `false` and gets said out loud rather than looking like a dead button.
 		return _collect_remainder(villain)
+	if action_id == "pick_up":
+		if relic_remainder.is_empty():
+			return false
+		EventBus.items_on_ground.emit(villain, self, relic_remainder.duplicate())
+		return true
 
 	var seconds: float = 0.0
 	var label: String = ""
@@ -519,11 +521,11 @@ func _resolve_loot(villain, fraction: float, deed_id: String, axes: Dictionary,
 			taken[kind] = got
 		if amount - got > 0:
 			left[kind] = amount - got
+	# **Items land on the ground** (designer ruling 2026-09-26): he decides what
+	# to pick up and what to leave, in the pick-up window `items_on_ground`
+	# opens. Resources take no space, so they go straight into his pack.
 	for id in rolled["relics"]:
-		if villain.add_relic(id):
-			EventBus.relic_found.emit(villain, id)
-		else:
-			relic_remainder.append(id)
+		relic_remainder.append(id)
 	for kind in left.keys():
 		remainder[kind] = int(remainder.get(kind, 0)) + int(left[kind])
 
@@ -534,6 +536,9 @@ func _resolve_loot(villain, fraction: float, deed_id: String, axes: Dictionary,
 		villain.record_deed(deed_id, axes, _day(), band)
 	_refresh_sprite()
 	EventBus.site_looted.emit(villain, self, taken)
+	if not rolled["relics"].is_empty():
+		EventBus.items_on_ground.emit(villain, self, rolled["relics"].duplicate())
+	_give_blueprint(villain)
 	_roll_guardian(villain)
 
 ## The per-pull guardian roll. Rolled **after** the loot has landed in his
@@ -593,6 +598,7 @@ func _resolve_choice(villain, choice: Dictionary) -> void:
 	if deed_id != "":
 		villain.record_deed(deed_id, axes, _day(), band)
 	EventBus.site_choice_resolved.emit(villain, self, String(choice.get("id", "")))
+	_give_blueprint(villain)
 
 	if _grave_finished():
 		charges_left = maxi(0, charges_left - 1)
@@ -620,11 +626,10 @@ func _take_into_hands(villain, table_id: String, fraction: float) -> void:
 		if amount - got > 0:
 			remainder[kind] = int(remainder.get(kind, 0)) + (amount - got)
 	for id in rolled["relics"]:
-		if villain.add_relic(id):
-			EventBus.relic_found.emit(villain, id)
-		else:
-			relic_remainder.append(id)
+		relic_remainder.append(id)
 	EventBus.site_looted.emit(villain, self, taken)
+	if not rolled["relics"].is_empty():
+		EventBus.items_on_ground.emit(villain, self, rolled["relics"].duplicate())
 
 ## Notice: the escalation half of the split. **World state, so it goes to
 ## `GameState.add_threat()`** and nowhere near the villain -- the reputation
@@ -683,21 +688,68 @@ func _collect_remainder(villain) -> bool:
 			remainder[kind] = int(remainder[kind]) - got
 			if int(remainder[kind]) <= 0:
 				remainder.erase(kind)
-	var relics: Array = []
-	for id in relic_remainder.duplicate():
-		if villain.add_relic(id):
-			relic_remainder.erase(id)
-			relics.append(id)
-			EventBus.relic_found.emit(villain, id)
-	if taken.is_empty() and relics.is_empty():
+	# Items are picked one by one in the pick-up window, never swept up here.
+	if taken.is_empty():
 		return false
 	_refresh_sprite()
-	var what: String = LootCatalog.describe(taken) if not taken.is_empty() else ""
-	for id in relics:
-		what += ("" if what == "" else ", ") + String(LootCatalog.relic(id).get("name", id))
-	EventBus.travel_noted.emit("Collected: %s — carrying %d/%d.%s" % [
-		what, villain.carried_total(), villain.carry_capacity(),
+	EventBus.travel_noted.emit("Collected: %s.%s" % [LootCatalog.describe(taken),
 		"" if not has_remainder() else "  Still at %s: %s." % [display_name, _remainder_label()]], 0.0)
+	return true
+
+## The plans, the first time anything here is resolved.
+func _give_blueprint(villain) -> void:
+	if blueprint_id == "" or _blueprint_given or villain == null:
+		return
+	_blueprint_given = true
+	EventBus.blueprint_found.emit(villain, blueprint_id, display_name)
+
+## Whether this site still has plans he does not know -- the panel's hint.
+func has_unknown_blueprint() -> bool:
+	if blueprint_id == "" or _blueprint_given:
+		return false
+	var p: Callable = BuildingCatalog.blueprint_provider
+	return not (p.is_valid() and bool(p.call(blueprint_id)))
+
+# ---------------- Items on the ground (designer ruling 2026-09-26) -----------
+
+## Picks one item up into his bag. Refused out of reach, or with no free slot.
+func pick_up_item(villain, id: String) -> bool:
+	if villain == null or not in_reach(villain) or not relic_remainder.has(id):
+		return false
+	if not villain.add_relic(id):
+		return false
+	relic_remainder.erase(id)
+	EventBus.relic_found.emit(villain, id)
+	_refresh_sprite()
+	return true
+
+## Puts a piece of gear on straight from the ground -- no free bag slot needed.
+## Whatever it replaces goes into his bag, or onto the ground here if the bag
+## is full.
+func wear_item(villain, id: String) -> bool:
+	if villain == null or not in_reach(villain) or not relic_remainder.has(id):
+		return false
+	if not Necromancer.is_gear(id):
+		return false
+	var slot: String = Necromancer.gear_slot(id)
+	var old: String = String(villain.equipped.get(slot, ""))
+	relic_remainder.erase(id)
+	villain.relics_carried.append(id)
+	villain.equip(id)
+	if old != "" and villain.carried_total() > villain.carry_capacity():
+		villain.relics_carried.erase(old)
+		relic_remainder.append(old)
+	EventBus.relic_found.emit(villain, id)
+	_refresh_sprite()
+	return true
+
+## Leaves an item from his bag here, with the rest of what is on the ground.
+func leave_item(villain, id: String) -> bool:
+	if villain == null or not in_reach(villain) or not villain.relics_carried.has(id):
+		return false
+	villain.relics_carried.erase(id)
+	relic_remainder.append(id)
+	_refresh_sprite()
 	return true
 
 # ---------------- Appearance --------------------------------------------------
@@ -767,6 +819,10 @@ func get_inspect_data() -> Dictionary:
 func _loot_rows() -> Array:
 	var rows: Array = []
 	rows.append({"label": "Danger", "value": "Band %d — %s" % [band, _band_word()]})
+	if has_unknown_blueprint():
+		rows.append({"label": "Plans", "value": "Somewhere in here: how to build a %s." % String(
+			BuildingCatalog.get_building(blueprint_id).get("display_name", blueprint_id)),
+			"color": Color(0.8, 0.7, 1.0)})
 	if is_guarded():
 		rows.append({"label": "Guarded", "value": "%d %s still standing" % [
 			_living_guardians(), "guardian" if _living_guardians() == 1 else "guardians"],

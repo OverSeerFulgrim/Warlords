@@ -33,9 +33,9 @@ exactly one villain on the map** (per-villain state on the villain, never in an 
 - `Combat.gd` is THE damage formula (knows nothing); `CombatSystem.gd` is policy. Duck-typed
   contracts: `get_inspect_data()` (inspectables), Combatant methods (fighters).
 - Stats: nine attributes, `docs/design/COMBAT_SPEC.md` §2 (Might is gone). `stat_rework_roster.xlsx`
-  is the editing surface; `tools/export_roster.gd` derives `data/races.json`. Carry = Endurance,
-  max_hp = 8 + End×2. Walk speed is a **per-race constant** in `races.json`, derived from Speed at
-  export only: a recruit's rolled Speed never changes it, and the Necromancer moves at
+  is the editing surface; `tools/export_roster.gd` derives `data/races.json`. Carry = Endurance
+  (his = item slots; resources take none, 2026-09-26), max_hp = 8 + End×2. Walk speed is a
+  **per-race constant** in `races.json`, derived from Speed at export only: a recruit's rolled Speed never changes it, and the Necromancer moves at
   `MOVE_SPEED_CELLS` (1.0), not his row. Effective skill = skill + floor((attr−5)/2), clamped
   1–10, **computed at use time, never stored**. Attack profile falls out of highest Str/Dex/Int —
   a unit needing a hand-written profile means the rule is wrong. Creatures and villains use the
@@ -69,7 +69,7 @@ scripts/run/         RunLifecycle (endings, items kept, carry-in, XP, Second Wak
                      (XP, stash, blueprints)
 scripts/ui/          InspectionPanel, Minimap, HudTopBar, BuildMenu, EconomyTab, EventPanelUI,
                      InspectorActions, TokenLayer, CombatFeedback, DebugSiteOverlay (F3),
-                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen
+                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen, ItemsDialog
 scripts/settlement/  Settlement, SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                      MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/     Necromancer (data), VillainController, SortieSystem (capacity/deposit/death)
@@ -91,11 +91,11 @@ the title — expected). Assertion counts as of 2026-09-26:
 - `measure_travel` — **the gate on any map change**: every row back in band; walk speed is no knob
 - `verify_terrain` 278 — sheets, atlas, masks, the generated layout (roads, Band 4 clearance,
   crossings, reachability, dead ends lead to loot, clearings, canopy budget)
-- `verify_loot_tables` 536 — every table ×10k vs LOOT_SITES_SPEC §5, relics, remainders, dusk gate
+- `verify_loot_tables` 533 — every table ×10k vs LOOT_SITES_SPEC §5, relics, remainders, dusk gate
 - `verify_stats` 505 — nine attributes vs the workbook, profiles, hp/carry, no identifier named
   Might (after ANY roster/stat change)
 - `check_sprite_scales` 122 — everything draws at its claimed size; looted sprites share a canvas
-- `verify_sortie` 67 — party capacity, the deposit at the Throne, drops, caches, death
+- `verify_sortie` 79 — item slots (resources take none), gear worn vs banked, deposit, caches, death
 - `verify_villain_combat` 65 — aura band edge, engage 26px / cast 5 cells, regen, 1,000-fight bands
 - `verify_escort` 58 — undead-only binding, labour pool in/out, a grave-raised skeleton joining,
   both stances, the interpose
@@ -103,11 +103,11 @@ the title — expected). Assertion counts as of 2026-09-26:
 - `verify_run_lifecycle` 49 — XP/level formulas (PROGRESSION.md), profile never written by a
   harness, owner checks, Second Wake, death ending the run, the run-end screen
 - `verify_raven` 39 — the five honesty conditions over 1,000 dawns, cap, silence, fog untouched
-- `verify_guild` 68 — roadside spawn, the board from world state, pay into hands/owed, standing
+- `verify_guild` 69 — roadside spawn, run one builds nothing, blueprints from sites, the board from world state, pay into hands, standing
   drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
 - `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
 - `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
-- `verify_demo_shell` 39 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
+- `verify_demo_shell` 40 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
 - `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
 - `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)

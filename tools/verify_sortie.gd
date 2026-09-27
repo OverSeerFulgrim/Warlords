@@ -44,65 +44,64 @@ func _ready() -> void:
 
 # ---------------- §2: party capacity ------------------------------------------
 
-## The spec's own worked example: villain alone = 6, with two End-4 skeletons =
-## 14, and a relic eats a slot. Asserted against the *stated* numbers rather
-## than against whatever the code computes, because these are the numbers every
-## loot table was tuned against.
+## **Item slots, and resources that take none** (designer ruling 2026-09-26,
+## first playtest; SORTIE_SPEC §2 as amended). His bag is Endurance slots for
+## ITEMS; resources are an unlimited tally; the escort no longer carries.
 func _capacity_arithmetic() -> void:
-	print("-- Party capacity (§2) --")
+	print("-- Item slots; resources take no space (§2 as amended 2026-09-26) --")
 	var s: SortieSystem = _fresh_system()
 	var v: Necromancer = s.villain
-	_check("the villain alone carries 6", s.party_capacity() == 6, "%d" % s.party_capacity())
+	_check("the villain has 6 item slots", s.party_capacity() == 6, "%d" % s.party_capacity())
 	_check("...which is his Endurance, not a bespoke carry stat",
 		s.party_capacity() == v.attribute("endurance"))
-
 	var a := _skeleton()
 	var b := _skeleton()
-	_check("a skeleton's Endurance is 4", a.attribute("endurance") == 4,
-		"%d" % a.attribute("endurance"))
 	v.escort.append(a)
 	v.escort.append(b)
-	_check("with two skeletons the party carries 14", s.party_capacity() == 14,
+	_check("the escort adds no slots -- skeletons are not porters any more", s.party_capacity() == 6,
 		"%d" % s.party_capacity())
-
-	_check("a relic consumes one slot", v.add_relic("grave_coins")
+	_check("an item consumes one slot", v.add_relic("grave_coins")
 		and s.party_carried() == 1, "%d carried" % s.party_carried())
-	_check("...and party space follows", s.party_space() == 13, "%d" % s.party_space())
-
-	# Filling order: villain first, escort second (§2).
-	v.relics_carried.clear()
+	_check("...and the free slots follow", s.party_space() == 5, "%d" % s.party_space())
 	var took: int = s.take_into_party(v, "bones", 8)
-	_check("eight bones all fit in a 14-slot party", took == 8, "%d" % took)
-	_check("...the villain filled first, to his brim",
-		v.carried_total() == 6, "villain has %d" % v.carried_total())
-	_check("...and the overflow went to the escort", a.carrying_amount == 2,
-		"skeleton has %d" % a.carrying_amount)
-	_check("...one kind per member, as the trip loop's fields require",
-		String(a.carrying_kind) == "bones")
+	_check("eight bones all go into his pack", took == 8 and int(v.carried.get("bones", 0)) == 8, "%d" % took)
+	_check("...taking no slot", v.carried_total() == 1 and s.party_space() == 5)
+	_check("...and nothing went to the escort", int(a.carrying_amount) == 0 and int(b.carrying_amount) == 0)
+	for id in ["tarnished_locket", "sextons_ring", "wolfhide_cloak", "chipped_censer", "barrow_lantern"]:
+		v.add_relic(id)
+	_check("six items fill the bag", s.party_space() == 0 and not v.add_relic("noble_seal"))
+	_check("...and a full bag still takes every resource", s.take_into_party(v, "gold", 40) == 40
+		and int(v.carried.get("gold", 0)) == 40)
 
-	# A second kind cannot go into a skeleton already holding bones.
-	var gold_taken: int = s.take_into_party(v, "gold", 4)
-	_check("a skeleton already hauling bones will not also take gold",
-		int(b.carrying_amount) == 4 and int(a.carrying_amount) == 2,
-		"a=%d b=%d" % [a.carrying_amount, b.carrying_amount])
-	_check("...so the second kind went to the empty one", String(b.carrying_kind) == "gold"
-		and gold_taken == 4, "%s %d" % [b.carrying_kind, gold_taken])
-
-# ---------------- §4: overflow ------------------------------------------------
+# ---------------- §4: items on the ground --------------------------------------
 
 func _overflow_leaves_an_exact_remainder() -> void:
-	print("-- Overflow leaves the exact remainder at the site (§4) --")
+	print("-- Loot: resources into the pack, items onto the ground to choose from --")
 	var site: WorldSite = _site("cursed_battlefield")
 	var s: SortieSystem = _fresh_system()
 	var v: Necromancer = s.villain
 	v.position = site.position
 	site.party_filler = func(who, kind: String, amount: int): return s.take_into_party(who, kind, amount)
-	v.add_carried("bones", v.carry_capacity() - 1)
-	site._resolve_loot(v, 1.0, "", {}, 0.0)
-	_check("he is full", s.party_space() == 0, "%d free" % s.party_space())
-	_check("the overflow stayed at the site", site.has_remainder(), str(site.remainder))
-	_check("...and the site still offers actions", not site.actions_for(v).is_empty())
-	_check("...and is not spent while it holds one", not site.is_spent())
+	var shown: Array = []
+	var conn := func(_v, _site2, ids: Array): shown.append_array(ids)
+	EventBus.items_on_ground.connect(conn)
+	var tries: int = 0
+	while site.relic_remainder.is_empty() and tries < 40:
+		site.charges_left = maxi(site.charges_left, 1)
+		site._resolve_loot(v, 1.0, "", {}, 0.0)
+		v.relics_rolled.clear()
+		tries += 1
+	EventBus.items_on_ground.disconnect(conn)
+	_check("resources never stay behind -- they take no space", site.remainder.is_empty(), str(site.remainder))
+	_check("...they are in his pack", not v.carried.is_empty(), str(v.carried))
+	_check("items stay on the ground until he chooses", not site.relic_remainder.is_empty()
+		and v.relics_carried.is_empty(), str(site.relic_remainder))
+	_check("...and the pick-up window is asked for", shown == site.relic_remainder, "%s vs %s" % [shown, site.relic_remainder])
+	_check("...the site offers it", _ids(site.actions_for(v)).has("pick_up"))
+	_check("...and is not spent while items lie there", not site.is_spent())
+	var id: String = String(site.relic_remainder[0])
+	_check("he takes one", site.pick_up_item(v, id) and v.relics_carried.has(id) and not site.relic_remainder.has(id))
+	_check("...and can leave it again", site.leave_item(v, id) and site.relic_remainder.has(id))
 	site.remainder.clear()
 	site.relic_remainder.clear()
 
@@ -181,8 +180,8 @@ func _the_band_is_not_the_throne() -> void:
 	_check("...but not at the Throne", not s.at_throne())
 	var bones_before: int = GameState.bones
 	s._check_deposit()
-	_check("so NOTHING banks", GameState.bones == bones_before and v.carried_total() == 5,
-		"%d -> %d, carrying %d" % [bones_before, GameState.bones, v.carried_total()])
+	_check("so NOTHING banks", GameState.bones == bones_before and v.resources_carried_total() == 5,
+		"%d -> %d, carrying %d" % [bones_before, GameState.bones, v.resources_carried_total()])
 
 	# And the last few cells are what makes the difference.
 	v.place_at(s.throne_position())
@@ -264,8 +263,8 @@ func _the_cache_is_a_site() -> void:
 		and cache.relic_remainder.has("tarnished_locket"), str(cache.remainder))
 	_check("it is inspectable like any site",
 		String(cache.get_inspect_data().get("title", "")) != "")
-	_check("it offers only the collect -- no table, no sheet",
-		_ids(cache.actions_for(v)) == ["collect"], str(_ids(cache.actions_for(v))))
+	_check("it offers only the pick-up and the collect -- no table, no sheet",
+		_ids(cache.actions_for(v)) == ["pick_up", "collect"], str(_ids(cache.actions_for(v))))
 	_check("it is NOT Raven-eligible (a cache is discovered by definition)",
 		not cache.is_raven_eligible())
 	_check("...while an authored site is", _site("hidden_cache").is_raven_eligible())
@@ -274,8 +273,10 @@ func _the_cache_is_a_site() -> void:
 	v.carried.clear()
 	v.relics_carried.clear()
 	cache.begin_action(v, "collect")
+	cache.pick_up_item(v, "tarnished_locket")
 	_check("re-looting empties it", not cache.has_remainder(), str(cache.remainder))
-	_check("...into his hands", v.carried_total() >= 3, "%d" % v.carried_total())
+	_check("...into his hands", int(v.carried.get("bones", 0)) == 3 and v.relics_carried.has("tarnished_locket"),
+		"%s %s" % [v.carried, v.relics_carried])
 	_check("...and the emptied cache is spent", cache.is_spent())
 
 	# Outside the density budget: the budget counts authored sites from the JSON.
@@ -290,14 +291,20 @@ func _the_cache_is_a_site() -> void:
 # ---------------- §3 / LOOT_SITES §7: relics wake at the Throne ---------------
 
 func _relics_wake_on_deposit() -> void:
-	print("-- Relic effects activate ON DEPOSIT, not on pickup (LOOT_SITES §7) --")
+	print("-- Gear works when worn; everything else wakes at the Throne (2026-09-26) --")
 	var s: SortieSystem = _main.sortie_system
 	var v: Necromancer = _main.villain
 	_reset(v)
 	var carry_before: int = v.carry_capacity()
 	v.add_relic("pallbearers_gloves")
-	_check("in his hands it does nothing", v.carry_capacity() == carry_before,
+	_check("in the bag it does nothing", v.carry_capacity() == carry_before,
 		"%d -> %d" % [carry_before, v.carry_capacity()])
+	_check("worn, it works at once -- out here", v.equip("pallbearers_gloves")
+		and v.carry_capacity() == carry_before + 2, "%d" % v.carry_capacity())
+	_check("...and takes no bag slot", v.carried_total() == 0 and v.equipped.get("hands", "") == "pallbearers_gloves")
+	v.add_relic("sermon_of_ash")
+	_check("an item that is not gear cannot be worn", not v.equip("sermon_of_ash"))
+	_check("...and does nothing in the bag", v.attribute("intelligence") == 7)
 
 	var woke: Array = []
 	var conn := func(_v, relic_id: String): woke.append(relic_id)
@@ -305,29 +312,36 @@ func _relics_wake_on_deposit() -> void:
 	v.place_at(s.throne_position())
 	s._check_deposit()
 	EventBus.relic_banked.disconnect(conn)
-	_check("banking it wakes it", v.carry_capacity() == carry_before + 2,
-		"%d" % v.carry_capacity())
-	_check("...and says so", woke == ["pallbearers_gloves"], str(woke))
-	_check("...and it is banked, not carried",
-		v.relics_banked.has("pallbearers_gloves") and v.relics_carried.is_empty())
+	_check("banking wakes the non-gear item", v.attribute("intelligence") == 8)
+	_check("...and counts the worn gear as come home", woke.has("pallbearers_gloves") and woke.has("sermon_of_ash"), str(woke))
+	_check("...which stays worn", v.equipped.get("hands", "") == "pallbearers_gloves" and v.relics_carried.is_empty())
+	_check("at the Throne he can put it in the hoard", v.unequip("hands", true)
+		and v.relics_banked.has("pallbearers_gloves") and v.carry_capacity() == carry_before)
+	_check("...where gear does nothing until worn again", v.carry_capacity() == carry_before)
+	_check("...and wear it from the hoard", v.equip("pallbearers_gloves", true) and v.carry_capacity() == carry_before + 2)
 
-	# All six live effects reachable from a banked relic, and the dormant two
-	# still doing nothing. The detail of each is verify_loot_tables'; this is the
-	# claim that DEPOSIT is what turns them on.
-	v.relics_banked.clear()
-	v.relics_banked.append_array(["sextons_ring", "wolfhide_cloak", "pallbearers_gloves",
-		"chipped_censer", "sermon_of_ash", "barrow_lantern"])
-	_check("six live effects, all reading from the banked list",
+	# All six live effects: five worn (one slot each, the lantern and censer
+	# share 'held'), the Sermon banked.
+	_reset(v)
+	for id in ["sextons_ring", "wolfhide_cloak", "pallbearers_gloves", "chipped_censer"]:
+		v.relics_carried.append(id)
+		v.equip(id)
+	v.relics_banked.append("sermon_of_ash")
+	_check("worn and banked effects, all live",
 		is_equal_approx(v.channel_multiplier(["grave"]), 0.75)
 		and v.carry_capacity() == carry_before + 2
 		and v.dawn_heal() == 2
-		and v.attribute("intelligence") == 8
-		and v.fog_reveal_bonus() == 2)
-	v.relics_banked.clear()
+		and v.attribute("intelligence") == 8, "chan %.2f carry %d heal %d int %d" % [v.channel_multiplier(["grave"]),
+		v.carry_capacity(), v.dawn_heal(), v.attribute("intelligence")])
+	v.relics_carried.append("barrow_lantern")
+	v.equip("barrow_lantern")
+	_check("one item per slot: the lantern replaces the censer in the hand",
+		v.fog_reveal_bonus() == 2 and v.dawn_heal() == 0 and v.relics_carried.has("chipped_censer"))
+	_reset(v)
 	v.relics_banked.append_array(["noble_seal", "ledger_of_names"])
 	_check("...and the two dormant ones still do nothing once banked",
 		v.carry_capacity() == carry_before and v.attribute("intelligence") == 7)
-	v.relics_banked.clear()
+	_reset(v)
 
 # ---------------- §6: death ---------------------------------------------------
 
@@ -345,7 +359,11 @@ func _death_clears_everything_first() -> void:
 	a.carrying_amount = 3
 	v.add_carried("gold", 4)
 	v.add_relic("grave_coins")
-	_check("he is carrying something worth losing", v.carried_total() == 5)
+	v.relics_carried.append("wolfhide_cloak")
+	v.equip("wolfhide_cloak")           # found this sortie, worn, never home
+	v.relics_banked.append("sextons_ring")
+	v.equip("sextons_ring", true)       # from the hoard: safe
+	_check("he is carrying something worth losing", v.resources_carried_total() == 4 and v.carried_total() == 1)
 	# Death ends the run since 2026-09-26; getting up again is the Second Wake
 	# unlock. Grant one, so this tests the haul and the wake and leaves the run
 	# running for the tests after it. The ending itself is verify_run_lifecycle's.
@@ -366,6 +384,8 @@ func _death_clears_everything_first() -> void:
 		Dictionary(seen[0]["carried"]).is_empty(), str(seen[0]["carried"]))
 	_check("...and his relics are gone", int(seen[0]["relics"]) == 0)
 	_check("...and the escort's load with them", int(seen[0]["escort"]) == 0)
+	_check("gear found this sortie and worn is lost with the haul", not v.is_wearing("wolfhide_cloak"))
+	_check("...gear he took from the hoard is not", v.is_wearing("sextons_ring"))
 	_check("nothing of it reached GameState", true)   # nothing banks on death, by construction
 	_check("a Second Wake puts him back at the Throne", v.position.distance_to(
 		_main.sortie_system.throne_position()) < 1.0)
@@ -396,6 +416,8 @@ func _reset(v: Necromancer) -> void:
 	v.carried.clear()
 	v.relics_carried.clear()
 	v.relics_banked.clear()
+	v.equipped.clear()
+	v._worn_unbanked.clear()
 	v.escort.clear()
 	v.heal_full()
 

@@ -1,9 +1,9 @@
 {
-	"_comment": "The first relic set (LOOT_SITES_SPEC.md §7). Ten relics, six live effects, two honest trinkets, two dormant promises. Relics are UNIQUE PER RUN -- once one has dropped it is out of every table, which is why effects are additive and unstacked. A relic in hand grants NOTHING: effects activate on deposit at the lair (§7's carry rule, the banking rule applied to power), which is what keeps 'drop it and run' a live choice on the return leg. Effect keys the code implements: attribute (any of COMBAT_SPEC §2.1's nine), move_speed_mult, carry_delta, heal_at_dawn, fog_reveal_delta, channel_mult. An effect marked dormant:true is data with no consumer yet -- the panel says so out loud rather than shipping a lie.",
+	"_comment": "The first relic set (LOOT_SITES_SPEC.md §7). Ten relics, six live effects, two honest trinkets, two dormant promises. Relics are UNIQUE PER RUN -- once one has dropped it is out of every table, which is why effects are additive and unstacked. GEAR (an item with a 'slot': cloak, hands, ring, neck, held) works the moment it is WORN, anywhere, and takes no bag slot -- designer ruling 2026-09-26 after the first playtest; one item per slot, and worn gear found this sortie is still lost if he dies before the Throne. An item WITHOUT a slot works once banked at the lair (§7's original rule). Effect keys the code implements: attribute (any of COMBAT_SPEC §2.1's nine), move_speed_mult, carry_delta, heal_at_dawn, fog_reveal_delta, channel_mult. An effect marked dormant:true is data with no consumer yet -- the panel says so out loud rather than shipping a lie.",
 
 	"relics": [
 		{
-			"id": "tarnished_locket", "name": "A Tarnished Locket", "tier": "trinket", "gold_value": 4,
+			"id": "tarnished_locket", "name": "A Tarnished Locket", "tier": "trinket", "gold_value": 4, "slot": "neck",
 			"description": "Somebody's whole world, closed on a face nobody living remembers.",
 			"effects": []
 		},
@@ -13,22 +13,22 @@
 			"effects": []
 		},
 		{
-			"id": "sextons_ring", "name": "The Sexton's Ring", "tier": "uncommon", "gold_value": 6,
+			"id": "sextons_ring", "name": "The Sexton's Ring", "tier": "uncommon", "gold_value": 6, "slot": "ring",
 			"description": "He opened graves for forty years and was buried in one. The hands remember.",
 			"effects": [{"kind": "channel_mult", "tags": ["grave"], "value": 0.75}]
 		},
 		{
-			"id": "wolfhide_cloak", "name": "A Wolf-Hide Cloak", "tier": "uncommon", "gold_value": 6,
+			"id": "wolfhide_cloak", "name": "A Wolf-Hide Cloak", "tier": "uncommon", "gold_value": 6, "slot": "cloak",
 			"description": "Cured badly, stinking, and warm. The snow does not slow whoever wears it.",
 			"effects": [{"kind": "move_speed_mult", "value": 1.10, "off_road": true}]
 		},
 		{
-			"id": "pallbearers_gloves", "name": "The Pallbearer's Gloves", "tier": "uncommon", "gold_value": 5,
+			"id": "pallbearers_gloves", "name": "The Pallbearer's Gloves", "tier": "uncommon", "gold_value": 5, "slot": "hands",
 			"description": "Leather worn smooth by the weight of other people.",
 			"effects": [{"kind": "carry_delta", "value": 2}]
 		},
 		{
-			"id": "chipped_censer", "name": "A Chipped Censer", "tier": "uncommon", "gold_value": 5,
+			"id": "chipped_censer", "name": "A Chipped Censer", "tier": "uncommon", "gold_value": 5, "slot": "held",
 			"description": "It still holds a little of whatever they were burning to keep you out.",
 			"effects": [{"kind": "heal_at_dawn", "value": 2}]
 		},
@@ -43,7 +43,7 @@
 			"effects": [{"kind": "attribute", "attribute": "intelligence", "delta": 1}]
 		},
 		{
-			"id": "barrow_lantern", "name": "A Barrow Lantern", "tier": "rare", "gold_value": 9,
+			"id": "barrow_lantern", "name": "A Barrow Lantern", "tier": "rare", "gold_value": 9, "slot": "held",
 			"description": "It was lit when you found it. Nobody has been down there in three hundred years.",
 			"effects": [{"kind": "fog_reveal_delta", "value": 2}]
 		},

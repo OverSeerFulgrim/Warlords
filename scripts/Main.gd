@@ -82,6 +82,12 @@ var pause_menu: PauseMenu
 var title_screen: TitleScreen
 ## Flee the region: pick what to carry out (ROGUELITE_REWORK 17.7).
 var keep_dialog: KeepItemsDialog
+## The Items window: the ground, the bag, the worn (2026-09-26).
+var items_dialog: ItemsDialog
+## Opens by itself when a site drops items at his feet -- only in the real game.
+## A harness looting a hundred sites must not be paused by a window it never
+## closes, so harnesses open it by hand.
+var auto_open_items: bool = false
 ## The Lair (section 10, 17.6): the stash, the hall, and what to risk next run.
 var lair_screen: LairScreen
 ## Set the first time the title is shown this session, so "Begin a new run"
@@ -835,6 +841,18 @@ func _build_ui() -> void:
 	title_screen.lair_requested.connect(_open_lair)
 	run_summary.lair_requested.connect(_open_lair)
 
+	items_dialog = ItemsDialog.new()
+	items_dialog.name = "ItemsDialog"
+	items_dialog.villain = villain
+	items_dialog.sortie_system = sortie_system
+	add_child(items_dialog)
+	items_dialog.closed.connect(func():
+		hud_top_bar.refresh_stats()
+		if inspector.is_open():
+			inspector.refresh())
+	auto_open_items = is_inside_tree() and get_tree().current_scene == self
+	inspector_actions.items_requested.connect(_open_items)
+
 	keep_dialog = KeepItemsDialog.new()
 	keep_dialog.name = "KeepItemsDialog"
 	add_child(keep_dialog)
@@ -1321,6 +1339,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
+	# I opens his items (2026-09-26).
+	if event.is_action_pressed("items", false, false):
+		_open_items()
+		get_viewport().set_input_as_handled()
+		return
+
 	# H flips Hidden / Hunting (LIVING_WORLD ruling 15).
 	if event.is_action_pressed("stance", false, false):
 		_toggle_stance()
@@ -1556,17 +1580,17 @@ func _begin_site_action(site: WorldSite, action_id: String) -> void:
 	if site == null or villain == null:
 		return
 	var ok: bool = site.begin_action(villain, action_id)
+	# Asked for by hand: the Items window opens in any build (the automatic
+	# opening after a pull is the real game's only).
+	if ok and action_id == "pick_up":
+		items_dialog.open(site)
 	# **Refresh either way.** A refused action still has something to say -- the
 	# collect row comes back greyed with its reason under it -- and a press that
 	# changes nothing on screen is the bug this whole pass is about.
 	inspector.refresh()
 	if ok:
 		return
-	if action_id == "collect" and SortieSystem.party_space_of(villain) <= 0:
-		_alert("His hands are full — %d/%d. Nothing more will fit."
-			% [villain.carried_total(), villain.carry_capacity()], "warn")
-	else:
-		_alert("He cannot do that from here.", "warn")
+	_alert("He cannot do that from here.", "warn")
 
 ## Opens a site's four-way sheet through the **event panel**, which is the one
 ## choice renderer this project has (LOOT_SITES_SPEC section 3: one renderer,
@@ -1644,6 +1668,13 @@ func _guild_action(g, action: String, id: int) -> void:
 	elif not ok:
 		_log("[color=orange]The clerk shakes his head.[/color]", "events")
 	inspector.refresh()
+
+## The Items window, with the ground of whatever site he is standing at.
+func _open_items() -> void:
+	if items_dialog == null or villain == null or (run_lifecycle and run_lifecycle.ended):
+		return
+	var here: WorldSite = world_sites.lootable_in_reach(villain) if world_sites else null
+	items_dialog.open(here if here != null and not here.relic_remainder.is_empty() else null)
 
 func _request_flee() -> void:
 	if run_lifecycle == null or not run_lifecycle.can_flee():
@@ -1981,10 +2012,24 @@ func _connect_signals() -> void:
 		hud_top_bar.refresh_stats()
 	)
 	EventBus.relic_found.connect(func(v, relic_id: String):
+		if v != villain:
+			return
 		var r: Dictionary = LootCatalog.relic(relic_id)
-		_log("[color=#e0c060]%s — %s. It does nothing until it is home.[/color]"
-			% [r.get("name", relic_id), r.get("description", "")], "events alerts")
-		_alert("Relic found: %s" % r.get("name", relic_id), "info")
+		_log("[color=#e0c060]%s — %s %s[/color]"
+			% [r.get("name", relic_id), r.get("description", ""), ItemsDialog.effect_text(relic_id)], "events alerts")
+		_alert("Picked up: %s" % r.get("name", relic_id), "info")
+	)
+	# Items at his feet: the pick-up window (2026-09-26).
+	EventBus.items_on_ground.connect(func(v, site, ids: Array):
+		if v != villain:
+			return
+		_log("[color=#e0c060]On the ground at %s: %s.[/color]" % [site.display_name, LootCatalog.describe_relics(ids)], "events")
+		if auto_open_items and not (run_lifecycle and run_lifecycle.ended):
+			items_dialog.open(site)
+	)
+	EventBus.gear_changed.connect(func(v):
+		if v == villain and hud_top_bar:
+			hud_top_bar.refresh_stats()
 	)
 	# **The ledger R3 will read.** R2 consumes none of it beyond this line --
 	# which is the point: the array is being written now so R3 has a history

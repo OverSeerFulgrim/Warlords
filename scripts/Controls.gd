@@ -29,6 +29,7 @@ const ACTIONS := [
 	["follow", "Camera follows him", KEY_F],
 	["raise_dead", "Raise Dead (5 bones)", KEY_R],
 	["stance", "Hidden / Hunting", KEY_H],
+	["items", "Items (wear, drop, swap)", KEY_I],
 	["minimap", "Show / hide the minimap", KEY_M],
 	["pause", "Pause", KEY_SPACE, KEY_P],
 	["cancel", "Cancel / close / pause", KEY_ESCAPE],

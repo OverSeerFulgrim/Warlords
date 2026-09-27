@@ -46,51 +46,54 @@ func _ready() -> void:
 # ---------------- Collect -----------------------------------------------------
 
 func _collect_button() -> void:
-	print("-- 'Collect what you left' --")
+	print("-- Items on the ground: the pick-up window, as buttons (2026-09-26) --")
 	var site: WorldSite = _site("cemetery")
 	var v: Necromancer = _main.villain
 	v.carried.clear()
-	v.add_carried("bones", v.carry_capacity())
+	v.relics_carried.clear()
 	await _stand_beside(site)
-	site._resolve_choice(v, _choice(site, "steal"))
-	_ok("the grave left a remainder", site.has_remainder())
+	site.relic_remainder.clear()
+	site.relic_remainder.append("wolfhide_cloak")
+	site.remainder["bones"] = 2
 
 	# The real click path: this is what _unhandled_input calls.
 	_main._inspect_at(site.position)
 	await get_tree().process_frame
 	_ok("clicking the site opens the inspector on it", _main.inspector.is_open()
 		and _main.inspector.current_source() == site)
-
-	var full_btn: Button = _button("Collect what you left")
-	_ok("the collect row is on the panel", full_btn != null)
-	if full_btn == null:
-		return
-	_ok("...greyed, because his hands are full", full_btn.disabled)
-	_ok("...with the reason printed under it, not just in a tooltip",
-		_panel_says("hands are full"))
-
-	# Empty his hands and re-open: the same row must come back live.
-	v.carried.clear()
-	_main.inspector.refresh()
-	await get_tree().process_frame
-	var btn: Button = _button("Collect what you left")
-	_ok("with room, the row comes back", btn != null and not btn.disabled)
+	var btn: Button = _button("Look through the items here", true)
+	_ok("the pick-up row is on the panel", btn != null)
 	if btn == null:
 		return
 	_ok("...and nothing is covering it", _unobstructed(btn))
 	_ok("...and it is big enough to hit", btn.get_global_rect().size.x > 40.0
 		and btn.get_global_rect().size.y > 10.0)
-
-	var before: int = v.carried_total()
-	var remainder: Dictionary = site.remainder.duplicate()
-	# The button's own signal, which is what a mouse release fires.
 	btn.pressed.emit()
 	await get_tree().process_frame
-	_ok("pressing it moves loot into his hands", v.carried_total() > before,
-		"%d -> %d" % [before, v.carried_total()])
-	_ok("...taking it off the site", site.remainder != remainder)
-	_ok("...and the panel redrew in the same frame -- the row is gone",
-		_button("Collect what you left") == null or site.has_remainder())
+	_ok("pressing it opens the Items window", _main.items_dialog.is_open())
+	var wear: Button = _button_in(_main.items_dialog, "Wear")
+	_ok("...which offers to wear the cloak", wear != null)
+	if wear != null:
+		wear.pressed.emit()
+		await get_tree().process_frame
+		_ok("...and wearing it puts it on him, off the ground", v.is_wearing("wolfhide_cloak")
+			and site.relic_remainder.is_empty())
+	var done: Button = _button_in(_main.items_dialog, "Done")
+	_ok("Done closes the window", done != null)
+	if done != null:
+		done.pressed.emit()
+		await get_tree().process_frame
+	_ok("...and the world is running again", not get_tree().paused and not _main.items_dialog.is_open())
+
+	_main.inspector.refresh()
+	await get_tree().process_frame
+	var collect: Button = _button("Pick up 2 Bones")
+	_ok("resources left here are one button, always live", collect != null and not collect.disabled)
+	if collect != null:
+		collect.pressed.emit()
+		await get_tree().process_frame
+		_ok("...which picks them up", int(v.carried.get("bones", 0)) == 2 and site.remainder.is_empty())
+	v.equipped.clear()
 
 # ---------------- Raise -------------------------------------------------------
 

@@ -60,101 +60,35 @@ func _ready() -> void:
 func _process(_delta: float) -> void:
 	_check_deposit()
 
-# ---------------- Party capacity (section 2) ----------------------------------
+# ---------------- Item slots (section 2, as amended 2026-09-26) ---------------
 #
-# The sum lives here rather than on the villain, deliberately (section 9): he
-# must not hold his own escort's capacity logic, because that is the seam where
-# "the villain knows about the party" turns into "the villain owns the party".
+# **Resources take no space, and the escort no longer carries** (designer
+# ruling 2026-09-26, first playtest). What was a party capacity summed over the
+# escort is now simply his item slots: Endurance, plus what worn gear adds.
+# The names stay so every caller keeps reading one place.
 
-## Villain plus one kind per escort member. A starting sortie is 6; with two
-## End-4 skeletons it is 14 -- the spread that makes widening the party a
-## settlement decision rather than a level-up.
 func party_capacity() -> int:
-	if villain == null:
-		return 0
-	var total: int = villain.carry_capacity()
-	for member in villain.escort:
-		total += _member_capacity(member)
-	return total
+	return villain.carry_capacity() if villain else 0
 
 func party_carried() -> int:
-	if villain == null:
-		return 0
-	var total: int = villain.carried_total()
-	for member in villain.escort:
-		total += int(member.carrying_amount)
-	return total
+	return villain.carried_total() if villain else 0
 
 func party_space() -> int:
 	return maxi(0, party_capacity() - party_carried())
 
-## A skeleton hauls its own Endurance, through the `carrying_kind` /
-## `carrying_amount` pair `Laborer` already owns for the trip loop -- **one kind
-## per member**, because a skeleton is a pair of arms and not a pack, and
-## because reusing those fields means the worker deposit path works on it
-## unchanged.
-func _member_capacity(member) -> int:
-	return member_capacity(member)
-
-func _member_space(member) -> int:
-	return member_space(member)
-
-## Static so a site can ask "is there room anywhere in this party?" about the
-## villain who walked up, without holding a SortieSystem -- the same
-## passed-as-a-parameter rule `take_into_party` follows.
-static func member_capacity(member) -> int:
-	return maxi(1, member.attribute("endurance")) if member.has_method("attribute") else 0
-
-static func member_space(member) -> int:
-	return maxi(0, member_capacity(member) - int(member.carrying_amount))
-
-## His free hands plus every escort member's free arms. Not kind-aware: a member
-## already hauling bones has room for bones only, so this is an upper bound --
-## good enough to decide whether a Collect can do *anything*, which is its one
-## caller's question.
+## Static so a site can ask "is there a free item slot?" about the villain who
+## walked up, without holding a SortieSystem.
 static func party_space_of(who) -> int:
-	if who == null:
-		return 0
-	var space: int = who.carry_space()
-	if "escort" in who:
-		for member in who.escort:
-			space += member_space(member)
-	return space
+	return who.carry_space() if who != null else 0
 
-## **Filling order: villain first, escort second, remainder third** (section 2).
-## Not the reverse -- the villain is who survives, and if the party is going to
-## lose someone on the way home it should not be the one holding the haul.
-##
-## **Takes the villain as a parameter**, and reads the escort off him rather
-## than off this system's own field. LOOT_SITES_SPEC section 3's rule is that a
-## site answers to the villain who walked up, *passed as a parameter, never
-## looked up* -- and the first version of this ignored that, filling whoever
-## this system happened to hold. In the game that is the same man; in the loot
-## harness, which rolls tables into throwaway villains, it silently filled the
-## live one instead and eleven assertions went red.
-##
-## Returns how much was actually taken, so the caller leaves the rest at the
-## site as a remainder charge exactly as `add_carried()` already makes it.
+## Resources into his pack -- all of them, always (they take no space). Kept as
+## the one door loot goes through, and **takes the villain as a parameter**: a
+## site answers to the villain who walked up (LOOT_SITES_SPEC section 3), never
+## to whoever this system happens to hold.
 func take_into_party(who, kind: String, amount: int) -> int:
 	if who == null:
 		return 0
-	var taken: int = who.add_carried(kind, amount)
-	var left: int = amount - taken
-	for member in who.escort:
-		if left <= 0:
-			break
-		# One kind per member: a skeleton already hauling bones cannot also take
-		# gold, and that constraint is the escort's whole cost.
-		if String(member.carrying_kind) != "" and String(member.carrying_kind) != kind:
-			continue
-		var room: int = mini(left, _member_space(member))
-		if room <= 0:
-			continue
-		member.carrying_kind = kind
-		member.carrying_amount = int(member.carrying_amount) + room
-		taken += room
-		left -= room
-	return taken
+	return who.add_carried(kind, amount)
 
 # ---------------- The deposit (section 3) -------------------------------------
 
@@ -311,14 +245,16 @@ func _on_villain_died(who, _cause: String) -> void:
 		return
 	who.carried.clear()
 	who.relics_carried.clear()
+	# Gear put on this sortie was never home either (2026-09-26).
+	who.lose_unbanked_gear()
 	for member in who.escort:
 		member.carrying_amount = 0
 		member.carrying_kind = ""
 
 # ---------------- Readouts ----------------------------------------------------
 
-## "6 / 6 — full", for the HUD. One place, so the strip and the panel cannot
-## describe the same hands differently.
+## "Items 2 / 6", for the HUD: item slots only -- resources take none. One
+## place, so the strip and the panel cannot describe the same bag differently.
 func carry_label() -> String:
 	var carried: int = party_carried()
 	var capacity: int = party_capacity()

@@ -84,6 +84,11 @@ tables, §7 relics), `WORLD_MAP_PLAN.md` (§3 travel times, §9 danger from choi
 
 ## 2. Party capacity
 
+> **Amended 2026-09-26 (designer, after the first playtest):** resources take no space and have no
+> limit (still lost on death until banked); his Endurance slots hold **items only**, and **the
+> escort no longer carries**. Worn gear takes no slot. The section below is the original rule.
+> `docs/history/2026-09-26-items-and-gear.md`.
+
 **The villain.** `Necromancer.carry_capacity()` returns Endurance (plus any banked relic's
 `carry_delta`), currently **6**, and
 `carry_space()` / `add_carried()` / `take_carried()` already implement the fungible half. No change

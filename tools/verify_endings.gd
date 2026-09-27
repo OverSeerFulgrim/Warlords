@@ -121,7 +121,7 @@ func _death_loses_what_was_risked() -> void:
 	rl.profile.set_carry(v.class_id, int(e["uid"]), true)
 	rl.run_seconds = 0.0
 	rl.reapply_carry_in()
-	_check("the carried relic is working from the first step", v.relics_banked.has(C))
+	_check("the carried relic is working from the first step (gear: worn from the start)", v.owned_relic_ids().has(C) and v.active_relic_ids().has(C))
 	_check("...and is not one of the run's own finds", not rl.run_items().has(C))
 	v.relics_banked.append(A)
 	v.take_damage(999)
