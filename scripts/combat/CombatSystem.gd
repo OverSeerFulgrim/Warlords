@@ -139,6 +139,11 @@ var day_night: DayNightCycle = null
 ## null-safe, so a smoke test with no world map still spawns dusk wolves.
 var world_sites: WorldSites = null
 
+## The living village (LIVING_WORLD L1). Its villagers are hostile only when
+## they have reason: guards answering an alarm, or everyone while he is
+## Hunting (ruling 15). Untyped -- a plain field, set by Main.
+var village = null
+
 var wolves: Array = []          # Array[Wolf]
 var _engagements: Array = []    # Array[Engagement]
 var _repair_timer: float = 0.0
@@ -476,6 +481,11 @@ func hostiles() -> Array:
 			out.append(w)
 	if world_sites:
 		out.append_array(world_sites.live_guardians())
+	# **The living** (ruling 15): the villagers answering an alarm always, and
+	# every villager while he is Hunting -- which is what makes walking up to a
+	# forager the attack, and what puts his escort on them when it is Aggressive.
+	if village and villain:
+		out.append_array(village.hostile_villagers(villain.is_hunting()))
 	return out
 
 ## Five cells, from the C2 profile table. **Not a constant in this file** -- his
@@ -727,6 +737,15 @@ func _begin_fight(attacker, defender) -> void:
 	var e := Engagement.new(attacker)
 	e.add_defender(defender)
 	_enter_combat(defender)
+	# A villager in the attacker slot stops what he was doing -- and the village
+	# hears about it (its alarm: guards come, bystanders run).
+	if attacker is Villager:
+		# A man already running keeps running -- being cast at again does not
+		# stop him (abandon_trip would reset his flight to IDLE).
+		attacker.in_combat = true
+		if not attacker.panicked:
+			attacker.abandon_trip()
+		EventBus.villager_attacked.emit(attacker, defender)
 	if attacker is Wolf:
 		attacker.state = Wolf.State.FIGHT
 	elif attacker is SiteGuardian:
@@ -853,6 +872,14 @@ func _leaves_a_carcass(attacker) -> bool:
 ## is bookkeeping rather than policy: a dusk wolf leaves `wolves`, a guardian
 ## leaves its site -- and clearing the last one is what unlocks the den.
 func _remove_attacker(attacker) -> void:
+	# A villager is not despawned: he dies, and the village reads the loss and
+	# leaves his body where he fell. Only a Hunting villain (or his escort)
+	# kills villagers, so the deed is his.
+	if attacker is Villager:
+		_leave_combat(attacker)
+		if village:
+			village.on_villager_killed(attacker, villain)
+		return
 	if attacker is SiteGuardian:
 		if world_sites:
 			world_sites.remove_guardian(attacker, villain)
@@ -881,6 +908,8 @@ func _finish(e: Engagement) -> void:
 	e.finished = true
 	for d in e.defenders:
 		_leave_combat(d)
+	if e.attacker is Villager:
+		_leave_combat(e.attacker)
 	_engagements.erase(e)
 
 func _end_engagements_with(attacker) -> void:

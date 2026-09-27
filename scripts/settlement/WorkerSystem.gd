@@ -197,7 +197,7 @@ func _tick_idle(w: Laborer, delta: float) -> void:
 ## which point an injured recruit simply stays there (can_work_now() keeps them
 ## off the job list) and an unhurt one goes back to work on the next tick.
 func _tick_fleeing(w: Laborer, delta: float) -> void:
-	var refuge: Vector2 = w.idle_anchor if w.idle_anchor != Vector2.ZERO else home_position
+	var refuge: Vector2 = w.idle_anchor if w.idle_anchor != Vector2.ZERO else _home_for(w)
 	if _step_toward(w, refuge, delta):
 		w.stage = Laborer.TripStage.IDLE
 		w.idle_target = refuge
@@ -259,16 +259,30 @@ func _head_home_or_idle(w: Laborer) -> void:
 		w.gather_timer = 0.0
 
 func _tick_walk_home(w: Laborer, delta: float) -> void:
-	if not _step_toward(w, home_position, delta):
+	if not _step_toward(w, _home_for(w), delta):
 		return
-	# Deposit -- the only place gathered resources enter GameState.
+	# Deposit -- the only place gathered resources enter a stockpile.
 	if w.carrying_amount > 0:
-		GameState.add_resource(w.carrying_kind, w.carrying_amount)
-		EventBus.worker_deposited.emit(w, w.carrying_kind, w.carrying_amount)
+		_deposit(w)
 	w.carrying_amount = 0
 	w.carrying_kind = ""
 	w.stage = Laborer.TripStage.IDLE
 	w.idle_wait = 0.0
+
+## **Where this unit banks its load** (LIVING_WORLD ruling 14: the trip loop is
+## the production system for every settlement). The player's labour banks at the
+## Throne; `VillageLabor` overrides this so a woodcutter walks his logs to the
+## mill and a farmer his grain to the farm.
+func _home_for(_w: Laborer) -> Vector2:
+	return home_position
+
+## **The deposit.** For the player's town: straight into GameState -- the facade
+## over the player's settlement, whose Throne is always 100% integrity, so this
+## is exactly the pre-L0 behaviour. `VillageLabor` overrides it to bank into the
+## village's own stockpile through its building's integrity.
+func _deposit(w: Laborer) -> void:
+	GameState.add_resource(w.carrying_kind, w.carrying_amount)
+	EventBus.worker_deposited.emit(w, w.carrying_kind, w.carrying_amount)
 
 ## Moves a worker toward `target` at their racial walk speed. Returns true on
 ## arrival. `speed_scale` lets the idle shuffle reuse the same movement code at

@@ -53,13 +53,23 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
     first dead come from a grave. Timed recruitment is off.
   - **The demo shell:** every key an InputMap action by physical key, pause menu, title screen,
     Surrender confirm, dev tools out of release builds, Windows/Linux export presets built and run.
-- **Harnesses, all green:** verify_stats 505, verify_loot_tables 515, verify_terrain 278,
-  check_sprite_scales 122, verify_sortie 67, verify_villain_combat 65, verify_escort 58,
-  check_fog_and_minimap 50, verify_run_lifecycle 49, verify_raven 39, verify_demo_shell 38,
-  verify_combat_feedback 31, verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows
-  in band; headless boot clean.
-- **Not built:** flee-the-region, the manor victory, map shuffle, the Lair hub; R3's reputation
-  axes; LIVING_WORLD L0 onward; C3; audio; a settings/rebinding screen; mid-run save.
+- **Harnesses, all green:** verify_stats 505, verify_loot_tables 536, verify_terrain 278,
+  check_sprite_scales 122, verify_sortie 67, verify_villain_combat 65, verify_guild 62,
+  verify_escort 58, verify_village 56, check_fog_and_minimap 50, verify_run_lifecycle 49,
+  verify_raven 39, verify_demo_shell 39, verify_endings 33, verify_combat_feedback 31,
+  verify_raise_dead 26, smoke_site_actions 26; measure_travel all rows in band; headless boot clean.
+  - **What each ending keeps** (ROGUELITE §17.7): victory keeps all gear and relics, **fleeing the
+    region** from the lair keeps 3 of the player's choice, death keeps nothing. The stash, **the
+    Lair** (title and run-end buttons; shelves; carry-in 1 → 3 slots at levels 7/10, lost on death).
+  - **LIVING_WORLD L0–L2:** `Settlement` with `GameState` as its façade; **Harrowdale**, a working
+    village of eight named people (jobs, meals, guard training, alarm, restaffing, bodies); the
+    **Hidden / Hunting stance** (H); **the Adventurers' Guild** with a board generated from world
+    state and pay into his hands; **witnesses** whose runners lower standing only on arrival; the
+    **Altar blueprint** learned by clearing a den; **he wakes on the road** with a first-run popup,
+    and a roadside grave past the guild.
+- **Not built:** the manor victory, map shuffle, Lair trophies; R3's reputation axes;
+  LIVING_WORLD L3 onward (prisoners, so Summon Ghoul is shown but not castable); C3; audio; a
+  settings/rebinding screen; mid-run save.
 - **The prompt order** (`R2_PROMPTS.md`), all landed:
 
   ```
@@ -80,9 +90,8 @@ file wins on what the code actually does; `CLAUDE.md` wins on conventions.
    and banked loot; 25 per full day survived; level *L* needs 100 × L × (L−1) / 2; cap 20.
 5. **Timed recruitment is switched off** (`EventSystem.TIMED_RECRUIT_OFFERS = false`); the offer
    machinery stays for R3.
-6. **LIVING_WORLD L0 model (rulings 13–15, not built):** each settlement has its own stockpile, and
-   `GameState` becomes a façade over the player's (this changes CLAUDE.md's "single source of
-   truth" convention at L0); production keeps the worker trip loop, with job slots and integrity
+6. **LIVING_WORLD L0 model (rulings 13–15, built 2026-09-26):** each settlement has its own stockpile, and
+   `GameState` is a façade over the player's; production keeps the worker trip loop, with job slots and integrity
    multiplying each trip's yield (the player's Throne: unlimited slots, 100% integrity); NPCs get
    attention ranges, and the Necromancer gets a **Hidden / Hunting stance**, never an attack button.
 7. **Built as a deliberate reading, awaiting confirmation:** a site is "undiscovered" until he or
@@ -98,14 +107,14 @@ are the record.
 ## 4. Known rough edges and open questions
 
 **Still open — not decided:**
-1. **R3 folded into LIVING_WORLD L2** — recommended by the review, not ruled.
+1. **How R3 relates to the built guild standing** — R3's five reputation axes alongside the per-faction standing L2 built, or folded into it: recommended (fold), not ruled.
 2. **CURRENT_STATE.md** delete vs refresh — not ruled (this refresh follows the ask that every doc
    match today).
 3. **The unused addons** (`limboai`, `ziva_agent`) still load as GDExtensions on the designer's
    machine, which a clean clone does not.
 4. **`court_infiltration`'s stat** (mercantile vs leadership), and **`_imgtmp_ui_kit/`** (move or
    delete; it is the only copy of the menu art).
-5. **LIVING_WORLD:** every ruling is issued (1–15); only druids calming dens is left for playtest.
+5. **LIVING_WORLD:** every ruling is issued (1–16); nothing open.
 6. From the 2026-08-29 agenda: a third field action, and the deposit's audiovisual payoff.
 
 **Known, left alone on purpose:**
@@ -131,10 +140,17 @@ are the record.
      noisy, whether the "stood within sight of it" reading of *discovered* is right, and the
      mark's look;
    - the XP numbers, the curve and Second Wake's level (`data/progression.json`);
-   - whether the wolf den should stay leaner than its new gold weight.
-3. **Then LIVING_WORLD L0 / R3** (`LIVING_WORLD_SPEC.md` §14): `Settlement` with an owner and its
-   own stockpile behind the `GameState` façade, job slots and integrity on the trip loop, a
-   population pool, named owners, click-to-assign — and a second, human-owned settlement that
-   ticks. How R3 fits (alongside, or folded into L2) is the open ruling above.
+   - whether the wolf den should stay leaner than its new gold weight;
+   - **the L2 first run** (LIVING_WORLD §14's exit): wake on the road, follow the popup to the
+     guild, take the den, raise the roadside grave on the way, clear the den, come home knowing
+     the Altar. Get seen once and watch standing drop *when the runner arrives*. Are 8/4 cells of
+     attention fair? Is half pay at Suspected a warning or a shrug? Does pay into his hands (6
+     carry) feel like a wage or a chore?
+   - the village at a glance: can a player read who does what, and does Hunting feel like a choice;
+   - the flee picker and the Lair at real size.
+3. **Then LIVING_WORLD L3** (`LIVING_WORLD_SPEC.md` §14): downed / bleed-out, prisoners, the Cell —
+   which also makes Summon Ghoul castable. Also owed from L0: click-to-assign on empty buildings.
+   How R3's reputation axes fit (alongside, or folded into the standing model) is the open ruling
+   above.
 
 Housekeeping: CRLF normalization was committed long ago (`19fc078`); nothing is owed there.

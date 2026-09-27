@@ -21,11 +21,12 @@ stages, each playable before the next begins:
 | **R1 — The world exists.** 144×144 fixed world, terrain/blocking/roads, fog of war, directly-controlled killable Necromancer with camera follow, static village, sealed rival ground, travel times in band | **Built and verified** |
 | **R2 — The world is worth exploring.** Loot sites and wolf dens, carry capacity and deposit-at-lair, the escort, Raven pings, the Necromancer's Arcane combat kit, generated world with forests | **Built and verified** — every prompt (P0, U1, F1, C2, P1, P2, R2a–R2e) landed by 2026-09-26. **Next: the R2 exit playtest** (a human at the keyboard) |
 | R3 — reputation axes and reputation-gated recruitment | Designed at outline level. Timed recruitment is already switched off |
-| R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | **Partly built (R4-lite, 2026-09-26):** death ends the run, a run-end screen, a new run. Flee, the manor victory and map shuffle are not built |
-| R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | **XP half built (2026-09-26):** XP banked per deed, levels, the Second Wake unlock, the last chronicle lines (`docs/design/PROGRESSION.md`). The Lair hub is not built |
+| R4 — run lifecycle: death, flee, take-the-manor victory, map shuffle | **Partly built (2026-09-26):** death ends the run, a run-end screen, a new run, **flee the region** (from the lair, keeping 3 items). The manor victory and map shuffle are not built |
+| R5 — meta-progression: XP, unlocks, the Lair hub, chronicle | **XP half built (2026-09-26):** XP banked per deed, levels, the Second Wake unlock, the last chronicle lines (`docs/design/PROGRESSION.md`); **the stash and the Lair** (shelves, carry-in 1 → 3, lost on death). Other unlocks and trophies are not built |
 
-After R2 comes `docs/design/LIVING_WORLD_SPEC.md` (settlement symmetry, the guild, faction
-ecosystems), starting with its stage L0. Victory is still the legacy placeholder until the manor
+Alongside R2 runs `docs/design/LIVING_WORLD_SPEC.md` (settlement symmetry, the guild, faction
+ecosystems): **L0–L2 are built** (a working village, the Hidden / Hunting stance, the Adventurers'
+Guild, witnesses and standing, the roadside opening); **L3 is next**. Victory is still the legacy placeholder until the manor
 exists. Climate and additional villain classes are deliberately deferred. `docs/CURRENT_STATE.md`
 is the dated snapshot of where things stand; `docs/README.md` says which document is live.
 

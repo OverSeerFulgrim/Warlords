@@ -7,7 +7,7 @@
 
   "_comment_description": "'description' is the one-line 'what is this for' shown by the InspectionPanel when the player clicks the building on the map. It lives here rather than in a Dictionary in GDScript for the same reason costs and prerequisites do: adding a building should be a data edit, never a new branch in a description function. Keep it to one sentence or two -- the panel wraps it at ~300px.",
 
-  "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (docs/history/2026-07-foundation-reset.md) for the Dark Altar and the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: Building.gd still reads their housing_species field, and these entries are the reference for whatever replaces them. The Dark Altar's passive Dark Essence tick is legacy and stays locked: GAME_OUTLINE makes the Altar a body-to-Essence refiner, and LIVING_WORLD_SPEC section 3 puts its blueprint in the first wolf den (L2, not built).",
+  "_comment_locked": "'locked': true keeps an entry in the catalog but out of the build menu -- BuildingCatalog.buildable_ids() filters it. Used by the Stage-1-3 foundation reset (docs/history/2026-07-foundation-reset.md) for the five old per-species housing buildings (superseded by the Barracks-intake + fund-a-house model in FOUNDATION_SPEC section 9 and the housing_style rules in RACES.md). They are deliberately NOT deleted: Building.gd still reads their housing_species field, and these entries are the reference for whatever replaces them. 'blueprint': true is the other gate (LIVING_WORLD L2, 2026-09-26): the entry shows only once its blueprint is known in the meta profile -- the Dark Altar, whose blueprint is inside the first wolf den.",
 
   "bone_pile": {
     "display_name": "Bone Pile",
@@ -24,15 +24,13 @@
 
   "dark_altar": {
     "display_name": "Dark Altar",
-    "description": "Where raw Dark Essence is coaxed out of the world. The whole ritual economy runs through here.",
-    "category": "resource",
+    "description": "Where the dead are made stronger than they were. A living sacrifice buys a Ghoul (level 2) -- the living come later.",
+    "category": "functional",
     "cost": { "dark_essence": 8 },
-    "resource_kind": "dark_essence",
-    "resource_per_tick": 1,
-    "tick_interval": 6.0,
     "power_value": 6,
     "requires": "",
-    "locked": true,
+    "blueprint": true,
+    "_comment_altar": "LIVING_WORLD L2 (2026-09-26): blueprint-gated, not locked. Its blueprint is inside the first wolf den (section 3) and is known for good once found. The legacy passive Dark Essence tick is gone -- essence is field loot only (LOOT_SITES_SPEC section 5). Its job is Summon Ghoul (ROGUELITE_REWORK 17.5), which needs a living prisoner (LIVING_WORLD L3).",
     "sprite_path": "res://assets/official/buildings/Dark_Altar.png"
   },
 

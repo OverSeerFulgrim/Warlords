@@ -1,10 +1,11 @@
 # LIVING WORLD SPEC — The Guild Opening, Settlement Symmetry, and Faction Ecosystems
 
 **Status:** Design target, agreed in discussion 2026-09-26; **all rulings issued the same day (§15) —
-1–12, then 13–15 (the L0 model) — ready for L0/L1 prompts.** Not yet prompted. The first pieces are already
-in the game: no starting skeleton on any run, Raise Dead as his starting spell, 3 starting bones,
-the Dark Altar locked, and death ending the run with XP banked
-(`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`). Amends `ROGUELITE_REWORK.md` where marked (§13) and **pulls "living village
+1–12, then 13–15 (the L0 model), then 16.** **L0, L1 and L2 were built the same day** (§14;
+`docs/history/2026-09-26-living-world-l0-l1.md`, `…-living-world-l2.md`), on top of the pieces
+already in the game: no starting skeleton on any run, Raise Dead as his starting spell, 3 starting
+bones, and death ending the run with XP banked
+(`docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`). **Next: L3.** Amends `ROGUELITE_REWORK.md` where marked (§13) and **pulls "living village
 routines" forward from the R6 deferral** into a staged build that starts alongside R3. Everything
 numeric here is a playtest hypothesis and should be read from data.
 
@@ -60,8 +61,8 @@ when you die.
   model. `owner` is a parameter (per-villain discipline, same as reputation and the deeds ledger).
 - **Ruled (§15, no. 13): each settlement owns its own stockpile** — resources, population/followers,
   and Power. `GameState` becomes a **façade over the player's settlement**, so the HUD and every
-  existing caller keep reading `GameState` unchanged. This retires `CLAUDE.md`'s "GameState is the
-  single source of truth" convention when L0 lands; until then that convention stands.
+  existing caller keep reading `GameState` unchanged. This retired `CLAUDE.md`'s "GameState is the
+  single source of truth" convention — **built at L0, 2026-09-26** (`scripts/settlement/Settlement.gd`).
 - Every building specced for an NPC faction is a building the player can eventually own. Every
   building already built for the player (Barracks, Workshop, Laboratory, Dark Altar, houses) is NPC
   content the day a faction is given a blueprint list.
@@ -76,11 +77,14 @@ when you die.
 
 **Ruled 2026-09-26: roadside spawn; first run starts with no Altar and no skeletons.**
 
-> **Built so far (2026-09-26):** no starting skeleton on any run; the Dark Altar is locked (not a
-> starting building); **Raise Dead is his starting spell** — a grave's corpse is raised free at the
-> graveside, and without a corpse it costs 5 bones anywhere; he starts with 3 bones, so the first
-> dead come from a grave. He still starts **at the Throne**, and the graves are the fresh graves
-> north-west of it; the roadside spawn, the guild, the popup and the Altar-in-the-den are L2.
+> **Built (2026-09-26, L2):** he wakes on the worn track at the east edge of the lair band
+> (`Main.ROADSIDE_SPAWN_CELL` (37, 60)); the first-run popup shows when a class has never finished
+> a run; the board's den bounties are the first jobs; a **roadside grave** (`fresh_grave_scree`,
+> moved to (84, 78)) stands beside the trade road past the guild, and `fresh_grave_hollow` stays
+> north-west of the Throne; **clearing a den teaches the Dark Altar** for good (§9.1) — it is
+> blueprint-gated, not a starting building. No starting skeleton; **Raise Dead** is his starting
+> spell (a grave's corpse free at the graveside, otherwise 5 bones anywhere); 3 starting bones.
+> Second Wake still wakes him at the Throne.
 
 - **Spawn:** the Necromancer starts at the roadside at the edge of the lair region, the lair a
   marked site a few cells off the road. The Throne and the Raven are at the lair. **No starting
@@ -193,7 +197,7 @@ to the player, not by a stat block; stat templates live in data like any other s
 | **Warrior** | Common | den, raiders, escort | The front line. Highest rout threshold of the commons; the body you most often find on the road. |
 | **Ranger** | Common | den, raiders, forage, recovery | **Follows tracks.** A ranger on a recovery bounty can trail the player's route from the body. (No route-trail system exists yet; R2 only logs dawn "tracks" after a wolf raid. The trail is new work at L4.) Rangers are how the guild finds a lair without a badge. |
 | **Rogue** | Uncommon | recovery, escort | Scouts ahead of a party. The class most likely to find **parked skeletons** (§8.3) and to run rather than fight — a rogue is a report waiting to happen. |
-| **Druid** | Uncommon | **forage**, den | Owns the forage board (§5.8). Animals don't attack druids, so a druid can walk into a den the player wanted cleared and *calm* it — den competition of a different kind. |
+| **Druid** | Uncommon | **forage**, den | Owns the forage board (§5.8). Animals don't attack druids. A druid can **calm one beast for a while** — it stops fighting, then the calm **wears off** and it is hostile again. That never clears a den, so it never solves the den bounty (ruling 16). |
 | **Wizard** | Rare | recovery, escort (hired by caravans after losses) | **A detector on the road.** Sees through the Necromancer's disguise and the mask (§8.4, §8.6). Never travels alone. The rarest corpse. |
 | **Cleric** | Rare | recovery, hunting parties | **The other detector on the road.** Sees through the undead's disguise and thralls (§8.5). A **Known**-tier hunting party (§4.1) always carries one. |
 
@@ -571,7 +575,9 @@ a captive in place of a field.
 Prisoners must be a **different resource from corpses**, or capture-or-slay is a fake choice.
 
 1. **Sacrifice** at the Dark Altar for **stronger undead** (later unlock; extends the Altar's
-   existing body-conversion role from `GAME_OUTLINE.md`).
+   existing body-conversion role from `GAME_OUTLINE.md`). *Ruled 2026-09-26: the first is
+   **Summon Ghoul**, unlocked at level 2, and its sacrifice is a living prisoner
+   (`ROGUELITE_REWORK.md` §17.5, §17.7).*
 2. **Trade to bandits** for gold (bandits as fence — the only buyer once the guild is shut).
 3. **Search** — see what they carry: resources, and sometimes **blueprints**.
 4. **Hire as mercenaries** — *the introduction to recruiting.* Hired, not recruited: they are paid,
@@ -685,9 +691,9 @@ anything; **that boundary was built 2026-09-26**, so the dependency is met.
 
 | Stage | Builds | Exit |
 |---|---|---|
-| **L0 — Symmetry** | `Settlement` takes an `owner`; **its own stockpile, with `GameState` as a façade** (ruling 13); **job slots and integrity on the worker trip loop**, the §5.2 formula as a readout (ruling 14; the Throne: unlimited slots, 100% integrity); population pool; named owners (§5.6); click-to-assign on empty buildings. ~~No starting skeletons / no starting Altar~~ (§3) — **built 2026-09-26.** | The player's town runs unchanged on the generalised model. A second settlement owned by "human" exists and ticks. |
-| **L1 — One village, three jobs** | Farm, Woodcutter+Mill, Guardhouse; re-staff priority with **Randy rule** and Guardhouse training (§5.3); workers walk out and back; **jobless foragers** (§5.8) | Kill a woodcutter, watch the village react. Nothing scripted. |
-| **L2 — The Guild** | Guild building + faction; standing tiers; generated board with the den bounty; road spawn + first-run popup; **roadside graves**; **Altar blueprint in the den**; **attention ranges** (day/night) and witness runners with destinations (§8.1); the **Hidden / Hunting stance** (§8.7) | First run: walk the road, raise your first dead, clear the den, come home with the Altar. Get seen once, watch standing drop *when the runner arrives*. |
+| **L0 — Symmetry** | `Settlement` takes an `owner`; **its own stockpile, with `GameState` as a façade** (ruling 13); **job slots and integrity on the worker trip loop**, the §5.2 formula as a readout (ruling 14; the Throne: unlimited slots, 100% integrity); population pool; named owners (§5.6); click-to-assign on empty buildings. ~~No starting skeletons / no starting Altar~~ (§3) — **built 2026-09-26**; the rest of L0 **built 2026-09-26** except click-to-assign and a player-side population pool. | The player's town runs unchanged on the generalised model. A second settlement owned by "human" exists and ticks. |
+| **L1 — One village, three jobs** | Farm, Woodcutter+Mill, Guardhouse; re-staff priority with **Randy rule** and Guardhouse training (§5.3); workers walk out and back; **jobless foragers** (§5.8) — **built 2026-09-26** (Harrowdale, `data/village.json`), with bodies to raise and an alarm the guards answer | Kill a woodcutter, watch the village react. Nothing scripted. |
+| **L2 — The Guild** | Guild building + faction; standing tiers; generated board with the den bounty; road spawn + first-run popup; **roadside graves**; **Altar blueprint in the den**; **attention ranges** (day/night) and witness runners with destinations (§8.1); the **Hidden / Hunting stance** (§8.7) — **built 2026-09-26**; not yet: Known's bounty on him, "strange sightings" as board entries | First run: walk the road, raise your first dead, clear the den, come home with the Altar. Get seen once, watch standing drop *when the runner arrives*. |
 | **L3 — Downed and prisoners** | §11 downed/bleed-out/rescue/batch; capture → prisoner; **the Cell** (§10.4) with food upkeep; Necromancer uses 2–3 (trade, search); **burial parties and growing graveyards** (§5.7) | Capture-or-slay is a real choice because prisoners do something corpses don't. Bodies you leave come back as graves. |
 | **L4 — Goblin camp and adventurers** | Camp on the template; raiding job; prisoners-as-food; bounties generated from raids; adventurers taking bounties; **the six classes with rarity and party composition** (§4.5); **due dates, MIA, badges, the finder** (§4.4); forage bounties | A bounty appears because goblins hit a farm. An adventurer walks out to it and doesn't come back. A recovery bounty follows. |
 | **L5 — Caravans** | Trade caravan two-leg loop; gold spend; response to loss; escort posting; **night camps with a sentry** (§7.4) | Materials-or-gold is a visible choice; the escort-and-rob play and the sentry kill both work with no special code. |
@@ -730,10 +736,13 @@ anything; **that boundary was built 2026-09-26**, so the dependency is met.
     night; later cut by disguise and the mask) that feeds the witness system (§8.1). The
     Necromancer gets a **Hidden / Hunting stance** instead of an attack button (§8.7).
 
-**No open rulings.** Next step: L0/L1 prompts.
+**Issued later still on 2026-09-26:**
 
-**Still open (playtest-era, not blocking):** druids calming dens (§4.5) — keep or cut once the
-den fight has been felt.
+16. **Druids calm a beast, not a den.** A druid can calm a single beast; the calm wears off, so it
+    never clears a den and never solves the den bounty (§4.5).
+
+**No open rulings.** L0–L2 built 2026-09-26; next step: L3 (downed, prisoners, the Cell — and so
+Summon Ghoul's sacrifice).
 
 ---
 

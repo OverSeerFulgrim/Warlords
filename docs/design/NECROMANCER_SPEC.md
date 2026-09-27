@@ -64,8 +64,8 @@ cover-the-retreat, which reads the thresholds set here), `CLAUDE.md`.
 >   costs **5 bones** and works wherever he stands — his panel, the Economy tab, or the **R** key.
 >   There is no free starting skeleton, and he starts with **3 bones**, so the first dead come from
 >   a grave. §7's table is amended in place.
-> - **Hidden / Hunting stance** (LIVING_WORLD ruling 15, §8.7) — **not built**, scheduled with
->   LIVING_WORLD L2. "No attack button, ever" **stands**: the stance is a policy on him, not a key
+> - **Hidden / Hunting stance** (LIVING_WORLD ruling 15, §8.7) — **built 2026-09-26** (the **H**
+>   key, a button in his panel, a HUD line). "No attack button, ever" **stands**: the stance is a policy on him, not a key
 >   that swings. Hidden (the default) never starts a fight with the living — only hostiles trigger
 >   his 26px engage, which is §3 as built; Hunting makes anything living within 26px fair game,
 >   puts the escort Aggressive, and makes anyone who sees it a witness.

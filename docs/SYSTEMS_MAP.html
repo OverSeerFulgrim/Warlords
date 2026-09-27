@@ -244,25 +244,31 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
         "id": "R3",
         "name": "The world responds",
         "status": "outline",
-        "one_line": "Five reputation axes moved by the deeds ledger, reputation-gated recruit offers (the timer is already off), notoriety feeding patrol escalation; C3 morale/judgement/packs lands alongside. Folding R3 into LIVING_WORLD L2 is recommended, not ruled."
+        "one_line": "Five reputation axes moved by the deeds ledger, reputation-gated recruit offers (the timer is already off), notoriety feeding patrol escalation; C3 morale/judgement/packs lands alongside. L2 built per-faction guild standing; folding R3's axes into that model is recommended, not ruled."
       },
       {
         "id": "R4",
         "name": "The run is real",
         "status": "outline",
-        "one_line": "Flee-the-region, crusade climax retuned as C5, take-the-manor victory, map shuffle between runs (generator steps 4-5). Death-ends-the-run, the endings and the run-end screen already landed early as R4-lite."
+        "one_line": "Crusade climax retuned as C5, take-the-manor victory, map shuffle between runs (generator steps 4-5). Death-ends-the-run, the endings, the run-end screen and flee-the-region (keep 3) already landed."
       },
       {
         "id": "R5",
         "name": "The legend persists",
         "status": "outline",
-        "one_line": "The Lair hub with stash, relic slots and carry-in/loss, more level unlocks (spells/units/items/encounters), trophies. The meta save, XP banked from deeds, levels, the chronicle and Second Wake already landed as R5-lite."
+        "one_line": "More level unlocks (spells/units/items/encounters), trophies. The meta save, XP, levels, the chronicle, Second Wake, the stash, the Lair and relic carry-in (1 -> 3 slots, lost on death) already landed."
       },
       {
-        "id": "L0-L8",
+        "id": "L0-L2",
+        "name": "The world starts living",
+        "status": "built",
+        "one_line": "Built 2026-09-26: one Settlement model with GameState as a facade; Harrowdale, a working village; the Hidden/Hunting stance; the Adventurers' Guild with a board from world state; witnesses whose runners lower standing on arrival; the Altar blueprint in the den; he wakes on the road."
+      },
+      {
+        "id": "L3-L8",
         "name": "The world lives",
         "status": "specced",
-        "one_line": "LIVING_WORLD_SPEC: settlement symmetry (one Settlement model, each with its own stockpile; GameState as a facade), the Guild opening, villages/camps/holds on the same loop, witnesses and the Hidden/Hunting stance, prisoners, caravans, take-or-raze. Rulings 1-9 and 13-15 issued; not yet prompted."
+        "one_line": "LIVING_WORLD_SPEC: prisoners and the Cell (and so Summon Ghoul), goblin camps and adventurers, caravans, bandits and hamlets, market/tower/church, take-or-raze. All rulings issued; L3 next."
       }
     ],
     "build_order": [
@@ -1437,7 +1443,7 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
       "name": "Raise Dead (starting spell)",
       "group": "Villain",
       "summary": "His starting spell and the one way the dead arrive. A corpse raised from a grave is free and becomes a real Skeleton Worker at the graveside; without a corpse, Raise Dead costs 5 Bones from the stockpile and works wherever he stands. He starts every run with no skeleton and 3 Bones, so the first dead always come from a grave.",
-      "how_it_works": "Two doors, one function: WorkerSystem.raise_skeleton_at(at, name, cost). Grave: the grave sheet's \"Raise the corpse\" -> Necromancer.raise_corpse_at() records a raised_dead ledger entry -> WorldSites._raise_dead places one skeleton per entry around the grave (nearest walkable cell) through raise_handler, which Main sets to raise_skeleton_at with no cost, marks the entry live and emits skeleton_raised(villain, unit, \"grave\"); the deed (raise_the_dead, Forbidden Knowledge) and notice apply as usual. Bones: Main._recruit_worker -- his panel button, the Economy tab button, or the raise_dead action (R) -- raises at his feet for RECRUIT_COST {bones: 5}, refuses with a log line and alert if short, and emits skeleton_raised(villain, unit, \"bones\"). Either way the skeleton is an ordinary Worker from its first frame: it joins an active escort the next frame (UndeadCommand re-binds every undead each frame), otherwise it walks home to work. Starting bones are 3 (GameState and reset()); the opening log line points at the graves in the hollow NW of the Throne. The old inert RaisedDead view was deleted.",
+      "how_it_works": "Two doors, one function: WorkerSystem.raise_skeleton_at(at, name, cost). Grave: the grave sheet's \"Raise the corpse\" -> Necromancer.raise_corpse_at() records a raised_dead ledger entry -> WorldSites._raise_dead places one skeleton per entry around the grave (nearest walkable cell) through raise_handler, which Main sets to raise_skeleton_at with no cost, marks the entry live and emits skeleton_raised(villain, unit, \"grave\"); the deed (raise_the_dead, Forbidden Knowledge) and notice apply as usual. Bones: Main._recruit_worker -- his panel button, the Economy tab button, or the raise_dead action (R) -- raises at his feet for RECRUIT_COST {bones: 5}, refuses with a log line and alert if short, and emits skeleton_raised(villain, unit, \"bones\"). Either way the skeleton is an ordinary Worker from its first frame: it joins an active escort the next frame (UndeadCommand re-binds every undead each frame), otherwise it walks home to work. Starting bones are 3 (GameState and reset()); he wakes on the road at the lair's edge, and the opening log line points at the roadside grave past the guild and the one in the hollow NW of the Throne. The old inert RaisedDead view was deleted.",
       "scripts": [
         "scripts/settlement/WorkerSystem.gd",
         "scripts/world/WorldSites.gd",
@@ -3243,7 +3249,7 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
       "id": "run_summary",
       "name": "Run-end screen",
       "group": "UI & Presentation",
-      "summary": "The screen that closes a run: how it ended, the epitaph, the run's stats, XP earned this run, the level and a progress bar, the next unlock, and the last five chronicle lines -- with \"Begin a new run\" and \"Quit the game\".",
+      "summary": "The screen that closes a run: how it ended, the epitaph, the run's stats, XP earned this run, the level and a progress bar, the next unlock, and the last five chronicle lines -- what was kept and what was lost -- with \"Begin a new run\", \"The Lair\" and \"Quit the game\".",
       "how_it_works": "scripts/ui/RunSummary.gd is a CanvasLayer (layer 60, PROCESS_MODE_ALWAYS because the tree is paused underneath) and a pure view over the summary Dictionary that arrives on EventBus.run_ended -- Main connects the signal (owner-checked), closes the inspector, logs the epitaph and calls show_summary(summary). It holds no references to the run. A dimmer blocks the world; the panel lists title and epitaph, then days, time, dead raised (and from graves), sites looted, graves robbed, dens cleared, wolves killed, loot and relics banked, largest escort, buildings and any Second Wakes used, then XP this run and total, \"Level N\" with a progress bar, the next unlock and the chronicle. new_run_requested -> Main._begin_new_run (unpause, time scale 1x, GameState.reset(), reload). The pause menu refuses to open over it and never clears its pause.",
       "scripts": [
         "scripts/ui/RunSummary.gd",
@@ -3979,8 +3985,8 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
       "id": "living_world",
       "name": "Living world & settlement symmetry",
       "group": "World",
-      "summary": "The next design target: one Settlement system for everyone -- the player's town is a settlement whose owner is the villain -- and around it human villages, goblin camps and bandit holds running the same loop, an Adventurers' Guild opening, caravans, witnesses and disguise, prisoners, and take-or-raze. Staged L0-L8.",
-      "how_it_works": "Per LIVING_WORLD_SPEC: L0 Symmetry -- Settlement takes an owner and its own stockpile (resources, followers/population, Power) with GameState as a facade over the player's settlement (ruling 13); production keeps the worker trip loop, with job slots and building integrity multiplying each trip's yield (the player's Throne: unlimited slots, 100% integrity) and the base x staffed x integrity formula as the readout (ruling 14); a second settlement owned by \"human\" ticks. L1 one village with three jobs and the re-staff (Randy) rule; L2 the Guild, standing, the board, roadside graves, NPC attention ranges (longer by day) feeding witness runners, and the Necromancer's Hidden / Hunting stance instead of an attack button (ruling 15); L3 downed/prisoners/the Cell and burial parties; L4 goblin camp and adventurers (MIA, badges); L5 caravans; L6 bandits, growth, generator-placed hamlet sites; L7 market, tower, church, blueprints; L8 take/thralls/sacrifice. The first pieces are already in the game: no starting skeleton, Raise Dead as the starting spell, 3 starting bones, the Dark Altar locked, and death ending the run.",
+      "summary": "One Settlement system for everyone -- the player's town is a settlement whose owner is the villain -- and around it human villages, goblin camps and bandit holds running the same loop, an Adventurers' Guild opening, caravans, witnesses and disguise, prisoners, and take-or-raze. Staged L0-L8; L0-L2 built 2026-09-26.",
+      "how_it_works": "Per LIVING_WORLD_SPEC: L0 Symmetry -- Settlement takes an owner and its own stockpile (resources, followers/population, Power) with GameState as a facade over the player's settlement (ruling 13); production keeps the worker trip loop, with job slots and building integrity multiplying each trip's yield (the player's Throne: unlimited slots, 100% integrity) and the base x staffed x integrity formula as the readout (ruling 14); a second settlement owned by \"human\" ticks. L1 one village with three jobs and the re-staff (Randy) rule; L2 the Guild, standing, the board, roadside graves, NPC attention ranges (longer by day) feeding witness runners, and the Necromancer's Hidden / Hunting stance instead of an attack button (ruling 15); L3 downed/prisoners/the Cell and burial parties; L4 goblin camp and adventurers (MIA, badges); L5 caravans; L6 bandits, growth, generator-placed hamlet sites; L7 market, tower, church, blueprints; L8 take/thralls/sacrifice. Built: L0 (Settlement + GameState facade, integrity on the trip loop), L1 (Harrowdale), L2 (the guild, standing and witnesses, the stance, the roadside opening, the Altar blueprint in the den).",
       "scripts": [],
       "data_files": [],
       "emits": [],
@@ -4034,8 +4040,8 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
           "effect": "Hamlet sites placed by the generator; maps mostly random."
         }
       ],
-      "status": "planned",
-      "status_note": "Design target; rulings 1-15 all issued 2026-09-26 (10: mask is market only; 11: badge finder is whole-map; 12: no stealth stat for the sentry); only druids calming dens is left for playtest. Not yet prompted; nothing of L0 is built.",
+      "status": "partial",
+      "status_note": "L0-L2 built 2026-09-26 (see settlement_model, living_village, villain_stance, adventurers_guild, witnesses_standing, blueprints). Next: L3 -- downed, prisoners, the Cell.",
       "player_facing": true,
       "notes": [
         "Everything numeric in the spec is a playtest hypothesis.",
@@ -4043,6 +4049,349 @@ svg.graph{display:block;font-family:"Source Sans 3",sans-serif}
       ],
       "spec": "LIVING_WORLD_SPEC.md",
       "prompt": "L0-L8 (unwritten)"
+    },
+    {
+      "scripts": [
+        "scripts/settlement/Settlement.gd",
+        "scripts/autoload/GameState.gd",
+        "scripts/settlement/WorkerSystem.gd",
+        "tools/verify_village.tscn"
+      ],
+      "data_files": [],
+      "emits": [
+        "Settlement.stockpile_changed",
+        "GameState.resources_changed"
+      ],
+      "listens": [],
+      "reads_state": [],
+      "writes_state": [],
+      "interactions": [
+        {
+          "target": "worker_system",
+          "via": "_home_for / _deposit hooks",
+          "effect": "The trip loop is shared; who it banks into is not."
+        },
+        {
+          "target": "living_village",
+          "via": "a second Settlement owned by human",
+          "effect": "The village eats, repairs and trades from its own stores."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD L0, ruling 13). Not built: click-to-assign on empty buildings; a player-side population pool.",
+      "player_facing": false,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §2, §5.2, rulings 13-14",
+      "prompt": "",
+      "id": "settlement_model",
+      "name": "Settlement model & GameState facade",
+      "group": "Settlement & Economy",
+      "summary": "One Settlement class for everyone: an owner, its own stockpile (wood, stone, food, bones, dark essence, gold, arms), followers and power. The player's town is the settlement whose owner is the villain; GameState is a facade over it, so every existing caller reads GameState unchanged.",
+      "how_it_works": "scripts/settlement/Settlement.gd holds the stockpile and emits stockpile_changed. deposit(kind, n, integrity) multiplies a trip's yield by the building's integrity and carries the fraction, so five 1-log loads at 80% bank exactly 4. GameState.player_settlement is built with the starting stock (8 wood, 5 stone, 5 food, 3 bones); wood/stone/food/bones/dark_essence/gold/arms/power/followers are get/set properties on it and add_resource/spend_resource/can_afford delegate; reset() resets it in place. WorkerSystem gained _home_for(w) and _deposit(w) hooks so the village's labour reuses the trip loop with its own drop-off and treasury."
+    },
+    {
+      "scripts": [
+        "scripts/world/village/Village.gd",
+        "scripts/world/village/Villager.gd",
+        "scripts/world/village/VillageBuilding.gd",
+        "scripts/world/village/VillageLabor.gd",
+        "scripts/world/WorldSites.gd",
+        "tools/verify_village.tscn"
+      ],
+      "data_files": [
+        "data/village.json",
+        "data/site_choices.json",
+        "data/loot_tables.json"
+      ],
+      "emits": [
+        "EventBus.villager_attacked",
+        "EventBus.villager_killed",
+        "EventBus.village_restaffed",
+        "EventBus.village_guard_trained",
+        "EventBus.village_deposited",
+        "EventBus.village_hungry",
+        "EventBus.village_alarm",
+        "EventBus.report_arrived"
+      ],
+      "listens": [
+        "EventBus.dawn/dusk (meals)"
+      ],
+      "reads_state": [],
+      "writes_state": [],
+      "interactions": [
+        {
+          "target": "settlement_model",
+          "via": "its own Settlement",
+          "effect": "Stores, meals and repairs come out of the village's stockpile."
+        },
+        {
+          "target": "combat_resolution",
+          "via": "CombatSystem.hostiles() while Hunting",
+          "effect": "Villagers are targets only when he chooses to hunt."
+        },
+        {
+          "target": "witnesses_standing",
+          "via": "runners",
+          "effect": "A villager who sees him becomes a runner to the guardhouse or the guild."
+        },
+        {
+          "target": "loot_sites",
+          "via": "WorldSites.spawn_body",
+          "effect": "A dead villager is a body he can raise, search or hide."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD L1). Needs a human: can a player read who does what at a glance?",
+      "player_facing": true,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §5",
+      "prompt": "",
+      "id": "living_village",
+      "name": "Harrowdale, the living village",
+      "group": "World",
+      "summary": "A human village that works: eight named people with jobs (farmers, woodcutters, guards, one jobless forager), a farm, a woodcutter and mill, a guardhouse that trains, meals at dawn and dusk from its own stores, an alarm the guards answer, and restaffing when someone dies. Nothing scripted.",
+      "how_it_works": "data/village.json lists buildings, houses, people, fields and tunables. Village.gd builds VillageBuilding nodes (named for their owner -- Frank's Farm -- slots, integrity, an Output readout), Villagers (extend Laborer, race human_peasant) and a VillageLabor (extends WorkerSystem): farmers to crop fields, woodcutters to trees, the jobless forage, guards walk a beat, train 90 s and answer the alarm; the panicked run to a refuge and cower with a 20 s calm. A death marks the villager dead, leaves a body (a lootable site on the grave sheet's grammar: raise, search, hide), records slew_a_villager (Cruelty) against his killer and restaffs by priority farmer > guard > woodcutter, jobless first (the Randy rule). CombatSystem asks the village for hostiles only while he hunts."
+    },
+    {
+      "scripts": [
+        "scripts/villain/Necromancer.gd",
+        "scripts/combat/UndeadCommand.gd",
+        "scripts/combat/CombatSystem.gd",
+        "scripts/Controls.gd",
+        "scripts/ui/HudTopBar.gd",
+        "scripts/ui/InspectorActions.gd"
+      ],
+      "data_files": [],
+      "emits": [
+        "EventBus.villain_stance_changed"
+      ],
+      "listens": [],
+      "reads_state": [],
+      "writes_state": [],
+      "interactions": [
+        {
+          "target": "escort",
+          "via": "villain_stance_changed",
+          "effect": "Hunting sends the escort Aggressive; Hidden restores what it was."
+        },
+        {
+          "target": "living_village",
+          "via": "CombatSystem.hostiles()",
+          "effect": "Villagers become targets."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD ruling 15, §8.7).",
+      "player_facing": true,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §8.7; NECROMANCER_SPEC.md",
+      "prompt": "",
+      "id": "villain_stance",
+      "name": "Hidden / Hunting stance",
+      "group": "Villain",
+      "summary": "A policy on him, never an attack button. Hidden (the default) starts no fight with the living; Hunting makes anything living he walks up to fair game through the same 26 px engage, sends the escort Aggressive, and anyone who sees it is a witness.",
+      "how_it_works": "Necromancer.Stance HIDDEN/HUNTING with set_stance/toggle_stance, emitting villain_stance_changed. Toggled with H (Controls action stance), a button in his panel, shown on the HUD under the portrait. UndeadCommand listens (owner-checked): Hunting sets the escort AGGRESSIVE and remembers the old stance; Hidden restores it."
+    },
+    {
+      "scripts": [
+        "scripts/world/guild/Guild.gd",
+        "scripts/ui/InspectorActions.gd",
+        "scripts/Main.gd",
+        "tools/verify_guild.tscn"
+      ],
+      "data_files": [
+        "data/guild.json",
+        "data/progression.json"
+      ],
+      "emits": [
+        "EventBus.guild_board_changed",
+        "EventBus.guild_bounty_paid"
+      ],
+      "listens": [],
+      "reads_state": [
+        "WorldSites.dens()",
+        "Village.settlement",
+        "Necromancer.standing"
+      ],
+      "writes_state": [
+        "Necromancer.carried (pay)",
+        "GameState stockpile (deliveries)"
+      ],
+      "interactions": [
+        {
+          "target": "wolf_dens",
+          "via": "one bounty per standing den",
+          "effect": "The first job of the first run is the den."
+        },
+        {
+          "target": "sortie_deposit",
+          "via": "take_into_party",
+          "effect": "Wages obey the banking rule."
+        },
+        {
+          "target": "living_village",
+          "via": "deliveries",
+          "effect": "Goods he hands over move to the village's stores."
+        },
+        {
+          "target": "witnesses_standing",
+          "via": "Necromancer.standing",
+          "effect": "Suspected halves pay; Known shuts the doors."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD L2). Not built: the guild's own adventurers, Known's bounty on him, strange sightings as board entries.",
+      "player_facing": true,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §4",
+      "prompt": "",
+      "id": "adventurers_guild",
+      "name": "The Adventurers' Guild",
+      "group": "World",
+      "summary": "A neutral hall on the trade road that posts the region's troubles and pays anyone -- including a Necromancer it does not recognise yet. The board is generated from world state: every standing den, every village short of wood or food. Pay goes into his hands and is his when banked at the Throne.",
+      "how_it_works": "data/guild.json + scripts/world/guild/Guild.gd at cell (89,61). refresh_board() every second posts 'Clear the den: A Wolf Den, <direction> of here' (6 gold x band) for each uncleared den and a delivery (10 goods for 8 gold) when the village's wood < 10 or food < 12, closing them when the world no longer needs them. take / deliver / turn_in need him within 2.5 cells; at most two jobs in hand. Pay goes through SortieSystem.take_into_party; what will not fit is owed at the counter. The first payment records guild_bounty (Wealth). Standing on the villain gates it: Unknown full pay, Suspected half, Known the doors are shut. The inspector's action block is the board (InspectorActions.guild_actions)."
+    },
+    {
+      "scripts": [
+        "scripts/world/guild/Witnesses.gd",
+        "scripts/world/village/Village.gd",
+        "scripts/world/village/VillageLabor.gd",
+        "scripts/world/village/Villager.gd",
+        "scripts/villain/Necromancer.gd",
+        "tools/verify_guild.tscn"
+      ],
+      "data_files": [
+        "data/guild.json"
+      ],
+      "emits": [
+        "EventBus.witnessed",
+        "EventBus.report_arrived",
+        "EventBus.standing_changed"
+      ],
+      "listens": [
+        "EventBus.skeleton_raised",
+        "EventBus.villager_attacked"
+      ],
+      "reads_state": [],
+      "writes_state": [
+        "Necromancer.standing",
+        "GameState.threat"
+      ],
+      "interactions": [
+        {
+          "target": "raise_dead",
+          "via": "skeleton_raised",
+          "effect": "Raising the dead in sight of the living is witnessed."
+        },
+        {
+          "target": "adventurers_guild",
+          "via": "standing",
+          "effect": "What the guild will pay him, or whether it will serve him at all."
+        },
+        {
+          "target": "threat_crusade",
+          "via": "GameState.add_threat",
+          "effect": "Each report adds threat."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD §8.1, ruling 15). Needs a human: are 8/4 cells fair?",
+      "player_facing": true,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §8.1",
+      "prompt": "",
+      "id": "witnesses_standing",
+      "name": "Witnesses, runners and standing",
+      "group": "World",
+      "summary": "Anyone who sees him raise the dead or strike the living gets a red ! and runs to tell -- to the nearer of the village's guardhouse and the guild. His standing with the guild drops only when a runner arrives: kill him on the way and nobody hears. The keeper at the guild's door reports on the spot.",
+      "how_it_works": "scripts/world/guild/Witnesses.gd (per villain) listens to skeleton_raised and villager_attacked (by him or a rallied worker). witness() makes every non-guard villager within the attention range (8 cells by day, 4 at night, data/guild.json) a runner carrying {villain, act, id}; VillageLabor walks runners to their destination and Village.on_runner_arrived calls Witnesses.arrive. Only the first report of each act lowers standing (Necromancer.lower_standing: Unknown -> Suspected -> Known, one way, per run) and adds 5 threat. The guild keeper reports at once if the act was within range of the door."
+    },
+    {
+      "scripts": [
+        "scripts/run/MetaProfile.gd",
+        "scripts/run/RunLifecycle.gd",
+        "scripts/autoload/BuildingCatalog.gd",
+        "scripts/ui/InspectorActions.gd",
+        "tools/verify_guild.tscn"
+      ],
+      "data_files": [
+        "data/buildings.json"
+      ],
+      "emits": [
+        "EventBus.blueprint_learned"
+      ],
+      "listens": [
+        "EventBus.deed_committed"
+      ],
+      "reads_state": [],
+      "writes_state": [],
+      "interactions": [
+        {
+          "target": "wolf_dens",
+          "via": "cleared_a_den",
+          "effect": "Clearing a den teaches the Altar."
+        },
+        {
+          "target": "build_menu",
+          "via": "BuildingCatalog.buildable_ids",
+          "effect": "A learned building appears in the menu."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (LIVING_WORLD §9.1 as far as L2 needs). The rest of the blueprint ledger is L7.",
+      "player_facing": true,
+      "notes": [],
+      "spec": "LIVING_WORLD_SPEC.md §3, §9.1",
+      "prompt": "",
+      "id": "blueprints",
+      "name": "Blueprints",
+      "group": "Settlement & Economy",
+      "summary": "Some buildings must be learned before they can be built, and a learned blueprint is kept for good. The first: the Dark Altar, learned by clearing a wolf den.",
+      "how_it_works": "MetaProfile.blueprints (saved with XP); BuildingCatalog.blueprint_provider (set by Main to profile.knows_blueprint) hides any buildings.json entry with blueprint: true until known. RunLifecycle._on_deed learns dark_altar on cleared_a_den and emits blueprint_learned; Main logs it and repopulates the build menu. The Altar's panel shows Summon Ghoul greyed with its reason (level 2, then a living prisoner -- L3)."
+    },
+    {
+      "scripts": [
+        "scripts/run/MetaProfile.gd",
+        "scripts/run/RunLifecycle.gd",
+        "scripts/ui/KeepItemsDialog.gd",
+        "scripts/ui/LairScreen.gd",
+        "scripts/ui/TitleScreen.gd",
+        "scripts/ui/RunSummary.gd",
+        "scripts/ui/PauseMenu.gd",
+        "tools/verify_endings.tscn"
+      ],
+      "data_files": [
+        "data/progression.json"
+      ],
+      "emits": [
+        "EventBus.run_ended"
+      ],
+      "listens": [],
+      "reads_state": [],
+      "writes_state": [],
+      "interactions": [
+        {
+          "target": "run_summary",
+          "via": "summary.kept / lost",
+          "effect": "The run-end screen says what was kept and what was lost."
+        },
+        {
+          "target": "sortie_deposit",
+          "via": "relics_banked / relics_carried",
+          "effect": "The run's items are what he found and banked or carried."
+        }
+      ],
+      "status": "built",
+      "status_note": "Built 2026-09-26 (ROGUELITE_REWORK §17.6-17.7). Decoration is shelves only; trophies not built.",
+      "player_facing": true,
+      "notes": [],
+      "spec": "ROGUELITE_REWORK.md §10, §17.6-17.7",
+      "prompt": "",
+      "id": "endings_stash_lair",
+      "name": "Endings, the stash and the Lair",
+      "group": "Core",
+      "summary": "What survives a run: victory keeps every piece of gear and every relic; fleeing the region alive (only from the lair) keeps 3 the player picks; death keeps nothing but XP. Kept items live in the stash, shown on the Lair's shelves; up to 3 can be carried into a run (1 slot, 2 at level 7, 3 at level 10) and are lost for good if he dies.",
+      "how_it_works": "MetaProfile.stash entries {uid,id,run,day,shelf,carry,risked}, 8 shelves, carry_slots(). RunLifecycle._carry_in() at run start (reapply_carry_in() if the Lair is closed before the first step), run_items(), can_flee()/flee(keep) -> end_run('fled'), _settle_items by ending; a carried-in item that comes home alive is marked risked and pays risked_relic_survived XP. KeepItemsDialog is the flee picker (pre-ticks 3); LairScreen is the hall (shelves, Carry boxes); buttons on the title, the run-end screen, the pause menu (Flee the region) and his panel at home."
     },
     {
       "id": "reputation_axes_r3",

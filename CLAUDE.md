@@ -11,19 +11,18 @@ its `README.md` — read the one for the system you touch). Session write-ups go
 
 ## Current phase
 
-Roguelite rework (`docs/design/ROGUELITE_REWORK.md` §13 roadmap, §17 amendments). **R1 done; R2
-fully built** (P0, U1, F1, C2, P1, P2, R2a–R2e). **Next: the R2 exit playtest (a human), then
-LIVING_WORLD L0 / R3** (`docs/design/LIVING_WORLD_SPEC.md` §14–15). Also built: **death ends the
-run** (R4-lite + the XP half of R5, `docs/design/PROGRESSION.md`), Raise Dead as his first spell
-with no free starting skeleton, and the demo shell. Where each landed: the newest rows of
-`docs/history/README.md`. The win condition is still the legacy placeholder. Climate: not
-implemented. One villain class for now — but **no system may assume exactly one villain on the
-map** (per-villain state on the villain object, never in an autoload/global).
+Roguelite rework (`docs/design/ROGUELITE_REWORK.md` §13, §17) + `docs/design/LIVING_WORLD_SPEC.md`
+(§14–15). **R1, R2 and LIVING_WORLD L0–L2 built**: death ends the run, endings keep items (stash,
+carry-in, the Lair), the living village, the stance, the Guild, witnesses/standing, blueprints, the
+roadside opening. **Next: a human playtest, then L3** (prisoners → Summon Ghoul). Where each
+landed: the newest rows of `docs/history/README.md`. The win condition is still the legacy
+placeholder. Climate: not implemented. One villain class for now — but **no system may assume
+exactly one villain on the map** (per-villain state on the villain, never in an autoload/global).
 
 ## Architecture conventions (the load-bearing ones)
 
-- `GameState` (autoload) — single source of truth for resources/threat/power/followers **today**;
-  LIVING_WORLD ruling 13 makes it a façade over the player's settlement at L0 (not built yet).
+- `GameState` (autoload) — a **façade over `player_settlement`** (a `Settlement`; ruling 13): every
+  settlement owns its stockpile; the village has its own.
   `GameState.reputation` is legacy — never extend it (R3: five axes on the villain). Threat stays
   global. `EventBus` (autoload) — ALL cross-system communication is signals here.
 - **Sim state lives on data objects (RefCounted); tokens are pure views.** `Worker`/`Follower`
@@ -66,16 +65,19 @@ storage. New art is named per SPRITE_SPEC and wired in the same commit. Never at
 scripts/Main.gd      wiring root + input arbitration (placement > demolish > rally > inspect)
 scripts/             Controls (InputMap, physical keys), Anchoring, GameCamera
 scripts/autoload/    GameState, EventBus, Building/Race/LootCatalog (LootCatalog owns THE loot roll)
-scripts/run/         RunLifecycle (endings, XP per deed, Second Wake), MetaProfile (XP save)
+scripts/run/         RunLifecycle (endings, items kept, carry-in, XP, Second Wake), MetaProfile
+                     (XP, stash, blueprints)
 scripts/ui/          InspectionPanel, Minimap, HudTopBar, BuildMenu, EconomyTab, EventPanelUI,
                      InspectorActions, TokenLayer, CombatFeedback, DebugSiteOverlay (F3),
-                     RunSummary, PauseMenu, TitleScreen
-scripts/settlement/  SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
+                     RunSummary, PauseMenu, TitleScreen, KeepItemsDialog, LairScreen
+scripts/settlement/  Settlement, SettlementGrid, Building, WorkerSystem (trip loop), Laborer/Worker,
                      MoraleSystem, HousePlanner/HouseStyle, ResourceField/ResourceNode, tokens
 scripts/villain/     Necromancer (data), VillainController, SortieSystem (capacity/deposit/death)
 scripts/combat/      Combat, Engagement, CombatSystem, UndeadCommand, RallyPoint
 scripts/world/       WorldMap (one TileMapLayer + one canopy MultiMesh), FogOfWar, DayNightCycle,
                      WorldSite(s), Raven/RavenMarker, SiteGuardian, Patrol, Wolf, Roaming, TravelLog
+scripts/world/village/  Village, Villager, VillageBuilding, VillageLabor (data/village.json)
+scripts/world/guild/    Guild (board, standing, pay), Witnesses (runners) (data/guild.json)
 scripts/bounty|events|missions|threat/  Stage-4 systems, built, mostly unsurfaced
 data/                JSON content, incl. loot_tables, relics, site_choices, progression, followers
 tools/               generators + harnesses (KEEP). make_world_map.gd GENERATES the layout
@@ -87,17 +89,13 @@ tools/               generators + harnesses (KEEP). make_world_map.gd GENERATES 
 `--import` after adding any `class_name`; `--quit-after 200` is the boot check (it sits paused on
 the title — expected). Assertion counts as of 2026-09-26:
 - `measure_travel` — **the gate on any map change**: every row back in band; walk speed is no knob
-- `verify_terrain` 278 — sheets, atlas, masks, and the generated layout: roads reach every
-  landmark, no path within 3 cells of a Band 4 site, river crossings ≤25 cells apart, flood fill
-  seals no region, every active site reachable from the lair within its interaction reach, every
-  dirt dead end leads to loot, one-mouth clearings, canopy budget (run windowed for draw calls)
-- `verify_loot_tables` 515 — every table rolled 10k times against LOOT_SITES_SPEC §5's bands,
-  relic uniqueness, the grave sheet, remainders, relics waking only on deposit, the dusk gate
+- `verify_terrain` 278 — sheets, atlas, masks, the generated layout (roads, Band 4 clearance,
+  crossings, reachability, dead ends lead to loot, clearings, canopy budget)
+- `verify_loot_tables` 536 — every table ×10k vs LOOT_SITES_SPEC §5, relics, remainders, dusk gate
 - `verify_stats` 505 — nine attributes vs the workbook, profiles, hp/carry, no identifier named
   Might (after ANY roster/stat change)
 - `check_sprite_scales` 122 — everything draws at its claimed size; looted sprites share a canvas
-- `verify_sortie` 67 — party capacity, the deposit at the Throne (not the band edge), drops,
-  caches, death clearing the haul first
+- `verify_sortie` 67 — party capacity, the deposit at the Throne, drops, caches, death
 - `verify_villain_combat` 65 — aura band edge, engage 26px / cast 5 cells, regen, 1,000-fight bands
 - `verify_escort` 58 — undead-only binding, labour pool in/out, a grave-raised skeleton joining,
   both stances, the interpose
@@ -105,8 +103,11 @@ the title — expected). Assertion counts as of 2026-09-26:
 - `verify_run_lifecycle` 49 — XP/level formulas (PROGRESSION.md), profile never written by a
   harness, owner checks, Second Wake, death ending the run, the run-end screen
 - `verify_raven` 39 — the five honesty conditions over 1,000 dawns, cap, silence, fog untouched
-- `verify_demo_shell` 38 — physical-key actions, no raw keycodes, pause/Esc, Surrender's confirm,
-  the title, dev tools debug-only
+- `verify_guild` 62 — roadside spawn, the board from world state, pay into hands/owed, standing
+  drops only on a runner's arrival, the keeper, Known shuts doors, the Altar blueprint
+- `verify_village` 56 — the GameState façade, integrity, meals, restaffing, alarm, stance, bodies
+- `verify_endings` 33 — what each ending keeps, carry slots 1→3, carry-in lost on death, the Lair
+- `verify_demo_shell` 39 — physical keys, pause/Esc, Surrender's confirm, title, debug-only tools
 - `verify_combat_feedback` 31 — one damage number per landed swing, the pool cap, no leak
 - `verify_raise_dead` 26 — no free skeleton, Raise Dead for bones, a grave's corpse as a free Worker
 - `smoke_site_actions` 26 — presses the site buttons as buttons (a human mouse is the last word)
@@ -116,6 +117,8 @@ the title — expected). Assertion counts as of 2026-09-26:
 
 - F3 overlay (`DebugSiteOverlay`): debug builds only, read-only — it must never reveal, write fog
   or set a `discovered` flag, or it perjures the Raven.
+- He wakes at `Main.ROADSIDE_SPAWN_CELL`, not the Throne; a harness that needs him home places
+  him at `_throne_world_centre()`.
 - The lair aura is a POSITION: `CombatSystem.aura_protects_villain()` reads `is_in_lair_band()`.
 - A global signal carrying a villain needs an owner check (`villain_died` fires for every villain).
 - Never read a raw keycode: add a row to `Controls.ACTIONS`.

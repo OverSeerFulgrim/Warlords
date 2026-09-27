@@ -56,6 +56,10 @@ func all_ids() -> Array:
 ## the *player*, while everything else in this autoload (get_building,
 ## all_ids) still returns it, so seeding, the housing gate, and any already-
 ## placed instance keep working unchanged.
+## Asked whether a blueprint is known (LIVING_WORLD section 9.1). Set by Main
+## from the player's meta profile; unset, nothing that needs a blueprint shows.
+var blueprint_provider: Callable = Callable()
+
 func buildable_ids(settlement) -> Array:
 	var result: Array = []
 	for id in _buildings.keys():
@@ -64,6 +68,11 @@ func buildable_ids(settlement) -> Array:
 			continue
 		if data.get("locked", false):
 			continue
+		# **Blueprint-gated** entries appear only once the blueprint is known --
+		# found in the world, and never forgotten across runs.
+		if data.get("blueprint", false):
+			if not blueprint_provider.is_valid() or not bool(blueprint_provider.call(id)):
+				continue
 		# "unique": only one can ever exist, so it leaves the menu once built.
 		# The Barracks is the only such entry (FOUNDATION_SPEC section 9:
 		# "Capacity 5. Only one can ever exist.").

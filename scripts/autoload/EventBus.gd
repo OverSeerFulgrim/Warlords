@@ -215,3 +215,36 @@ signal event_resolved(event_data, choice_index: int)
 # Missions
 signal mission_dispatched(mission, party: Array)
 signal mission_resolved(mission, party: Array, outcome: String)
+
+# The living village (LIVING_WORLD_SPEC L0/L1 -- scripts/world/village/)
+## Something struck a villager -- `by` is whoever he is fighting. The village
+## raises its alarm from this.
+signal villager_attacked(villager, by)
+## A villager is dead. `killer` may be null.
+signal villager_killed(village, villager, killer)
+## Re-staffing moved someone between jobs ("" = no job). Section 5.3.
+signal village_restaffed(village, villager, from_job: String, to_job: String)
+## A guard finished his training at the Guardhouse.
+signal village_guard_trained(village, villager)
+## A villager banked a load: `carried` in his arms, `banked` after the building's integrity.
+signal village_deposited(village, villager, kind: String, carried: int, banked: int)
+## A meal came up short by `short` portions.
+signal village_hungry(village, short: int)
+## The village's alarm went up at `at`.
+signal village_alarm(village, at: Vector2)
+## Hidden / Hunting (LIVING_WORLD ruling 15).
+signal villain_stance_changed(villain, stance_name: String)
+
+# The guild and the witnesses (LIVING_WORLD L2 -- scripts/world/guild/)
+## His standing with a faction moved down a tier (section 4.1). `why` is the report.
+signal standing_changed(villain, faction: String, tier: int, why: String)
+## Someone saw him do something (section 8.1). `witness` has a "!" and is running.
+signal witnessed(villain, witness, act: String)
+## A runner reached a settlement with his report -- standing drops only now.
+signal report_arrived(villain, witness, act: String, where: String)
+## The board changed: a bounty posted, taken, done or paid.
+signal guild_board_changed(guild)
+## A bounty was paid out. `gold` went into his hands (the banking rule applies).
+signal guild_bounty_paid(villain, bounty: Dictionary, gold: int)
+## A blueprint is known for good (LIVING_WORLD section 9.1 / 12).
+signal blueprint_learned(blueprint_id: String, source: String)

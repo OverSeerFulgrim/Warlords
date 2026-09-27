@@ -1,8 +1,15 @@
 extends Node
 ## GameState (Autoload singleton)
-## Central source of truth for resources, reputation, threat, and followers.
-## Everything else in the prototype reads/writes through this rather than
-## poking at other systems directly, so behavior stays easy to reason about.
+## Resources, reputation, threat, and followers -- read and written through here
+## rather than by poking at other systems directly.
+##
+## **A facade over the player's settlement since L0** (LIVING_WORLD_SPEC ruling
+## 13, 2026-09-26). Each settlement owns its own stockpile, population and Power
+## (`Settlement.gd`); the player's is `player_settlement`, and `wood`,
+## `followers`, `power` and the rest below are properties that read and write it.
+## Every existing caller -- the HUD, the build menu, the harnesses -- keeps
+## saying `GameState.wood` and is really talking to the player's settlement. The
+## village has its own Settlement and never touches GameState.
 
 ## Zero-args on purpose: its only listener (Main.gd) already just calls
 ## _update_stats_label(), which reads GameState's vars directly rather than
@@ -17,44 +24,51 @@ signal game_lost(reason: String)
 
 enum ThreatTier { LOW, MEDIUM, HIGH }
 
-# --- Resources ---
-# dark_essence stays a separate "magic" resource, field loot only (LOOT_SITES_
-# SPEC section 5), not something workers gather -- wood/stone/bones/food are the
-# four mundane resources. Food is the newest of them (FOUNDATION_SPEC
-# section 8): only living recruits eat, undead labor eats nothing, so it
-# sits idle at the starting 5 until Stage 3 brings the first living recruit.
-# Starting values are FOUNDATION_SPEC section 10's Stage-0 table (bones since
-# lowered to 3, below) -- dark essence starts at 0 because lootable sites out
-# in the world are its only source.
-var dark_essence: int = 0
-## 3, below Raise Dead's 5 (ruling 2026-09-26): the first dead must come from a
-## grave, never from the stockpile on minute one.
-var bones: int = 3
-var wood: int = 8
-var stone: int = 5
-var food: int = 5
+# --- The player's settlement (the facade's backing store) ---
 
-## **The sixth resource, and the first field-only one to be spendable** (LOOT_
-## SITES_SPEC section 5). Gold enters the game with the lootable sites: no
-## worker source, no building cost uses it yet, and its sinks arrive with R3 (the
-## Wealth axis reads hoarded gold) and R5 (stash value). Carrying a dead-end
-## resource for one milestone is acceptable; shipping loot without the loot is
-## not.
-var gold: int = 0
+## Starting values are FOUNDATION_SPEC section 10's Stage-0 table: 8 wood, 5
+## stone, 5 food and **3 bones** -- below Raise Dead's 5 (ruling 2026-09-26), so
+## the first dead must come from a grave, never from the stockpile on minute one.
+## Dark essence, gold and arms start at 0: lootable sites are their only source.
+const STARTING_STOCK := {"wood": 8, "stone": 5, "food": 5, "bones": 3,
+	"dark_essence": 0, "gold": 0, "arms": 0}
 
-## **The seventh** (designer-approved 2026-08-30). LOOT_SITES_SPEC §9 used to say
-## GameState gains gold and "nothing else" -- a line that predated the same
-## document's 2026-08-29 amendment (ruling 2), which introduced `arms` as a
-## carryable loot kind. A kind he can carry but not bank would make every
-## deposit containing weapons print "unknown kind" and silently drop them, which
-## is worse than the dead end the ruling actually asked for. §9 now carries a
-## dated correction saying so.
-##
-## So it banks, and it does nothing: no building spends it, no recipe reads it.
-## Its sink arrives with COMBAT_SPEC §9's gear v1, exactly as ruling 2 says. The
-## HUD shows it only once you have some, so a permanently-zero counter is not
-## sitting on the strip for a milestone.
-var arms: int = 0
+var player_settlement: Settlement = _new_player_settlement()
+
+func _new_player_settlement() -> Settlement:
+	var s := Settlement.new("lair", "villain", "The Lair")
+	for k in STARTING_STOCK.keys():
+		s.stockpile[k] = int(STARTING_STOCK[k])
+	s.stockpile_changed.connect(func(): resources_changed.emit())
+	return s
+
+# --- Resources (properties over player_settlement) ---
+# dark_essence is the "magic" resource, field loot only (LOOT_SITES_SPEC
+# section 5). Gold is the sixth resource and the first field-only spendable one;
+# its sinks arrive with R3 (Wealth) and R5 (stash value). Arms is the seventh
+# (designer-approved 2026-08-30): it banks and does nothing until COMBAT_SPEC
+# section 9's gear v1 -- the HUD shows it only once you have some.
+var dark_essence: int:
+	get: return player_settlement.amount("dark_essence")
+	set(v): player_settlement.set_amount("dark_essence", v)
+var bones: int:
+	get: return player_settlement.amount("bones")
+	set(v): player_settlement.set_amount("bones", v)
+var wood: int:
+	get: return player_settlement.amount("wood")
+	set(v): player_settlement.set_amount("wood", v)
+var stone: int:
+	get: return player_settlement.amount("stone")
+	set(v): player_settlement.set_amount("stone", v)
+var food: int:
+	get: return player_settlement.amount("food")
+	set(v): player_settlement.set_amount("food", v)
+var gold: int:
+	get: return player_settlement.amount("gold")
+	set(v): player_settlement.set_amount("gold", v)
+var arms: int:
+	get: return player_settlement.amount("arms")
+	set(v): player_settlement.set_amount("arms", v)
 
 # --- Reputation / Threat ---
 var reputation: int = 0
@@ -69,13 +83,18 @@ const THREAT_MAX: int = 100
 # "Both" win condition per design doc: player must (a) survive the High
 # Threat tier crusade event, AND (b) reach a power threshold. Power is a
 # simple derived stat for the prototype: buildings + followers, weighted.
-var power: int = 0
+var power: int:
+	get: return player_settlement.power
+	set(v): player_settlement.power = v
 const POWER_WIN_THRESHOLD: int = 50
 var survived_high_threat_crusade: bool = false
 var _last_building_power: int = 0  # cached so follower-only changes can also trigger a recompute
 
 # --- Followers ---
-var followers: Array = []  # Array[Follower]
+## The player's recruits (`Follower`s) -- the settlement's population.
+var followers: Array:
+	get: return player_settlement.followers
+	set(v): player_settlement.followers = v
 
 ## Everyone who has left, with how they felt about it. **Data only** -- nothing
 ## reads this yet. It exists so the departure-memory system (GAME_OUTLINE gap
@@ -102,89 +121,25 @@ func _ready() -> void:
 # ---------------- Resources ----------------
 
 func add_resource(kind: String, amount: int) -> void:
-	match kind:
-		"dark_essence":
-			dark_essence += amount
-		"bones":
-			bones += amount
-		"wood":
-			wood += amount
-		"stone":
-			stone += amount
-		"food":
-			food += amount
-		"gold":
-			gold += amount
-		"arms":
-			arms += amount
-		_:
-			push_warning("GameState.add_resource: unknown kind '%s'" % kind)
-			return
-	resources_changed.emit()
+	if not Settlement.KINDS.has(kind):
+		push_warning("GameState.add_resource: unknown kind '%s'" % kind)
+		return
+	player_settlement.add(kind, amount)
 
 ## Checks affordability without spending -- used by the build menu to grey
 ## out / reject placements before committing the spend.
 func can_afford(kind: String, amount: int) -> bool:
-	match kind:
-		"dark_essence":
-			return dark_essence >= amount
-		"bones":
-			return bones >= amount
-		"wood":
-			return wood >= amount
-		"stone":
-			return stone >= amount
-		"food":
-			return food >= amount
-		"gold":
-			return gold >= amount
-		"arms":
-			return arms >= amount
-		_:
-			return false
+	return player_settlement.can_afford(kind, amount)
 
 ## Checks a full cost Dictionary (e.g. {"bones": 6, "dark_essence": 4}) at once.
 func can_afford_cost(cost: Dictionary) -> bool:
-	for kind in cost.keys():
-		if not can_afford(kind, cost[kind]):
-			return false
-	return true
+	return player_settlement.can_afford_cost(cost)
 
 func spend_resource(kind: String, amount: int) -> bool:
-	match kind:
-		"dark_essence":
-			if dark_essence < amount:
-				return false
-			dark_essence -= amount
-		"bones":
-			if bones < amount:
-				return false
-			bones -= amount
-		"wood":
-			if wood < amount:
-				return false
-			wood -= amount
-		"stone":
-			if stone < amount:
-				return false
-			stone -= amount
-		"food":
-			if food < amount:
-				return false
-			food -= amount
-		"gold":
-			if gold < amount:
-				return false
-			gold -= amount
-		"arms":
-			if arms < amount:
-				return false
-			arms -= amount
-		_:
-			push_warning("GameState.spend_resource: unknown kind '%s'" % kind)
-			return false
-	resources_changed.emit()
-	return true
+	if not Settlement.KINDS.has(kind):
+		push_warning("GameState.spend_resource: unknown kind '%s'" % kind)
+		return false
+	return player_settlement.spend(kind, amount)
 
 # ---------------- Reputation / Threat ----------------
 
@@ -252,13 +207,12 @@ func lose_game(reason: String) -> void:
 ## picking up where the old one left off. Called by
 ## Main._begin_new_run, the start of every new run.
 func reset() -> void:
-	dark_essence = 0
-	bones = 3
-	wood = 8
-	stone = 5
-	food = 5
-	gold = 0
-	arms = 0
+	# In place rather than a fresh Settlement: the relay to resources_changed
+	# is connected once, in _new_player_settlement().
+	for k in STARTING_STOCK.keys():
+		player_settlement.stockpile[k] = int(STARTING_STOCK[k])
+	player_settlement._deposit_carry.clear()
+	player_settlement.stockpile_changed.emit()
 	reputation = 0
 	threat = 0
 	threat_tier = ThreatTier.LOW

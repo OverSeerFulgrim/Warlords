@@ -9,12 +9,16 @@ class_name PauseMenu
 ## unpause the run-end screen by accident.
 
 signal abandon_confirmed
+## Flee the region (alive, from the lair) -- Main opens the keep-3 picker.
+signal flee_requested
 
 const WIDTH := 380.0
 
 var _panel: PanelContainer
 var _body: VBoxContainer
 var _paused_by_me: bool = false
+## Asked when the menu opens: can he flee from where he stands?
+var flee_available: Callable = Callable()
 
 func _ready() -> void:
 	layer = 58
@@ -95,6 +99,13 @@ func _show_main() -> void:
 	_button("Resume", close)
 	_button("Controls", _show_controls)
 	_body.add_child(HSeparator.new())
+	var flee := _button("Flee the region…", func():
+		close()
+		flee_requested.emit())
+	var can: bool = flee_available.is_valid() and bool(flee_available.call())
+	flee.disabled = not can
+	flee.tooltip_text = "End the run alive and keep 3 things he found." if can \
+		else "Only from the lair: get him home first."
 	_button("Abandon this run…", _show_confirm)
 	_button("Quit the game", func(): get_tree().quit())
 	_focus_first.call_deferred()
@@ -110,7 +121,7 @@ func _show_confirm() -> void:
 	_clear()
 	_body.add_child(PauseMenu.heading("Abandon the run?", 18))
 	var l := Label.new()
-	l.text = "The run ends here. XP already earned is kept and the chronicle gets its line; everything else is lost."
+	l.text = "The run ends here. XP already earned is kept and the chronicle gets its line; everything else is lost -- including anything carried in from the Lair. (Fleeing the region from the lair keeps 3 things.)"
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.custom_minimum_size = Vector2(WIDTH - 44.0, 0)
 	l.add_theme_font_size_override("font_size", 12)

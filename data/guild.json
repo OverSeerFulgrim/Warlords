@@ -1,0 +1,26 @@
+{
+	"_comment": "The Adventurers' Guild (LIVING_WORLD_SPEC section 4, L2, built 2026-09-26). A neutral hall on the road that takes coin from anyone and does not know what he is -- yet. Its board is generated from world state (section 4.2): a den that stands posts a bounty; a village that runs short of something posts one. Standing (Unknown / Suspected / Known) is per villain and per run and only moves one way (ruling 4). Every number is a playtest hypothesis.",
+	"id": "guild",
+	"name": "The Adventurers' Guild",
+	"cell": [89, 61],
+	"size": 92,
+	"sprite": "res://assets/placeholder/generated/guild_hall.png",
+	"reach_cells": 2.5,
+
+	"_comment_attention": "How far anyone can see him do something (ruling 15): longer by day, shorter at night. The keeper behind the counter, the villagers at their work -- one number each, per unit later when there are more kinds of people.",
+	"attention_cells": {"day": 8.0, "night": 4.0},
+
+	"_comment_reports": "A runner who reaches the guild or the village's guardhouse drops his standing one tier (only the first runner per deed counts) and adds threat.",
+	"report_threat": 5,
+
+	"_comment_bounties": "Pay is in gold, into his hands -- it is his when he banks it at the Throne, like anything else. Suspected: the board still pays, at this fraction. Known: the doors are shut (ruling 5).",
+	"suspected_pay": 0.5,
+	"den_gold_per_band": 6,
+	"deliveries": [
+		{"id": "wood", "kind": "wood", "when_below": 10, "amount": 10, "gold": 8,
+			"title": "%s needs wood", "blurb": "The mill is short. Ten loads of wood, delivered here, and the guild will see it sent on."},
+		{"id": "food", "kind": "food", "when_below": 12, "amount": 10, "gold": 8,
+			"title": "%s's larder is low", "blurb": "Ten measures of food for the village. The guild pays on delivery."}
+	],
+	"max_taken": 2
+}

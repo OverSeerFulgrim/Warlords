@@ -21,11 +21,23 @@ class_name RunLifecycle
 ## is already out of every fight. Only then does this choose between waking him
 ## at the Throne and ending the run.
 ##
+## ## What each ending keeps (rulings 2026-09-26, ROGUELITE_REWORK 17.6-17.7)
+##
+## | Ending | Keeps |
+## |---|---|
+## | victory | XP, and **all** the run's gear and relics |
+## | fled (the region, alive, from the lair) | XP, and **3 items** the player picks |
+## | slain / throne_fell / abandoned | XP and the chronicle line -- nothing else |
+##
+## Items carried *into* the run from the Lair are active from the first step.
+## On an alive ending they go back to the stash (and pay XP for the risk); on
+## any other ending they are **lost for good** (section 10).
+##
 ## ## What it does not do
 ##
-## No flee-the-region (R4 proper), no map shuffle, no stash, no Lair hub. The
-## victory condition is still GameState's legacy one until the manor exists; it
-## is routed through here so that when it changes, the ending already has a home.
+## No map shuffle. The victory condition is still GameState's legacy one until
+## the manor exists; it is routed through here so that when it changes, the
+## ending already has a home.
 
 ## Who and what. Set by Main before add_child.
 var villain: Necromancer = null
@@ -62,6 +74,9 @@ var stats: Dictionary = {
 	"xp": 0,
 }
 
+## Stash entries carried into this run (their uids), active from the first step.
+var carried_in: Array = []
+
 ## Who struck him last -- read for the epitaph.
 var _last_foe: String = ""
 
@@ -75,6 +90,7 @@ func _ready() -> void:
 		var def: Dictionary = MetaProfile.unlock_def("second_wake")
 		if profile.has_unlock(villain.class_id, "second_wake"):
 			wakes_left = int(def.get("uses_per_run", 1))
+		_carry_in()
 	EventBus.villain_died.connect(_on_villain_died)
 	EventBus.deed_committed.connect(_on_deed)
 	EventBus.villain_engaged.connect(_on_engaged)
@@ -132,6 +148,12 @@ func _on_deed(v, deed_id: String, _axes: Dictionary) -> void:
 	if not v.deeds.is_empty() and String(v.deeds[v.deeds.size() - 1].get("id", "")) == deed_id:
 		band = int(v.deeds[v.deeds.size() - 1].get("band", 0))
 	award(MetaProfile.deed_xp(deed_id, band), deed_id)
+	# **Blueprints** (LIVING_WORLD section 9.1): clearing a den teaches the Dark
+	# Altar -- the first thing he learns out in the world rather than at home.
+	# Kept on the profile, so it is his for every run after.
+	if deed_id == "cleared_a_den" and profile and not profile.knows_blueprint("dark_altar"):
+		profile.learn_blueprint("dark_altar")
+		EventBus.blueprint_learned.emit("dark_altar", "clearing a den")
 
 func _on_engaged(v, foe_name: String) -> void:
 	if _mine(v):
@@ -213,6 +235,99 @@ func abandon() -> void:
 		return
 	end_run("abandoned", "")
 
+## **Relic risk** (section 10): whatever the Lair marked to carry, up to the
+## slot count, goes into his banked relics -- working from the first step, and
+## on the line until the run ends alive.
+func _carry_in() -> void:
+	if villain == null:
+		return
+	var slots: int = profile.carry_slots(villain.class_id)
+	for e in profile.carried_entries():
+		if carried_in.size() >= slots:
+			e["carry"] = false
+			continue
+		var id: String = String(e.get("id", ""))
+		if id == "" or villain.relics_banked.has(id):
+			continue
+		villain.relics_banked.append(id)
+		# Never drop a second copy of something he walked in with.
+		if not villain.relics_rolled.has(id):
+			villain.relics_rolled.append(id)
+		carried_in.append(int(e["uid"]))
+
+## The Lair can change what he carries after this run was built (the title sits
+## over a built world). Before the run has started, put the new choice in hand.
+func reapply_carry_in() -> void:
+	if ended or run_seconds > 0.0 or villain == null:
+		return
+	for id in _carried_ids():
+		villain.relics_banked.erase(id)
+		villain.relics_rolled.erase(id)
+	carried_in.clear()
+	_carry_in()
+
+func _carried_ids() -> Array:
+	return carried_in.map(func(uid): return String(profile.stash_entry(uid).get("id", "")))
+
+## Every item this run found -- banked or still in his hands -- and not one he
+## brought with him.
+func run_items() -> Array:
+	if villain == null:
+		return []
+	var brought: Array = _carried_ids()
+	var out: Array = []
+	for id in villain.relics_banked + villain.relics_carried:
+		if brought.has(id):
+			brought.erase(id)
+			continue
+		out.append(id)
+	return out
+
+## True where fleeing the region is possible: alive, at the lair.
+func can_flee() -> bool:
+	return not ended and not _dying and villain != null and villain.is_alive() and villain.is_in_lair_band()
+
+## **Flee the region** (section 1): end the run alive, from the lair, keeping the
+## (at most 3) items chosen. Anything past three is dropped from the choice.
+func flee(keep: Array) -> bool:
+	if not can_flee():
+		return false
+	var items: Array = run_items()
+	var chosen: Array = []
+	for id in keep:
+		if items.has(id) and chosen.size() < 3:
+			items.erase(id)
+			chosen.append(id)
+	_keep_on_flee = chosen
+	end_run("fled", "")
+	return true
+
+var _keep_on_flee: Array = []
+
+## Settles the stash for this ending and returns {"kept": [...ids], "lost": [...ids]}.
+func _settle_items(ending: String, run_number: int, day: int) -> Dictionary:
+	var kept: Array = []
+	var lost: Array = []
+	var alive: bool = ending == "victory" or ending == "fled"
+	if ending == "victory":
+		kept = run_items()
+	elif ending == "fled":
+		kept = _keep_on_flee.duplicate()
+	for id in kept:
+		profile.add_to_stash(String(id), run_number, day)
+	for uid in carried_in:
+		var e: Dictionary = profile.stash_entry(uid)
+		if e.is_empty():
+			continue
+		if alive:
+			e["risked"] = int(e.get("risked", 0)) + 1
+			award(_event_xp("risked_relic_survived"), "a risked relic came home")
+		else:
+			lost.append(String(e.get("id", "")))
+			profile.remove_from_stash(uid)
+	profile.save()
+	return {"kept": kept, "lost": lost}
+
 func end_run(ending: String, detail: String) -> void:
 	if ended or villain == null:
 		return
@@ -227,6 +342,7 @@ func end_run(ending: String, detail: String) -> void:
 
 	var day: int = day_night.day_number if day_night else 1
 	var run_number: int = profile.runs(villain.class_id) + 1
+	var items: Dictionary = _settle_items(ending, run_number, day)
 	var epitaph: String = _epitaph(run_number, ending, detail, day)
 	profile.record_run(villain.class_id, ending, day, int(stats["xp"]), epitaph)
 
@@ -248,6 +364,8 @@ func end_run(ending: String, detail: String) -> void:
 		"unlocked": profile.unlocked(villain.class_id),
 		"chronicle": profile.recent(villain.class_id, 5),
 		"persistent": profile.path != "",
+		"kept": items["kept"],
+		"lost": items["lost"],
 	}
 	if pause_on_end and is_inside_tree():
 		get_tree().paused = true
@@ -258,6 +376,7 @@ func _title(ending: String) -> String:
 		"slain": return "The Necromancer has fallen"
 		"throne_fell": return "The Throne has fallen"
 		"abandoned": return "The run is abandoned"
+		"fled": return "He fled the region"
 		"victory": return "Victory"
 	return "The run is over"
 
@@ -272,6 +391,8 @@ func _epitaph(n: int, ending: String, detail: String, day: int) -> String:
 			how = "the Throne fell on day %d" % day
 		"abandoned":
 			how = "abandoned on day %d" % day
+		"fled":
+			how = "fled the region alive on day %d" % day
 		"victory":
 			how = "victorious on day %d" % day
 		_:

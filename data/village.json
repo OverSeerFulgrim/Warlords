@@ -1,0 +1,57 @@
+{
+	"_comment": "The living village (LIVING_WORLD_SPEC L0 + L1, built 2026-09-26). One settlement owned by the lordship: its own stockpile (ruling 13), job buildings with slots and integrity (ruling 14), named villagers who walk out to the fields and the treeline and back, guards who walk the rounds and train at the Guardhouse, and the re-staffing order food > safety > wood (section 5.3). Cells are world-map cells, the same space as world_sites.json. Every number is a playtest hypothesis.",
+	"id": "harrowdale",
+	"name": "Harrowdale",
+	"owner": "human",
+
+	"_comment_stock": "What the village has in its stores on day one. Two meals a day, one food per villager, from here.",
+	"stock": {"food": 24, "wood": 12, "stone": 4},
+
+	"_comment_priority": "Section 5.3: when people are short, jobs are filled in this order -- first from the jobless, then from the LOWEST job below. Kill the guards and a woodcutter takes up a spear.",
+	"restaff_priority": ["farmer", "guard", "woodcutter"],
+
+	"train_seconds": 90.0,
+	"alarm_seconds": 30.0,
+	"alarm_cells": 14.0,
+	"panic_cells": 6.0,
+	"repair_wood": 2,
+	"repair_step": 0.25,
+
+	"villager_sprite": "res://assets/placeholder/generated/villager_peasant.png",
+	"guard_sprite": "res://assets/placeholder/generated/villager_guard.png",
+	"node_art": {
+		"crop": "res://assets/placeholder/generated/crop_field.png",
+		"crop_cut": "res://assets/placeholder/generated/crop_field_cut.png"
+	},
+
+	"_comment_buildings": "slots = how many can work there; banks_at = where its workers' loads go (the woodcutters carry to the mill, and the MILL's integrity is what multiplies wood).",
+	"buildings": [
+		{"id": "farm", "name": "Farm", "job": "farmer", "need": "food", "slots": 3, "cell": [127, 66], "size": 72,
+			"sprite": "res://assets/placeholder/kenney/House/house_2_yellow.png"},
+		{"id": "guardhouse", "name": "Guardhouse", "job": "guard", "need": "safety", "slots": 2, "cell": [130, 64], "size": 84, "trains": true,
+			"sprite": "res://assets/placeholder/kenney/Tower/tower_red.png"},
+		{"id": "woodcutter", "name": "Woodcutter's Hut", "job": "woodcutter", "need": "wood", "slots": 2, "cell": [124, 52], "size": 62, "banks_at": "mill",
+			"sprite": "res://assets/placeholder/kenney/House/house_1_green.png"},
+		{"id": "mill", "name": "Woodmill", "job": "", "need": "wood", "slots": 0, "cell": [128, 53], "size": 72,
+			"sprite": "res://assets/placeholder/kenney/House/house_2_blue.png"}
+	],
+
+	"houses": ["house_1", "house_2", "house_3", "house_4", "house_5", "house_6"],
+
+	"_comment_people": "Seven jobs, eight people: one spare. Kill two guards and the spare takes the first spear -- the second comes from the woodmill.",
+	"people": [
+		{"name": "Frank", "job": "farmer"},
+		{"name": "Edda", "job": "farmer"},
+		{"name": "Tobin", "job": "farmer"},
+		{"name": "Osric", "job": "guard", "trained": true},
+		{"name": "Brom", "job": "guard", "trained": true},
+		{"name": "Randy", "job": "woodcutter"},
+		{"name": "Hale", "job": "woodcutter"},
+		{"name": "Wyn", "job": ""}
+	],
+
+	"fields": [[125, 63], [127, 63], [129, 63], [124, 66], [125, 68], [127, 69], [129, 69], [131, 67]],
+	"treeline": [[118, 39], [120, 38], [121, 39], [117, 40], [119, 40], [122, 36]],
+	"forage": [[114, 58], [139, 57], [118, 76]],
+	"guard_beat": [[121, 57], [137, 57], [137, 75], [121, 75]]
+}

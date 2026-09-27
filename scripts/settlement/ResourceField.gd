@@ -103,6 +103,10 @@ var _grid_h: float = 0.0
 ## relative to the Throne now that the Throne sits inside a 144x144 world.
 var world: WorldMap = null
 
+## False for a field that is not the lair's -- the village's own fields and
+## treeline regrow at dawn but no deer wander into them.
+var spawns_deer: bool = true
+
 func _ready() -> void:
 	EventBus.dawn_started.connect(_on_dawn)
 
@@ -207,7 +211,7 @@ func _on_dawn(_day_number: int) -> void:
 	for n in nodes:
 		n.regrow()
 	_purge_dead_deer()
-	if live_deer_count() < DEER_CAP:
+	if spawns_deer and live_deer_count() < DEER_CAP:
 		_spawn_deer()
 
 ## Hunted deer are removed from the map outright, unlike stumps and spent

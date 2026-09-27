@@ -74,6 +74,7 @@ func _ready() -> void:
 	# already announces every landed blow for the floating numbers. Riding that
 	# signal beats a second announcement or a per-frame hp comparison.
 	EventBus.damage_shown.connect(_on_damage_shown)
+	EventBus.villain_stance_changed.connect(_on_villain_stance_changed)
 	set_process(true)
 
 func _on_damage_shown(unit, _amount: int, kind: String) -> void:
@@ -112,6 +113,7 @@ func cast_escort(who) -> int:
 	villain = who
 	_party_struck = false
 	EventBus.escort_bound.emit(who, bound)
+	_apply_hunting_stance()
 	return bound
 
 ## Re-anchors the point to the ground, ending the escort without releasing the
@@ -122,6 +124,27 @@ func anchor_to_ground(at: Vector2) -> void:
 	rally_point.follow = null
 	rally_point.position = at
 	_set_covering(false)
+
+## **Hunting puts the escort Aggressive** (LIVING_WORLD ruling 15), and
+## Hidden gives back whatever stance it had before. Wired in _ready; owner-
+## checked like every villain-carrying signal.
+var _stance_before_hunt: int = -1
+
+func _on_villain_stance_changed(v, _name: String) -> void:
+	if v != villain or villain == null:
+		return
+	_apply_hunting_stance()
+
+func _apply_hunting_stance() -> void:
+	if not is_active() or villain == null or not villain.has_method("is_hunting"):
+		return
+	if villain.is_hunting():
+		if rally_point.stance != RallyPoint.Stance.AGGRESSIVE:
+			_stance_before_hunt = rally_point.stance
+			set_stance(RallyPoint.Stance.AGGRESSIVE)
+	elif _stance_before_hunt >= 0:
+		set_stance(_stance_before_hunt)
+		_stance_before_hunt = -1
 
 func set_stance(stance: int) -> void:
 	if not is_active() or rally_point.stance == stance:

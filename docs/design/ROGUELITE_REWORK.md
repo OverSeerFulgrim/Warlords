@@ -29,10 +29,10 @@ The progression in one line: **Hide → Explore → Influence → Rule.**
 | Ending | Trigger | What you keep |
 |---|---|---|
 | **Death** | The Necromancer dies (or the Throne falls) | XP earned during the run, chronicle entry. Everything else lost — including any stash relics brought in. |
-| **Flee the region** | Player chooses to abandon the run alive | XP + everything the Necromancer carries banks to the stash. No victory. |
-| **Take the Manor** | Survive the crusade and seize the human lord's manor | XP + all loot banks, victory bonus, chronicle triumph entry. |
+| **Flee the region** | Player chooses to abandon the run alive | XP + everything the Necromancer carries banks to the stash. No victory. *(Amended 2026-09-26, §17.7: XP, and the player **chooses 3 items** to keep.)* |
+| **Take the Manor** | Survive the crusade and seize the human lord's manor | XP + all loot banks, victory bonus, chronicle triumph entry. *(Amended 2026-09-26, §17.6–17.7: the victory bonus is XP, and **all gear and relics** from the run are kept.)* |
 
-**Built 2026-09-26 (R4-lite, §17.1):** `scripts/run/RunLifecycle.gd` owns the endings — `slain`, `throne_fell`, `abandoned` (Surrender, behind a confirm) and `victory` (still the legacy crusade-and-Power placeholder until the manor exists) — and a run-end screen. Flee-the-region and Take the Manor are still R4; there is no stash yet (R5), so nothing but XP and the chronicle line outlives a run today.
+**Built 2026-09-26 (R4-lite, §17.1):** `scripts/run/RunLifecycle.gd` owns the endings — `slain`, `throne_fell`, `abandoned` (Surrender, behind a confirm) and `victory` (still the legacy crusade-and-Power placeholder until the manor exists) — and a run-end screen. Take the Manor is still R4. **Flee the region, the stash and what each ending keeps were built later the same day** (§17.7, `docs/history/2026-09-26-endings-and-lair.md`).
 
 The flee option is deliberate: it is the run-scale version of "one more grave, or turn back?" Deaths never feel arbitrary because there was always a door out the player chose not to take.
 
@@ -64,7 +64,7 @@ Explicit, because in a run frame ambiguity here breaks everything.
 
 The proposal's Eras map onto a single run's escalation, not a campaign. They align with the map doc's §10 escalation bands.
 
-**Era I — Survival (early run).** Unknown. Throne, Raven, no dead yet — the first skeletons come out of the graves by Raise Dead (*amended 2026-09-26, §17.3; was "a handful of skeletons"*) — thin resources, zero reputation. The base mostly self-manages; the player's primary activity is sorties into the wilderness. Humans blame animals and outlaws for anything odd. No recruits — nobody knows you exist. *(`LIVING_WORLD_SPEC.md` §13 amends the eras: Era I gains guild bounties taken in disguise, and "Known" guild standing is one Era II trigger. Design, not built.)*
+**Era I — Survival (early run).** Unknown. Throne, Raven, no dead yet — the first skeletons come out of the graves by Raise Dead (*amended 2026-09-26, §17.3; was "a handful of skeletons"*) — thin resources, zero reputation. The base mostly self-manages; the player's primary activity is sorties into the wilderness. Humans blame animals and outlaws for anything odd. No recruits — nobody knows you exist. *(`LIVING_WORLD_SPEC.md` §13 amends the eras: Era I gains guild bounties taken in disguise, and "Known" guild standing is one Era II trigger. The guild, its bounties and standing are built (L2, 2026-09-26); the era triggers are not.)*
 
 **Era II — Influence (mid run).** Deeds accumulate into reputation; rumors spread (emptied graves, vanished caravans, travelers' stories). Recruit offers begin — people *seeking you out*, gated by reputation axes (§7), not time. The estate notices patterns; the church investigates; patrols thicken.
 
@@ -151,7 +151,7 @@ Five axes, each moved by deeds and each attracting a different kind of follower:
 
 ## 9. Meta-progression: XP, levels, unlocks, chronicle
 
-**Built 2026-09-26 (R5's XP half):** XP per deed, levels and the first unlock — numbers and tables in `PROGRESSION.md`. Spell, unit, item, encounter and relic-slot unlocks are not built.
+**Built 2026-09-26 (R5's XP half):** XP per deed, levels and the first unlock — numbers and tables in `PROGRESSION.md`. Relic slots 2 and 3 (levels 7 and 10) were built with the stash; spell, unit, item and encounter unlocks are not built.
 
 **XP is banked the instant it is earned** — from discoveries, encounters resolved, buildings raised, battles won, reputation milestones, run endings. Never awarded only at run end: a death two hours in must still feel like a chapter, not a refund.
 
@@ -171,6 +171,8 @@ The hard rule from §2 repeated because it is the whole design: **unlocks widen 
 ## 10. The Lair (meta hub)
 
 The main-menu home between runs — the Hades-house model. The chronicle made into a room.
+**Amended 2026-09-26 (§17.6):** reached from a **Lair button on the main menu**; the player decorates
+it, organises the loot kept from runs, and chooses loot from it to start a fresh run with.
 
 - **The stash.** Relics extracted from runs live here permanently.
 - **Decoration and trophies.** Mount the wolf's head; hang the lord's banner from the run you won. Placement reuses the existing settlement placement-mode code. Trophies are earned by specific feats, not bought.
@@ -203,7 +205,7 @@ The main-menu home between runs — the Hades-house model. The chronicle made in
 | Priority-list economy, morale/meals, housing | **Unchanged.** This is the self-managing base layer the rework depends on. |
 | `Roaming.gd`, wolf/deer | Reused for world-map wildlife and patrol loops. |
 | Reputation (currently a single value) | Replaced by the five-axis model (§7). |
-| Save/load | **No longer optional.** Meta-persistence (XP, unlocks, stash, chronicle) is required by R5; mid-run save is a separate, later concern. *(2026-09-26: `MetaProfile` writes XP and the chronicle to `user://meta_profile.json`; unlocks are computed from XP, never stored; no stash yet; no mid-run save.)* |
+| Save/load | **No longer optional.** Meta-persistence (XP, unlocks, stash, chronicle) is required by R5; mid-run save is a separate, later concern. *(2026-09-26: `MetaProfile` writes XP, the chronicle, the stash and known blueprints to `user://meta_profile.json`; unlocks are computed from XP, never stored; no mid-run save.)* |
 | Map generation | New: 144×144 template + shuffle rules per the map doc. `ResourceField`'s fixed seeding becomes the lair-band seeder within it. |
 
 ---
@@ -218,9 +220,9 @@ Same philosophy as the foundation reset: each stage is playable and proves somet
 
 **R3 — The world responds.** Five reputation axes moved by deeds, reputation-gated recruit offers replacing the timer, notoriety feeding patrol escalation. *Exit: a run reaches Era II — first recruit arrives because of something the player did, and the world is visibly more watchful.* **Not built.** (Folding R3 into `LIVING_WORLD_SPEC.md`'s L2 is recommended, not ruled.)
 
-**R4 — The run is real.** Run start/end lifecycle, death = run over, flee-the-region option, crusade climax retuned, take-the-manor victory, map shuffle between runs. *Exit: a complete run is winnable in ~2h and losable honestly; a second run is recognizably different.* **R4-lite built 2026-09-26** (§17.1, `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`): the run lifecycle, death = run over, Surrender as an abandon ending, the run-end screen, a clean new run. Not built: flee-the-region, the crusade retune, take-the-manor, the map shuffle.
+**R4 — The run is real.** Run start/end lifecycle, death = run over, flee-the-region option, crusade climax retuned, take-the-manor victory, map shuffle between runs. *Exit: a complete run is winnable in ~2h and losable honestly; a second run is recognizably different.* **R4-lite built 2026-09-26** (§17.1, `docs/history/2026-09-26-run-lifecycle-and-raise-dead.md`): the run lifecycle, death = run over, Surrender as an abandon ending, the run-end screen, a clean new run. Flee-the-region built later that day (§17.7). Not built: the crusade retune, take-the-manor, the map shuffle.
 
-**R5 — The legend persists.** Meta save file, XP-from-deeds, level unlocks (spells/units/items/encounters/relic slots), the Lair hub with stash, relic carry-in/loss, decoration, chronicle. *Exit: dying mid-run demonstrably wasn't a waste — XP banked, epitaph written, and the next run offers something new.* **XP half built 2026-09-26** (`PROGRESSION.md`): the meta save file (XP and chronicle), XP from deeds, levels, epitaphs, and one unlock (Second Wake, level 5). Not built: spell/unit/item/encounter/relic-slot unlocks, the Lair hub, the stash, relic carry-in, decoration.
+**R5 — The legend persists.** Meta save file, XP-from-deeds, level unlocks (spells/units/items/encounters/relic slots), the Lair hub with stash, relic carry-in/loss, decoration, chronicle. *Exit: dying mid-run demonstrably wasn't a waste — XP banked, epitaph written, and the next run offers something new.* **XP half built 2026-09-26** (`PROGRESSION.md`): the meta save file (XP and chronicle), XP from deeds, levels, epitaphs, and one unlock (Second Wake, level 5). **The stash half built the same day** (`docs/history/2026-09-26-endings-and-lair.md`): the stash, the Lair screen with shelves, carry-in with relic slots 2 (level 7) and 3 (level 10), loss on death and XP for a risked item that comes home. Not built: spell/unit/item/encounter unlocks, trophies and placement-style decoration.
 
 **R6 — Later (each its own effort):** directed Raven + bounty observation, living village routines (*pulled forward 2026-09-26 by `LIVING_WORLD_SPEC.md` §13–14 into a staged build alongside R3*), AI rival in the sealed region, the Demonologist as a playable class, multiplayer.
 
@@ -241,7 +243,7 @@ Demonologist (as class *and* as AI), multiplayer (constraint in §11 only), dire
 - Flee-the-region mechanics: instant from anywhere, or must he physically reach a map edge? (Recommendation: physically reach the lair, then flee — keeps the return leg tense even when giving up.)
 - Whether escort skeletons brought on sorties fully leave the labor pool (current Command Undead rule says yes — probably correct, "the dead can dig or they can fight"). *(Built that way in R2d: `ESCORT_SPEC.md`.)*
 - Relic effect design space — in-run passive effects vs. activated items.
-- What the victory bonus for taking the manor actually is (XP multiplier? guaranteed relic? unlock acceleration?). *(`data/progression.json` pays a flat 250 XP for any victory as a playtest hypothesis; the question stands.)*
+- ~~What the victory bonus for taking the manor actually is~~ **Ruled 2026-09-26 (§17.6–17.7):** XP, and all gear and relics from the run are kept. *(The 250 XP in `data/progression.json` is still a playtest number.)*
 
 ---
 
@@ -266,3 +268,21 @@ R1 shipped to spec. During the post-R1 doc reconciliation, two decisions were ma
    Dead costs bones and works wherever he stands. §2's "Throne + starting skeletons" becomes
    **Throne only**, as `LIVING_WORLD_SPEC.md` §13 required.
 4. **The timed recruit event is switched off** (§7 already declared it dead; the code now agrees).
+5. **Level 2 unlocks "Summon Ghoul" at the Dark Altar.** It needs a sacrifice to cast. First
+   concrete entry in §9's undead-unit-type unlocks, and the first use of the Altar sacrifice in
+   `LIVING_WORLD_SPEC.md` §10.3. *Not castable yet:* the Altar exists (its blueprint is learned by clearing a den, built at
+   LIVING_WORLD L2) and shows the spell greyed with its reason; the sacrifice needs prisoners (L3).
+6. **Victory and the Lair.** Taking the Manor pays XP and keeps the run's loot (first ruled as
+   "choose 3 items"; refined by 17.7 to **all gear and relics**). The main menu gains a **Lair** button: a Lair the player decorates and uses
+   to organise kept loot, and from which a fresh run can be started carrying loot won in earlier
+   runs (§10). *Built 2026-09-26* (the Lair screen, shelves, carry-in); decoration is shelves only.
+
+7. **What each ending keeps** (follow-up rulings the same day):
+   - **Summon Ghoul's sacrifice is a living prisoner** (`LIVING_WORLD_SPEC.md` §10.3). The spell
+     unlocks at level 2 but is first usable once the Altar (L2) and prisoners (L3) exist.
+   - **Victory keeps all gear and relics** from the run, plus XP.
+   - **Fleeing the region alive keeps 3 items** of the player's choice, plus XP.
+   - **Death keeps nothing** but XP and the chronicle line (unchanged).
+   - **"Items" means gear and relics only.** Gold and resources reset every run (§2).
+   - **Carrying loot into a run keeps §10's rule:** 1 slot at first, unlockable to a maximum of 3,
+     and carried items are lost for good if he dies.

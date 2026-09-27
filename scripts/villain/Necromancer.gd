@@ -748,6 +748,59 @@ func _ground_row() -> Dictionary:
 ## he can do at any time, without asking anyone.
 var foe_provider: Callable = Callable()
 
+## **Hidden / Hunting** (LIVING_WORLD ruling 15). NECROMANCER_SPEC's "no
+## attack button, ever" stands; this is a stance, a policy on him, the way the
+## escort's stance is a policy on the spell.
+##
+## - **Hidden** (default): he never starts a fight with the living. Only
+##   hostiles open his 26px engage.
+## - **Hunting**: anything living within 26px is fair game -- walking up to a
+##   forager *is* the attack -- and his escort goes Aggressive.
+## **Standing** with each faction (LIVING_WORLD section 4.1): what that faction
+## is prepared to do with him *this run*. Per-villain and per-run, separate from
+## the five reputation axes. Three tiers, and it only ever moves one way
+## (ruling 4: never recovers within a run).
+enum Standing { UNKNOWN, SUSPECTED, KNOWN }
+var standing: Dictionary = {}     # faction id -> Standing
+
+func standing_with(faction: String) -> int:
+	return int(standing.get(faction, Standing.UNKNOWN))
+
+static func standing_name(tier: int) -> String:
+	match tier:
+		Standing.SUSPECTED: return "Suspected"
+		Standing.KNOWN: return "Known"
+	return "Unknown"
+
+## One tier down, and announced. Returns the new tier.
+func lower_standing(faction: String, why: String) -> int:
+	var t: int = mini(Standing.KNOWN, standing_with(faction) + 1)
+	if t == standing_with(faction):
+		return t
+	standing[faction] = t
+	EventBus.standing_changed.emit(self, faction, t, why)
+	return t
+
+enum Stance { HIDDEN, HUNTING }
+var stance: int = Stance.HIDDEN
+
+func is_hunting() -> bool:
+	return stance == Stance.HUNTING
+
+func stance_name() -> String:
+	return "Hunting" if is_hunting() else "Hidden"
+
+## Flips the stance and announces it. Whoever owns the escort listens for the
+## signal and moves the escort's stance with it -- nothing here reaches for it.
+func set_stance(new_stance: int) -> void:
+	if new_stance == stance:
+		return
+	stance = new_stance
+	EventBus.villain_stance_changed.emit(self, stance_name())
+
+func toggle_stance() -> void:
+	set_stance(Stance.HIDDEN if is_hunting() else Stance.HUNTING)
+
 func fighting_name() -> String:
 	return String(foe_provider.call()) if foe_provider.is_valid() else ""
 
@@ -796,6 +849,9 @@ func get_inspect_data() -> Dictionary:
 		{"label": "Social", "value": "Int %d   Gui %d   Per %d   Tac %d" % [
 			attribute("intelligence"), attribute("guile"), attribute("perception"), attribute("tact")]},
 		_ground_row(),
+		{"label": "Stance", "value": "Hunting — anything living he walks up to is fair game" if is_hunting()
+			else "Hidden — he never starts a fight with the living",
+			"color": Color(1.0, 0.55, 0.45) if is_hunting() else Color(0.75, 0.72, 0.9)},
 		{"label": "Carrying", "value": "%d / %d — %s" % [carried_total(), carry_capacity(), carried_label()]},
 	]
 	rows.append_array(_relic_rows())

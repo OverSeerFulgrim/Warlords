@@ -19,11 +19,12 @@ does — regenerate these tables. Frame: `ROGUELITE_REWORK.md` §9 and its §17 
 **A deed:** `XP = base × band`
 
 - **Base** comes in three sizes: **5** for tidying up (destroy the evidence), **10** for an act (loot,
-  raise, rob, return, honour, desecrate), and **30** for a fight won (clear a den or a guarded site).
+  raise, rob, return, honour, desecrate, slay a villager, a guild bounty paid), and **30** for a fight won (clear a den or a guarded site).
 - **Band** is the site's danger band, 1–4 (`WORLD_MAP_PLAN.md`). A deed with no site counts as band 1.
 
 **Everything else** is flat, because none of it has a band: a wolf killed **5**, a building placed
-**5**, each unit of sortie loot banked at the Throne **1**, each relic banked **20**.
+**5**, each unit of sortie loot banked at the Throne **1**, each relic banked **20**, and **20** for
+each carried-in item that comes home alive (the anti-hoarding lever, ROGUELITE_REWORK §10).
 
 **When the run ends**, however it ends: **25 per full day survived**, plus **250** for a victory.
 
@@ -44,6 +45,8 @@ total. Each level costs one step more than the last. The cap is level 20.
 | Rob a shrine | 10 | 10 | 20 | 30 | 40 |
 | Honour a shrine | 10 | 10 | 20 | 30 | 40 |
 | Desecrate a shrine | 10 | 10 | 20 | 30 | 40 |
+| Slay a villager | 10 | 10 | 20 | 30 | 40 |
+| A guild bounty paid | 10 | 10 | 20 | 30 | 40 |
 | Clear a guarded site | 30 | 30 | 60 | 90 | 120 |
 | Clear a wolf den | 30 | 30 | 60 | 90 | 120 |
 
@@ -80,7 +83,10 @@ playthrough of 2026-09-26.
 
 | Unlock | Level | XP | What it does |
 |---|---|---|---|
+| Summon Ghoul | 2 | 100 | *Ruled 2026-09-26; not castable yet.* Summon a ghoul at the Dark Altar; needs a sacrifice — a living prisoner (ROGUELITE_REWORK §17.5, §17.7). The Altar's panel shows it greyed with its reason (level 2, then "needs a prisoner", which is LIVING_WORLD L3). Not in `data/progression.json` yet, so the run-end screen never promises it before it works. |
 | Second Wake | 5 | 1000 | Once per run, death still costs everything he carries, but he wakes at the Throne instead of the run ending. |
+| Second relic slot | 7 | 2100 | Carry a second item from the stash into a run (ROGUELITE_REWORK §10). |
+| Third relic slot | 10 | 4500 | A third — and never more. |
 
 At roughly 120 XP for an ordinary first-day run, Second Wake arrives around the **ninth run**; a player
 who reaches Band 3–4 sites gets there in three or four. That is the intended "down the road". To move

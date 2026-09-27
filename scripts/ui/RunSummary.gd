@@ -9,6 +9,7 @@ class_name RunSummary
 ## because the run has ended underneath it.
 
 signal new_run_requested
+signal lair_requested
 
 const PANEL_WIDTH := 560.0
 
@@ -67,7 +68,9 @@ func show_summary(s: Dictionary) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color",
-		Color(1.0, 0.82, 0.35) if String(s.get("ending", "")) == "victory" else Color(0.95, 0.38, 0.38))
+		Color(1.0, 0.82, 0.35) if String(s.get("ending", "")) == "victory"
+			else Color(0.7, 0.85, 1.0) if String(s.get("ending", "")) == "fled"
+			else Color(0.95, 0.38, 0.38))
 	_body.add_child(title)
 
 	_body.add_child(_wrapped(String(s.get("epitaph", "")), 13, Color(0.86, 0.82, 0.92)))
@@ -99,6 +102,15 @@ func show_summary(s: Dictionary) -> void:
 	for r in rows:
 		grid.add_child(_cell(r[0], true))
 		grid.add_child(_cell(r[1], false))
+	# What came out of the region, and what was lost with him (17.6-17.7).
+	var kept: Array = s.get("kept", [])
+	var lost: Array = s.get("lost", [])
+	if not kept.is_empty():
+		_body.add_child(_wrapped("Kept for the Lair: %s" % ", ".join(kept.map(func(id): return String(LootCatalog.relic(String(id)).get("name", id)))),
+			12, Color(0.95, 0.85, 0.45)))
+	if not lost.is_empty():
+		_body.add_child(_wrapped("Lost for good (carried in from the Lair): %s" % ", ".join(lost.map(func(id): return String(LootCatalog.relic(String(id)).get("name", id)))),
+			12, Color(0.95, 0.5, 0.45)))
 	if int(st.get("wakes_used", 0)) > 0:
 		_body.add_child(_wrapped("Second Wake used %d× this run." % int(st.get("wakes_used", 0)), 11, Color(0.75, 0.7, 0.85)))
 
@@ -165,6 +177,11 @@ func show_summary(s: Dictionary) -> void:
 	new_run_button.custom_minimum_size = Vector2(0, 34)
 	new_run_button.pressed.connect(func(): new_run_requested.emit())
 	_body.add_child(new_run_button)
+	var lair := Button.new()
+	lair.text = "The Lair"
+	lair.tooltip_text = "Put what you kept on display, and choose what to risk in the next run."
+	lair.pressed.connect(func(): lair_requested.emit())
+	_body.add_child(lair)
 	var quit := Button.new()
 	quit.text = "Quit the game"
 	quit.pressed.connect(func(): get_tree().quit())

@@ -223,6 +223,8 @@ func display_name() -> String:
 			return "Spent Grave" if is_depleted() else "Grave"
 		"deer":
 			return "Deer"
+		"crop_field":
+			return "Harvested Field" if is_depleted() else "Crop Field"
 		_:
 			return node_type.capitalize()
 
@@ -237,6 +239,7 @@ const FLAVOR := {
 	"carcass": "Something died here a while ago. The bones are still good.",
 	"grave": "Someone was buried here and mourned. Neither fact is your concern.",
 	"deer": "Wary, and faster than your labourers. Worth the walk.",
+	"crop_field": "Winter barley, the village's own. Its farmers cut it and carry it home.",
 }
 
 ## Depleted-state line, so an emptied node says what it is now rather than
@@ -250,6 +253,7 @@ const SPENT_NOTE := {
 	"carcass": "Stripped to nothing.",
 	"grave": "Already dug up. There is nothing left to rob.",
 	"deer": "Hunted.",
+	"crop_field": "Cut to stubble — it will be ready again at dawn.",
 }
 
 func get_inspect_data() -> Dictionary:
@@ -353,6 +357,23 @@ static func make_berry_grove(pos: Vector2) -> ResourceNode:
 	n.capacity = BERRY_GROVE_CAP
 	n.remaining = BERRY_GROVE_CAP
 	n.regrows_per_dawn = BERRY_REGROWTH_PER_DAWN
+	n.position = pos
+	return n
+
+## A village field (LIVING_WORLD_SPEC section 6.1: the farm's job "leaves the
+## walls to work the field"). Food, regrowing at dawn like a berry grove -- the
+## village's farmers are the only ones who work it.
+const CROP_FIELD_CAP: int = 24
+const CROP_REGROWTH_PER_DAWN: int = 12
+
+static func make_crop_field(pos: Vector2) -> ResourceNode:
+	var n := ResourceNode.new()
+	n.kind = "food"
+	n.node_type = "crop_field"
+	n.skill_key = "foraging"
+	n.capacity = CROP_FIELD_CAP
+	n.remaining = CROP_FIELD_CAP
+	n.regrows_per_dawn = CROP_REGROWTH_PER_DAWN
 	n.position = pos
 	return n
 

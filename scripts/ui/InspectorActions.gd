@@ -56,6 +56,14 @@ signal drop_relic_requested(relic_id: String)
 signal escort_toggle_requested
 ## Whole-escort policy (ESCORT_SPEC amendment 2026-08-29). Not a unit order.
 signal escort_stance_requested(stance: int)
+## Hidden <-> Hunting (LIVING_WORLD ruling 15).
+signal villain_stance_toggle_requested
+## Flee the region, from the lair (ROGUELITE_REWORK 17.7).
+signal flee_requested
+## A button on the guild's board: "take", "deliver" or "collect" bounty `id`.
+signal guild_action_requested(guild, action: String, id: int)
+## Asked each time his panel is built: can he flee from where he stands?
+var flee_available: Callable = Callable()
 
 # ---------------- References handed in by Main.gd ----------------
 var _undead_command: UndeadCommand
@@ -198,9 +206,82 @@ func _note(box: VBoxContainer, text: String) -> void:
 func actions_for_building(building: Building) -> Callable:
 	if building.is_main_building:
 		return keep_actions
+	if building.building_id == "dark_altar":
+		return altar_actions
 	if building.category == "housing_intake":
 		return barracks_actions
 	return Callable()
+
+## **The Dark Altar** (ROGUELITE_REWORK 17.5): Summon Ghoul, level 2, for a
+## living sacrifice. Shown as a real button with its reason, because the Altar
+## is buildable before prisoners exist -- the reason says what is missing.
+var ghoul_unlocked: Callable = Callable()
+
+func altar_actions(box: VBoxContainer) -> void:
+	var b := Button.new()
+	b.text = "Summon Ghoul"
+	b.disabled = true
+	box.add_child(b)
+	var unlocked: bool = ghoul_unlocked.is_valid() and bool(ghoul_unlocked.call())
+	if not unlocked:
+		_note(box, "He has not learned it yet: Summon Ghoul comes at level 2.")
+	else:
+		_note(box, "It needs a living sacrifice -- a prisoner. Taking prisoners is not in the game yet (LIVING_WORLD L3).")
+
+## **The guild's board** (LIVING_WORLD section 4.2). Standing first, because it
+## decides everything under it; then every bounty with the one thing he can do
+## about it from here.
+func guild_actions(box: VBoxContainer, guild) -> void:
+	if guild == null or _villain == null:
+		return
+	var tier: int = _villain.standing_with(Guild.FACTION)
+	var standing := Label.new()
+	standing.text = "Standing: %s" % Necromancer.standing_name(tier)
+	standing.add_theme_font_size_override("font_size", 13)
+	standing.add_theme_color_override("font_color", [Color(0.75, 0.9, 0.75), Color(1.0, 0.8, 0.45), Color(1.0, 0.45, 0.4)][tier])
+	box.add_child(standing)
+	if tier == Necromancer.Standing.KNOWN:
+		_note(box, "The doors are shut to him. The guild knows what he is.")
+		return
+	if tier == Necromancer.Standing.SUSPECTED:
+		_note(box, "Strange sightings are pinned to the board. The clerk counts the coin twice and pays half.")
+	if not guild.in_reach(_villain):
+		_note(box, "Walk up to the door to use the board.")
+	var shown: Array = guild.visible_bounties()
+	if shown.is_empty():
+		_note(box, "The board is bare. Nothing in the region is wrong enough to pay for.")
+	for b in shown:
+		var row := Label.new()
+		row.text = "%s  —  %d gold" % [String(b["title"]), int(b["gold"])]
+		row.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.custom_minimum_size = Vector2(InspectionPanel.PANEL_WIDTH - 30.0, 0)
+		row.add_theme_font_size_override("font_size", 12)
+		row.tooltip_text = String(b.get("blurb", ""))
+		box.add_child(row)
+		var state: String = String(b["state"])
+		var mine: bool = b.get("taker") == _villain
+		var btn := Button.new()
+		var id: int = int(b["id"])
+		if state == "open":
+			btn.text = "Take the job"
+			btn.disabled = not guild.in_reach(_villain)
+			btn.pressed.connect(func(): guild_action_requested.emit(guild, "take", id))
+		elif state == "taken" and mine and String(b["kind"]) == "deliver":
+			btn.text = "Hand over %d %s  (you have %d)" % [int(b["amount"]), String(b["res"]), GameState.player_settlement.amount(String(b["res"]))]
+			btn.disabled = not guild.in_reach(_villain) or not GameState.can_afford(String(b["res"]), int(b["amount"]))
+			btn.pressed.connect(func(): guild_action_requested.emit(guild, "deliver", id))
+		elif state == "taken" and mine:
+			btn.text = "In hand — go and do it"
+			btn.disabled = true
+		elif state == "done" and mine:
+			var owed: int = int(b.get("owed", 0))
+			btn.text = "Collect your pay" if owed <= 0 else "Collect the %d gold still owed" % owed
+			btn.disabled = not guild.in_reach(_villain)
+			btn.pressed.connect(func(): guild_action_requested.emit(guild, "collect", id))
+		else:
+			btn.text = "Taken by someone else"
+			btn.disabled = true
+		box.add_child(btn)
 
 ## The old Keep menu, now the Throne's action block.
 func keep_actions(box: VBoxContainer) -> void:
@@ -246,6 +327,17 @@ func necromancer_actions(box: VBoxContainer) -> void:
 	raise.pressed.connect(func(): recruit_worker_pressed.emit())
 	box.add_child(raise)
 
+	# **Hidden / Hunting** (LIVING_WORLD ruling 15) -- a stance, not an attack
+	# button. Hunting makes walking up to the living the attack.
+	if _villain:
+		var stance := Button.new()
+		stance.text = ("Stance: Hunting — go Hidden  [%s]" if _villain.is_hunting()
+			else "Stance: Hidden — start Hunting  [%s]") % Controls.label_for("stance")
+		stance.tooltip_text = "Hunting: anything living he walks up to is fair game, and the escort goes Aggressive. Anyone who sees it is a witness." \
+			if not _villain.is_hunting() else "Hidden: he never starts a fight with the living. Only hostiles open a fight."
+		stance.pressed.connect(func(): villain_stance_toggle_requested.emit())
+		box.add_child(stance)
+
 	var cast := Button.new()
 	cast.text = "Command Undead" if not _undead_command.is_active() else "Command Undead — move rally point"
 	cast.tooltip_text = "Plant a rally point. Every skeleton marches to it and stops gathering."
@@ -279,6 +371,13 @@ func necromancer_actions(box: VBoxContainer) -> void:
 		box.add_child(dismiss)
 
 	_drop_rows(box)
+
+	if flee_available.is_valid() and bool(flee_available.call()):
+		var flee := Button.new()
+		flee.text = "Flee the region — end the run alive"
+		flee.tooltip_text = "He is at the lair. Leave the region alive and keep 3 things he found this run."
+		flee.pressed.connect(func(): flee_requested.emit())
+		box.add_child(flee)
 
 	box.add_child(HSeparator.new())
 	# The camera escape hatch, given a button as well as a key. The key (F) is

@@ -80,6 +80,10 @@ var run_summary: RunSummary
 ## no title, no pause). See scripts/ui/PauseMenu.gd and TitleScreen.gd.
 var pause_menu: PauseMenu
 var title_screen: TitleScreen
+## Flee the region: pick what to carry out (ROGUELITE_REWORK 17.7).
+var keep_dialog: KeepItemsDialog
+## The Lair (section 10, 17.6): the stash, the hall, and what to risk next run.
+var lair_screen: LairScreen
 ## Set the first time the title is shown this session, so "Begin a new run"
 ## from the run-end screen goes straight back in. Static: it outlives the scene
 ## reload a new run does.
@@ -87,6 +91,24 @@ static var _title_seen: bool = false
 
 ## The Raven (R2e): honest dawn pings, never a fog reveal. See Raven.gd.
 var raven: Raven
+
+## The living village (LIVING_WORLD L0/L1): a settlement owned by the lordship,
+## with its own stockpile, jobs and people.
+var village: Village
+## The Adventurers' Guild and the people who run to it (LIVING_WORLD L2).
+var guild: Guild
+var witnesses: Witnesses
+## "Follow this road to the Adventurers' Guild." -- the first run's only hint
+## (LIVING_WORLD section 3, a placeholder for a tutorial).
+var opening_popup: PanelContainer
+
+## **Where he wakes** (LIVING_WORLD section 3, ruled 2026-09-26): on the worn
+## track at the east edge of the lair band, the road running on toward the
+## guild. The lair is a marked site a few cells off it; the Throne is there.
+## `verify_guild` checks it is road and inside the lair band -- move it only
+## with the map.
+const ROADSIDE_SPAWN_CELL := Vector2i(37, 60)
+const OPENING_POPUP_TEXT := "Follow this road to the Adventurers' Guild."
 ## Site discovery is checked on this clock rather than every frame -- it is a
 ## distance test over fifteen sites, and a quarter-second late is invisible.
 var _discovery_timer: float = 0.0
@@ -209,11 +231,12 @@ func _ready() -> void:
 	_frame_camera_on_throne()          # best effort now...
 	_settle_initial_camera_framing()   # ...and again once the HUD has laid out
 	get_viewport().size_changed.connect(_on_viewport_resized)
-	# The opening, in one line. He starts with no dead and too few bones to
-	# raise one (rulings 2026-09-26), so the first thing the player needs to
-	# know is where the dead are. fresh_grave_hollow is Band 1, about ten cells
-	# northwest of the Throne.
-	_log("[color=#b8a0e0]He has no dead yet, and three bones will not raise one. There are graves in the hollow to the northwest — open one and raise what is inside.[/color]", "events")
+	# The opening, in one line. He wakes on the road with no dead and too few
+	# bones to raise one (rulings 2026-09-26), so the first thing the player
+	# needs to know is where the dead are: beside the road past the guild
+	# (fresh_grave_scree, the roadside grave) and in the hollow north-west of
+	# the Throne (fresh_grave_hollow).
+	_log("[color=#b8a0e0]He wakes on the road at the edge of his lair with no dead, and three bones will not raise one. The road east runs to the Adventurers' Guild, and there are graves beside it past the guild — and one in the hollow north-west of the Throne.[/color]", "events")
 	_show_title_once()
 
 ## The title, over a paused world, the first time the game runs this session --
@@ -254,6 +277,11 @@ func _open_pause_menu() -> void:
 
 # ---------------- Camera framing ----------------
 
+## Where every run begins (see ROADSIDE_SPAWN_CELL). Falls back to the Throne
+## when there is no world map to stand on.
+func roadside_spawn() -> Vector2:
+	return world_map.cell_centre_px(ROADSIDE_SPAWN_CELL) if world_map else _throne_world_centre()
+
 ## The Throne is at grid cell (0,0) -- a corner of the map, not its middle --
 ## so the old "centre on the grid's midpoint" left the player's own keep tucked
 ## up in the top-left. Centre on the Throne itself instead.
@@ -271,9 +299,11 @@ func _sync_camera_insets() -> void:
 	camera.ui_top_inset = hud_top_bar.top_height() if hud_top_bar else 0.0
 	camera.ui_bottom_inset = float(BOTTOM_BAR_HEIGHT)
 
+## Frames the opening: on *him*, because he wakes on the road, not at the
+## Throne (the name is older than the roadside spawn).
 func _frame_camera_on_throne() -> void:
 	_sync_camera_insets()
-	camera.center_on(_throne_world_centre())
+	camera.center_on(villain.position if villain else _throne_world_centre())
 
 ## Control sizes aren't final on the frame they're created, so the first
 ## framing uses a top-bar height of 0 and is a few pixels out. Re-running it
@@ -299,7 +329,7 @@ func _on_viewport_resized() -> void:
 		_frame_camera_on_throne()
 
 func _place_necromancer() -> void:
-	villain.place_at(_throne_world_centre())
+	villain.place_at(roadside_spawn())
 	necromancer_token.setup(villain, villain_controller)
 	villain_controller.snap_to_villain()
 
@@ -531,7 +561,82 @@ func _build_systems() -> void:
 	raven.marker_parent = settlement
 	add_child(raven)
 
+	_build_village()
+	_build_guild()
+
 	_build_run_lifecycle()
+
+## **The living village** (LIVING_WORLD L0/L1). A child of `settlement` so it
+## shares the coordinate space everyone walks in; drawn under the fog by
+## z-index like the sites. Everything it needs is handed to it.
+func _build_village() -> void:
+	village = Village.new()
+	village.name = "Village"
+	village.y_sort_enabled = true
+	village.world_sites = world_sites
+	village.combat_system = combat_system
+	village.villain = villain
+	village.day_provider = func(): return day_night.day_number if day_night else 1
+	settlement.add_child(village)
+	if not village.build(world_map):
+		village.queue_free()
+		village = null
+		return
+	combat_system.village = village
+
+## **The Adventurers' Guild** (LIVING_WORLD L2) and **the witnesses** who run to
+## it. Built after the village, whose stores its delivery jobs read and whose
+## people are the runners.
+func _build_guild() -> void:
+	guild = Guild.new()
+	guild.world_sites = world_sites
+	guild.village = village
+	guild.day_provider = func(): return day_night.day_number if day_night else 1
+	guild.party_filler = sortie_system.take_into_party
+	if not guild.build(world_map):
+		guild.free()
+		guild = null
+		return
+	settlement.add_child(guild)
+	witnesses = Witnesses.new()
+	witnesses.name = "Witnesses"
+	witnesses.villain = villain
+	witnesses.village = village
+	witnesses.guild = guild
+	witnesses.day_night = day_night
+	add_child(witnesses)
+	if village:
+		village.witnesses = witnesses
+
+## The first run's one hint (LIVING_WORLD section 3). Shown when the title's
+## Begin is pressed and this class has never finished a run; never again.
+func _show_opening_popup() -> void:
+	if opening_popup == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 58
+		add_child(layer)
+		var holder := CenterContainer.new()
+		holder.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		holder.offset_top = 90.0
+		holder.offset_bottom = 170.0
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(holder)
+		opening_popup = PanelContainer.new()
+		opening_popup.add_theme_stylebox_override("panel", PauseMenu.panel_style())
+		holder.add_child(opening_popup)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 14)
+		opening_popup.add_child(row)
+		var lbl := Label.new()
+		lbl.text = OPENING_POPUP_TEXT
+		lbl.add_theme_font_size_override("font_size", 16)
+		lbl.add_theme_color_override("font_color", Color(0.9, 0.82, 1.0))
+		row.add_child(lbl)
+		var ok := Button.new()
+		ok.text = "Go"
+		ok.pressed.connect(func(): opening_popup.visible = false)
+		row.add_child(ok)
+	opening_popup.visible = true
 
 ## **Last**, so its `villain_died` handler runs after SortieSystem's (the haul)
 ## and CombatSystem's (out of every fight) -- it only decides what happens next.
@@ -548,6 +653,9 @@ func _build_run_lifecycle() -> void:
 	run_lifecycle.day_night = day_night
 	run_lifecycle.profile = MetaProfile.open(MetaProfile.DEFAULT_PATH if persistent else "")
 	add_child(run_lifecycle)
+	# Blueprints are the profile's (LIVING_WORLD section 9.1): the build menu
+	# only offers a gated building once this profile has learned it.
+	BuildingCatalog.blueprint_provider = run_lifecycle.profile.knows_blueprint
 
 func _build_camera() -> void:
 	camera = GameCamera.new()
@@ -708,7 +816,32 @@ func _build_ui() -> void:
 	title_screen = TitleScreen.new()
 	title_screen.name = "TitleScreen"
 	add_child(title_screen)
-	title_screen.begin_requested.connect(func(): get_tree().paused = false)
+	title_screen.begin_requested.connect(func():
+		get_tree().paused = false
+		if run_lifecycle and run_lifecycle.profile.runs(villain.class_id) == 0:
+			_show_opening_popup())
+	title_screen.lair_requested.connect(_open_lair)
+	run_summary.lair_requested.connect(_open_lair)
+
+	keep_dialog = KeepItemsDialog.new()
+	keep_dialog.name = "KeepItemsDialog"
+	add_child(keep_dialog)
+	keep_dialog.chosen.connect(func(ids: Array):
+		if run_lifecycle and not run_lifecycle.flee(ids):
+			_log("[color=orange]He can only flee the region from the lair.[/color]", "events"))
+	pause_menu.flee_available = func(): return run_lifecycle != null and run_lifecycle.can_flee()
+	pause_menu.flee_requested.connect(_request_flee)
+	inspector_actions.flee_available = pause_menu.flee_available
+	inspector_actions.flee_requested.connect(_request_flee)
+
+	lair_screen = LairScreen.new()
+	lair_screen.name = "LairScreen"
+	add_child(lair_screen)
+	# What he carries is settled when the run begins; changed in the Lair before
+	# the first step, it is re-applied.
+	lair_screen.closed.connect(func():
+		if run_lifecycle:
+			run_lifecycle.reapply_carry_in())
 
 	hud_top_bar.refresh_stats()
 	build_menu.populate()
@@ -1174,6 +1307,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
+	# H flips Hidden / Hunting (LIVING_WORLD ruling 15).
+	if event.is_action_pressed("stance", false, false):
+		_toggle_stance()
+		get_viewport().set_input_as_handled()
+		return
+
 	# Space (or P) pauses. The pause menu takes its own input while open, so this
 	# only ever opens it.
 	if event.is_action_pressed("pause", false, false):
@@ -1257,6 +1396,18 @@ func _inspect_at(world_pos: Vector2) -> bool:
 			if world_pos.distance_to(wolf.position) <= wolf.hit_radius():
 				_inspect(wolf)
 				return true
+
+	# The village's people, then its buildings and fields. After his own units
+	# and the wolf, before the rally point: a villager is a character.
+	if village:
+		var hit_v = village.pick_at(world_pos)
+		if hit_v != null:
+			_inspect(hit_v)
+			return true
+	# The guild hall: its board is the inspector's action block.
+	if guild and guild.pick_at(world_pos):
+		_inspect(guild, inspector_actions.guild_actions.bind(guild))
+		return true
 
 	# --- 1b. The rally point -------------------------------------------------
 	# Sits with the characters rather than with the buildings: it's a small
@@ -1448,6 +1599,55 @@ func _toggle_escort() -> void:
 		_log("[color=#8fd8b0]The dead fall in behind him — %d of them.[/color]" % bound,
 			"characters events")
 	inspector.refresh()
+
+func _job_place(job: String) -> String:
+	match job:
+		"woodcutter": return "woodmill"
+		"farmer": return "farm"
+		"guard": return "watch"
+		_: return "village"
+
+## **Flee the region** (ROGUELITE_REWORK section 1, 17.7): only from the lair;
+## the player picks up to 3 things he found this run to carry out.
+## A button on the guild's board. The guild decides; this only reports.
+func _guild_action(g, action: String, id: int) -> void:
+	var b: Dictionary = g.bounty(id)
+	if b.is_empty():
+		return
+	var ok: bool = false
+	match action:
+		"take":
+			ok = g.take(villain, id)
+			if ok:
+				_log("[color=#e0c890]He takes the job: %s.[/color]" % String(b["title"]), "events")
+		"deliver":
+			ok = g.deliver(villain, id)
+		"collect":
+			ok = g.turn_in(villain, id)
+	if not ok and action != "take" and String(b.get("state", "")) == "done" and int(b.get("owed", 0)) > 0:
+		_log("[color=orange]His party's hands are full. The clerk will hold the %d gold until he comes back with room.[/color]"
+			% int(b["owed"]), "events")
+	elif not ok:
+		_log("[color=orange]The clerk shakes his head.[/color]", "events")
+	inspector.refresh()
+
+func _request_flee() -> void:
+	if run_lifecycle == null or not run_lifecycle.can_flee():
+		_log("[color=orange]He can only flee the region from the lair. Get him home first.[/color]", "events")
+		return
+	_close_inspector()
+	keep_dialog.open(run_lifecycle.run_items(), run_lifecycle._carried_ids())
+
+func _open_lair() -> void:
+	if lair_screen and run_lifecycle:
+		lair_screen.show_lair(run_lifecycle.profile, villain.class_id if villain else "necromancer")
+
+func _toggle_stance() -> void:
+	if villain == null or not villain.is_alive():
+		return
+	villain.toggle_stance()
+	if inspector.is_open():
+		inspector.refresh()
 
 func _set_escort_stance(stance: int) -> void:
 	if undead_command == null:
@@ -1683,6 +1883,10 @@ func _connect_signals() -> void:
 	inspector_actions.drop_relic_requested.connect(_drop_relic)
 	inspector_actions.escort_toggle_requested.connect(_toggle_escort)
 	inspector_actions.escort_stance_requested.connect(_set_escort_stance)
+	inspector_actions.villain_stance_toggle_requested.connect(_toggle_stance)
+	inspector_actions.guild_action_requested.connect(_guild_action)
+	inspector_actions.ghoul_unlocked = func():
+		return run_lifecycle != null and run_lifecycle.profile.level(villain.class_id) >= 2
 	inspector_actions.follow_toggle_requested.connect(func():
 		villain_controller.toggle_follow()
 		hud_top_bar.refresh_follow_state()
@@ -1894,6 +2098,76 @@ func _connect_signals() -> void:
 		_log("[color=#c8a45a]Everything he was carrying is lost where he fell.[/color]",
 			"events characters")
 		hud_top_bar.refresh_villain_hp()
+	)
+	# ---- The living village and the stance (LIVING_WORLD L1, ruling 15) ----
+	EventBus.villain_stance_changed.connect(func(v, stance_name: String):
+		if v != villain:
+			return
+		if villain.is_hunting():
+			_log("[color=#ff9a80]He is Hunting. Anything living he walks up to is fair game — and anyone who sees it will remember.[/color]", "characters events")
+		else:
+			_log("[color=#b8a0e0]He is Hidden again. He will not start a fight with the living.[/color]", "characters events")
+		hud_top_bar.set_stance(stance_name)
+	)
+	EventBus.villager_killed.connect(func(_vil, who, _killer):
+		_log("[color=#e08080]%s is dead. His body lies where he fell.[/color]" % who.label(), "events characters")
+		if inspector.is_open() and inspector.current_source() == who:
+			_close_inspector()
+	)
+	EventBus.village_restaffed.connect(func(vil, who, from_job: String, to_job: String):
+		if to_job == "guard" and from_job != "":
+			_log("[color=#e0c080]%s: %s takes up a spear. The %s is a hand short.[/color]"
+				% [vil.display_name, who.villager_name, _job_place(from_job)], "events")
+		elif to_job != "":
+			_log("[color=#c0b090]%s: %s is a %s now.[/color]" % [vil.display_name, who.villager_name, who.job_title().to_lower()], "events")
+		else:
+			_log("[color=#a09080]%s: %s has no work now.[/color]" % [vil.display_name, who.villager_name], "events")
+	)
+	EventBus.village_guard_trained.connect(func(vil, who):
+		_log("[color=#e0c080]%s: %s has finished his training. The village has a real guard again.[/color]"
+			% [vil.display_name, who.villager_name], "events")
+	)
+	EventBus.village_alarm.connect(func(vil, _at: Vector2):
+		_log("[color=#ff8060]%s raises the alarm. The guards are coming.[/color]" % vil.display_name, "events alerts")
+		_alert("%s raises the alarm." % vil.display_name, "warn")
+	)
+	# ---- The guild, the witnesses, standing (LIVING_WORLD L2) ----
+	EventBus.witnessed.connect(func(v, who, act: String):
+		if v != villain:
+			return
+		if who is Villager:
+			_log("[color=#ffb070]%s saw him %s — and is running to tell.[/color]" % [who.villager_name, act], "events characters")
+			_alert("Seen: %s is running to tell." % who.villager_name, "warn")
+		else:
+			_log("[color=#ffb070]The keeper in the guild's doorway saw him %s.[/color]" % act, "events")
+	)
+	EventBus.report_arrived.connect(func(v, who, _act: String, where: String):
+		if v != villain or who == null:
+			return
+		_log("[color=#ff9070]%s reached %s with the news.[/color]" % [who.villager_name, where], "events")
+	)
+	EventBus.standing_changed.connect(func(v, faction: String, tier: int, why: String):
+		if v != villain or faction != Guild.FACTION:
+			return
+		_log("[color=#ff9070]%s. The guild's standing: %s.[/color]" % [why, Necromancer.standing_name(tier)], "events")
+		if tier == Necromancer.Standing.KNOWN:
+			_alert("The guild knows what he is. Its doors are shut.", "bad")
+		else:
+			_alert("The guild has heard something.", "warn")
+	)
+	EventBus.guild_bounty_paid.connect(func(v, b: Dictionary, gold: int):
+		if v != villain:
+			return
+		var still: String = "" if int(b.get("owed", 0)) <= 0 else " (%d still owed — his hands are full)" % int(b["owed"])
+		_log("[color=#e8d070]The clerk counts out %d gold for \"%s\"%s. It is his when he banks it at the Throne.[/color]"
+			% [gold, String(b["title"]), still], "events")
+	)
+	EventBus.blueprint_learned.connect(func(id: String, source: String):
+		var name_: String = String(BuildingCatalog.get_building(id).get("display_name", id))
+		_log("[color=#c8a8ff]Blueprint learned by %s: %s. It can be built from now on — this run and every run after.[/color]"
+			% [source, name_], "events")
+		_alert("Blueprint learned: %s" % name_, "good")
+		build_menu.populate()
 	)
 	# ---- The Raven (RAVEN_SPEC section 5) ----
 	hud_top_bar.raven_chip_pressed.connect(_on_raven_chip)

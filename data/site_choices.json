@@ -1,6 +1,16 @@
 {
 	"_comment": "Choice sheets for lootable sites (LOOT_SITES_SPEC.md §4). Same grammar as events.json choices -- label plus effects -- extended with the effect keys §8 names: loot_table, deed, notice, raise_corpse, conceal. ONE RENDERER, TWO DATA SOURCES: EventPanelUI draws these exactly as it draws an events.json event. New VALUES here are a JSON edit; a new effect KEY is code, in the system that owns the key.\n\n`requires` is what makes the grave a dilemma rather than a menu, and each token is a rule from §4: `corpse` (the body is still in there), `valuables` (mercy has not foreclosed profit and nobody has taken them yet), `disturbed` (something has already been raised or robbed -- destroy-the-evidence is only offered afterwards). `notice` is a MULTIPLIER on the site's own notice.threat, so how loud a place is stays authored per site and the choice only says how much louder this particular act made it.",
 
+	"body_choices": {
+		"_comment": "LIVING_WORLD L1: a villager's body where he fell. The grave sheet's grammar, minus the grave: raise him (free -- ruling C: a corpse raised is free), go through his pockets, or drag him out of sight. Hiding takes the notice back, the way destroying the evidence does at a grave.",
+		"prompt": "He was alive a minute ago. Nobody has found him yet.",
+		"choices": [
+			{"id": "raise", "label": "Raise the body", "blurb": "He gets up, free, and answers to you. He falls in behind you if your escort is up; otherwise he walks to the lair to work.", "requires": ["corpse"], "channel_seconds": 3.0, "channel_tags": ["grave"], "effects": {"raise_corpse": 1, "deed": "raise_the_dead", "axes": {"forbidden_knowledge": 1}, "notice": 1.0}},
+			{"id": "steal", "label": "Go through his pockets", "blurb": "Whatever a villager carries on an ordinary day.", "requires": ["valuables"], "channel_seconds": 3.0, "channel_tags": ["grave"], "effects": {"loot_table": true, "deed": "rob_the_dead", "axes": {"wealth": 1}, "notice": 1.0}},
+			{"id": "conceal", "label": "Drag him out of sight", "blurb": "Into a ditch, under the snow. Nobody finds a body they cannot see.", "requires": [], "channel_seconds": 5.0, "channel_tags": ["grave"], "effects": {"conceal": true, "deed": "destroy_the_evidence", "axes": {"cruelty": 1}, "notice": -1.0}}
+		]
+	},
+
 	"grave_choices": {
 		"prompt": "Somebody is buried here, and somebody meant them to stay buried.",
 		"choices": [

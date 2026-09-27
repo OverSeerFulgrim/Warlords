@@ -202,6 +202,53 @@ func spawn_dropped_cache(at: Vector2, suffix: String, sprite: String,
 	sites.append(site)
 	return site
 
+## **A body where a villager fell** (LIVING_WORLD L1). An ordinary lootable
+## site, like the dropped cache: the grave sheet's grammar -- raise it (a free
+## skeleton, the Raise Dead ruling C applied to a fresh corpse), search it, or
+## hide it -- from `site_choices.json`'s `body_choices`. Outside the density
+## budget and never Raven-eligible, for the same reasons the cache is not.
+const BODY_SPRITE := "res://assets/placeholder/generated/villager_body.png"
+const BODY_SPRITE_GONE := "res://assets/placeholder/generated/villager_body_gone.png"
+
+func spawn_body(at: Vector2, who: String) -> WorldSite:
+	var band: int = 2
+	if world:
+		band = int(world.band_at(at).get("band", 2))
+	var site := WorldSite.new()
+	_bodies += 1
+	site.name = "Body_%d" % _bodies
+	site.day_provider = func(): return int(day_provider.call()) if day_provider.is_valid() else 1
+	site.party_filler = party_filler
+	site.guardian_spawner = _post_guardians
+	site.dead_riser = _raise_dead
+	site.setup({
+		"id": "body_%d" % _bodies,
+		"name": "%s's Body" % who,
+		"subtitle": "Where he fell",
+		"sprite": BODY_SPRITE,
+		"description": "Still warm. The village will want him buried, if anyone finds him first.",
+		"details": [],
+		"lootable": {
+			"type": "villager_body",
+			"band": band,
+			"charges": 1,
+			"loot_table": "villager_body",
+			"choices": "body_choices",
+			"looted_sprite": BODY_SPRITE_GONE,
+			"guardian": null,
+			"notice": {"threat": 1},
+			"pool": "bodies",
+			"active_count": 0,
+		},
+	}, at, 44.0)
+	# Found where he fell: nobody needs to discover a body they just made.
+	site.discovered = true
+	add_child(site)
+	sites.append(site)
+	return site
+
+var _bodies: int = 0
+
 func dropped_caches() -> Array:
 	return sites.filter(func(s: WorldSite): return s.loot_type == "dropped_cache")
 

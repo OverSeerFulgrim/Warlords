@@ -56,6 +56,9 @@ var orientation_label: Label
 ## The Raven's chip: hidden until she has news, a count when she has more than
 ## one, a brief flicker on a silent dawn. See set_raven_count().
 var raven_chip: Button
+## Hidden / Hunting (LIVING_WORLD ruling 15), always on screen: the one
+## state that decides whether walking past the living is a stroll or an attack.
+var stance_label: Label
 
 # ---------------- References handed in by Main.gd ----------------
 var _settlement: SettlementGrid
@@ -244,6 +247,13 @@ func _build_necro_badge(hud_root: Control) -> void:
 	orientation_label.modulate = Color(1, 1, 1, 0.72)
 	hud_root.add_child(orientation_label)
 
+	stance_label = Label.new()
+	stance_label.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	stance_label.position = Vector2(54, 78)
+	stance_label.add_theme_font_size_override("font_size", 10)
+	hud_root.add_child(stance_label)
+	set_stance("Hidden")
+
 	raven_chip = Button.new()
 	raven_chip.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	raven_chip.position = Vector2(10, 96)
@@ -254,6 +264,15 @@ func _build_necro_badge(hud_root: Control) -> void:
 	raven_chip.visible = false
 	raven_chip.pressed.connect(func(): raven_chip_pressed.emit())
 	hud_root.add_child(raven_chip)
+
+func set_stance(stance_name: String) -> void:
+	if stance_label == null:
+		return
+	var hunting: bool = stance_name == "Hunting"
+	stance_label.text = "HUNTING  [%s]" % Controls.label_for("stance") if hunting \
+		else "Hidden  [%s]" % Controls.label_for("stance")
+	stance_label.add_theme_color_override("font_color",
+		Color(1.0, 0.45, 0.35) if hunting else Color(0.72, 0.68, 0.88))
 
 ## "Raven", "Raven ×2", hidden at zero. `unseen` > 0 pulses it.
 func set_raven_count(outstanding: int, unseen: int) -> void:

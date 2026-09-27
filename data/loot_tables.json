@@ -13,6 +13,14 @@
 		]
 	},
 
+	"villager_body": {"band": 1, "rolls": 2, "_comment": "LIVING_WORLD L1: what a villager had on him when he fell. Band 1 by construction -- the same weights as a fresh grave, food where the grave has bones.", "entries": [
+		{"kind": "food", "min": 1, "max": 3, "weight": 40},
+		{"kind": "bones", "min": 1, "max": 1, "weight": 8},
+		{"kind": "gold", "min": 1, "max": 2, "weight": 20},
+		{"kind": "dark_essence", "min": 1, "max": 1, "weight": 8},
+		{"relic_tier": "trinket", "weight": 4, "unique": true}
+	]},
+
 	"small_cache": {
 		"band": 1,
 		"exception": "Amendment 2026-08-29 ruling 1: the gold and the trinket ARE the cache. Wood, stone and food are garnish at low weight and small amounts -- a cache whose best outcome is wood is a bug by §1.1's first law, so this table deliberately breaks Band 1's gold band upward and the harness asserts gold-dominance instead of the band.",
@@ -30,7 +38,7 @@
 		"band": 2,
 		"rolls": 3,
 		"entries": [
-			{"kind": "gold", "min": 1, "max": 3, "weight": 32},
+			{"kind": "gold", "min": 1, "max": 4, "weight": 32},
 			{"kind": "dark_essence", "min": 1, "max": 2, "weight": 24},
 			{"kind": "bones", "min": 2, "max": 5, "weight": 20},
 			{"kind": "stone", "min": 1, "max": 3, "weight": 16},

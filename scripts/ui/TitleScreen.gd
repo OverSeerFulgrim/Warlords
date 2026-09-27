@@ -9,6 +9,7 @@ class_name TitleScreen
 ## nothing else, same as the run-end screen.
 
 signal begin_requested
+signal lair_requested
 
 const WIDTH := 440.0
 
@@ -86,6 +87,7 @@ func show_title(info: Dictionary) -> void:
 	begin_button = _button("Begin the run", func():
 		visible = false
 		begin_requested.emit())
+	_button("The Lair", func(): lair_requested.emit())
 	_button("Controls", _show_controls)
 	_button("Quit", func(): get_tree().quit())
 	visible = true

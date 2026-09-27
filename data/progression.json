@@ -13,7 +13,8 @@
 		"honour_a_shrine": 10,
 		"desecrate_a_shrine": 10,
 		"cleared_a_site": 30,
-		"cleared_a_den": 30
+		"cleared_a_den": 30,
+		"slew_a_villager": 10, "guild_bounty": 10
 	},
 
 	"band_multiplier": {
@@ -29,7 +30,8 @@
 		"wolf_killed": 5,
 		"building_placed": 5,
 		"banked_unit": 1,
-		"relic_banked": 20
+		"relic_banked": 20,
+		"risked_relic_survived": 20
 	},
 
 	"run_end_xp": {
@@ -51,6 +53,18 @@
 			"level": 5,
 			"uses_per_run": 1,
 			"description": "Once per run, death still costs everything he carries -- but he wakes at the Throne instead of the run ending."
+		},
+		{
+			"id": "relic_slot_2",
+			"name": "A second carried relic",
+			"level": 7,
+			"description": "Take two items from the Lair into a run. Carried items work from the first step -- and are lost for good if he dies."
+		},
+		{
+			"id": "relic_slot_3",
+			"name": "A third carried relic",
+			"level": 10,
+			"description": "Take three items from the Lair into a run -- the most there will ever be (ROGUELITE_REWORK section 10)."
 		}
 	],
 

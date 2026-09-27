@@ -28,6 +28,7 @@ const ACTIONS := [
 	["pan_right", "Pan camera right", KEY_RIGHT],
 	["follow", "Camera follows him", KEY_F],
 	["raise_dead", "Raise Dead (5 bones)", KEY_R],
+	["stance", "Hidden / Hunting", KEY_H],
 	["minimap", "Show / hide the minimap", KEY_M],
 	["pause", "Pause", KEY_SPACE, KEY_P],
 	["cancel", "Cancel / close / pause", KEY_ESCAPE],
