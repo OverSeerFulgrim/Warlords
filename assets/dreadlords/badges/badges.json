@@ -1,0 +1,101 @@
+{
+  "experience": "Dread Lords: Villain Tycoon",
+  "image_size": {
+    "width": 512,
+    "height": 512,
+    "format": "PNG"
+  },
+  "badges": [
+    {
+      "order": 1,
+      "name": "Rise",
+      "description": "Finish your first reign and rise again.",
+      "award_criteria": "Finish the player's first reign.",
+      "image": "upload/rise.png"
+    },
+    {
+      "order": 2,
+      "name": "First Dawn",
+      "description": "Survive your first dawn siege.",
+      "award_criteria": "Survive the player's first siege.",
+      "image": "upload/first-dawn.png"
+    },
+    {
+      "order": 3,
+      "name": "Iron Reign",
+      "description": "Survive five dawn sieges in a single reign.",
+      "award_criteria": "Survive 5 sieges in one reign.",
+      "image": "upload/iron-reign.png"
+    },
+    {
+      "order": 4,
+      "name": "Undying",
+      "description": "Survive ten dawn sieges in a single reign.",
+      "award_criteria": "Survive 10 sieges in one reign.",
+      "image": "upload/undying.png"
+    },
+    {
+      "order": 5,
+      "name": "Warlord",
+      "description": "Unlock the Orc Warlord.",
+      "award_criteria": "Unlock the Orc villain.",
+      "image": "upload/warlord.png"
+    },
+    {
+      "order": 6,
+      "name": "Dreamer",
+      "description": "Unlock the Dream Lord.",
+      "award_criteria": "Unlock the Dream Lord villain.",
+      "image": "upload/dreamer.png"
+    },
+    {
+      "order": 7,
+      "name": "Blighted",
+      "description": "Unlock the Corrupted Druid.",
+      "award_criteria": "Unlock the Corrupted Druid villain.",
+      "image": "upload/blighted.png"
+    },
+    {
+      "order": 8,
+      "name": "Conqueror",
+      "description": "Capture your first village.",
+      "award_criteria": "Take control of a village.",
+      "image": "upload/conqueror.png"
+    },
+    {
+      "order": 9,
+      "name": "Lord of the Land",
+      "description": "Control all three villages at the same time.",
+      "award_criteria": "Hold all 3 villages simultaneously.",
+      "image": "upload/lord-of-the-land.png"
+    },
+    {
+      "order": 10,
+      "name": "Gatebreaker",
+      "description": "Break through the Capital's gate.",
+      "award_criteria": "Destroy the Capital's gate.",
+      "image": "upload/gatebreaker.png"
+    },
+    {
+      "order": 11,
+      "name": "Aldric's Bane",
+      "description": "Defeat Sir Aldric.",
+      "award_criteria": "Defeat Sir Aldric.",
+      "image": "upload/aldrics-bane.png"
+    },
+    {
+      "order": 12,
+      "name": "Dread Lord",
+      "description": "Be crowned the Dread Lord.",
+      "award_criteria": "Complete the Dread Lord coronation.",
+      "image": "upload/dread-lord.png"
+    },
+    {
+      "order": 13,
+      "name": "Master",
+      "description": "Raise any villain to level 10.",
+      "award_criteria": "Reach level 10 with any villain.",
+      "image": "upload/master.png"
+    }
+  ]
+}
